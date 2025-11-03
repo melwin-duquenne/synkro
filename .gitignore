@@ -21,7 +21,6 @@ front/.env.*.local
 docker-compose.override.yml
 
 # IDE
-.vscode/
 .idea/
 
 # OS
