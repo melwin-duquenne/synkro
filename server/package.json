@@ -1,0 +1,18 @@
+{
+  "name": "synkro-websocket-server",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "WebSocket server for Synkro project with Yjs and Whiteboard",
+  "main": "unified-server.js",
+  "scripts": {
+    "start": "node unified-server.js"
+  },
+  "dependencies": {
+    "ws": "^8.14.2",
+    "yjs": "^13.6.10",
+    "y-websocket": "^1.5.0"
+  },
+  "keywords": ["websocket", "yjs", "whiteboard", "synkro"],
+  "author": "",
+  "license": "ISC"
+}
