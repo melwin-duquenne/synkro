@@ -6,23 +6,11 @@ services:
     volumes:
       - ./backend:/var/www
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-synkro:${PORT_POSTGRES_2}/${POSTGRES_DB}?serverVersion=16&charset=utf8
     depends_on:
       - postgres-synkro
     ports:
-      - "8000:8000"
-    networks:
-      - synkronet-synkro
-
-  frontend-synkro:
-    build: ./frontend
-    container_name: vue_frontend
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    ports:
-      - "5173:5173"
-    restart: unless-stopped
+      - ${PORT_BACKEND}
     networks:
       - synkronet-synkro
 
@@ -31,7 +19,7 @@ services:
     container_name: websocket_server
     restart: unless-stopped
     ports:
-      - "3001:3001"
+      - ${PORT_WEBSOCKET}
     volumes:
       - ./server:/app
     environment:
@@ -45,7 +33,7 @@ services:
     container_name: postgres_db
     restart: always
     ports:
-      - "5432:5432"
+      - ${PORT_POSTGRES}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:

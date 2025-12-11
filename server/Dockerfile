@@ -15,4 +15,4 @@ COPY . .
 EXPOSE 3001
 
 # Démarrer le serveur unifié (Yjs + Whiteboard)
-CMD ["node", "unified-server.js"]
+CMD ["node", "unified-server.cjs"]
