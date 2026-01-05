@@ -1,0 +1,22 @@
+{
+  "name": "synkro-websocket-server",
+  "version": "1.0.0",
+  "description": "WebSocket server for Synkro project with Yjs collaboration",
+  "main": "unified-server.cjs",
+  "scripts": {
+    "start": "node unified-server.cjs"
+  },
+  "dependencies": {
+    "ws": "^8.18.3",
+    "y-websocket": "^1.5.0",
+    "yjs": "^13.6.10"
+  },
+  "keywords": [
+    "websocket",
+    "yjs",
+    "collaborative",
+    "synkro"
+  ],
+  "author": "",
+  "license": "ISC"
+}
