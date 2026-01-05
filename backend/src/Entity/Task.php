@@ -2,7 +2,6 @@
 
 namespace App\Entity;
 
-use ApiPlatform\Metadata\ApiResource;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
 
@@ -10,10 +9,7 @@ use Symfony\Component\Serializer\Annotation\Groups;
 #[ORM\Table(name: 'task')]
 #[ORM\Index(name: 'idx_task_room', columns: ['room_id'])]
 #[ORM\Index(name: 'idx_task_status', columns: ['status'])]
-#[ApiResource(
-    normalizationContext: ['groups' => ['task:read']],
-    denormalizationContext: ['groups' => ['task:write']]
-)]
+// API Platform disabled - using custom TaskController instead
 class Task
 {
     public const STATUS_TODO = 'todo';
