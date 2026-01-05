@@ -1,0 +1,7 @@
+@import "tailwindcss";
+@plugin "daisyui";
+
+/* Custom styles */
+body {
+  min-height: 100vh;
+}
