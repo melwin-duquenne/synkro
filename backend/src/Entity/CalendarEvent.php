@@ -3,8 +3,19 @@
 namespace App\Entity;
 
 use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Delete;
+use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\Patch;
+use ApiPlatform\Metadata\Post;
+use App\Dto\Calendar\CalendarEventOutput;
+use App\Dto\Calendar\CreateCalendarEventInput;
+use App\Dto\Calendar\UpdateCalendarEventInput;
+use App\State\CalendarEventProcessor;
+use App\State\CalendarEventProvider;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'calendar_event')]
@@ -12,8 +23,39 @@ use Symfony\Component\Serializer\Annotation\Groups;
 #[ORM\Index(name: 'idx_event_user', columns: ['user_id'])]
 #[ORM\Index(name: 'idx_event_dates', columns: ['start_date', 'end_date'])]
 #[ApiResource(
-    normalizationContext: ['groups' => ['event:read']],
-    denormalizationContext: ['groups' => ['event:write']]
+    operations: [
+        new GetCollection(
+            uriTemplate: '/calendar-events',
+            provider: CalendarEventProvider::class,
+            output: CalendarEventOutput::class
+        ),
+        new GetCollection(
+            uriTemplate: '/rooms/{roomId}/calendar-events',
+            provider: CalendarEventProvider::class,
+            output: CalendarEventOutput::class
+        ),
+        new Get(
+            uriTemplate: '/calendar-events/{id}',
+            provider: CalendarEventProvider::class,
+            output: CalendarEventOutput::class
+        ),
+        new Post(
+            uriTemplate: '/calendar-events',
+            input: CreateCalendarEventInput::class,
+            output: CalendarEventOutput::class,
+            processor: CalendarEventProcessor::class
+        ),
+        new Patch(
+            uriTemplate: '/calendar-events/{id}',
+            input: UpdateCalendarEventInput::class,
+            output: CalendarEventOutput::class,
+            processor: CalendarEventProcessor::class
+        ),
+        new Delete(
+            uriTemplate: '/calendar-events/{id}',
+            processor: CalendarEventProcessor::class
+        )
+    ]
 )]
 class CalendarEvent
 {
@@ -26,71 +68,60 @@ class CalendarEvent
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'integer')]
-    #[Groups(['event:read'])]
     private ?int $id = null;
 
     #[ORM\ManyToOne(targetEntity: Room::class, inversedBy: 'calendarEvents')]
     #[ORM\JoinColumn(nullable: true)]
-    #[Groups(['event:read', 'event:write'])]
     private ?Room $room = null;
 
     #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'calendarEvents')]
     #[ORM\JoinColumn(nullable: false)]
-    #[Groups(['event:read'])]
     private ?User $user = null;
 
     #[ORM\ManyToOne(targetEntity: Entreprise::class, inversedBy: 'calendarEvents')]
     #[ORM\JoinColumn(nullable: false)]
-    #[Groups(['event:read', 'event:write'])]
     private ?Entreprise $entreprise = null;
 
     #[ORM\Column(type: 'string', length: 255)]
-    #[Groups(['event:read', 'event:write'])]
     private ?string $title = null;
 
     #[ORM\Column(type: 'text', nullable: true)]
-    #[Groups(['event:read', 'event:write'])]
     private ?string $description = null;
 
     #[ORM\Column(type: 'string', length: 20)]
-    #[Groups(['event:read', 'event:write'])]
     private string $eventType = self::TYPE_OTHER;
 
     #[ORM\Column(type: 'datetime')]
-    #[Groups(['event:read', 'event:write'])]
     private ?\DateTimeInterface $startDate = null;
 
     #[ORM\Column(type: 'datetime')]
-    #[Groups(['event:read', 'event:write'])]
     private ?\DateTimeInterface $endDate = null;
 
     #[ORM\Column(type: 'boolean')]
-    #[Groups(['event:read', 'event:write'])]
     private bool $isAllDay = false;
 
     #[ORM\Column(type: 'string', length: 100, nullable: true)]
-    #[Groups(['event:read', 'event:write'])]
     private ?string $recurrence = null;
 
     #[ORM\Column(type: 'string', length: 7, nullable: true)]
-    #[Groups(['event:read', 'event:write'])]
     private ?string $color = null;
 
     #[ORM\Column(type: 'string', length: 255, nullable: true)]
-    #[Groups(['event:read', 'event:write'])]
     private ?string $location = null;
 
     #[ORM\Column(type: 'boolean')]
-    #[Groups(['event:read', 'event:write'])]
     private bool $isPrivate = false;
 
     #[ORM\Column(type: 'datetime')]
-    #[Groups(['event:read'])]
     private ?\DateTimeInterface $createdAt = null;
+
+    #[ORM\OneToMany(mappedBy: 'event', targetEntity: CalendarEventParticipant::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
+    private Collection $participants;
 
     public function __construct()
     {
         $this->createdAt = new \DateTime();
+        $this->participants = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -249,6 +280,36 @@ class CalendarEvent
     public function setCreatedAt(\DateTimeInterface $createdAt): self
     {
         $this->createdAt = $createdAt;
+        return $this;
+    }
+
+    public function getParticipants(): Collection
+    {
+        return $this->participants;
+    }
+
+    public function addParticipant(CalendarEventParticipant $participant): self
+    {
+        if (!$this->participants->contains($participant)) {
+            $this->participants->add($participant);
+            $participant->setEvent($this);
+        }
+        return $this;
+    }
+
+    public function removeParticipant(CalendarEventParticipant $participant): self
+    {
+        if ($this->participants->removeElement($participant)) {
+            if ($participant->getEvent() === $this) {
+                $participant->setEvent(null);
+            }
+        }
+        return $this;
+    }
+
+    public function clearParticipants(): self
+    {
+        $this->participants->clear();
         return $this;
     }
 }

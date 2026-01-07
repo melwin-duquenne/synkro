@@ -6,6 +6,7 @@ import type { Room } from '@/types'
 import CollaborativeEditor from '@/components/editor/CollaborativeEditor.vue'
 import ChatModule from '@/components/chat/ChatModule.vue'
 import TasksModule from '@/components/tasks/TasksModule.vue'
+import CalendarModule from '@/components/calendar/CalendarModule.vue'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -140,16 +141,12 @@ onMounted(async () => {
           class="h-full"
         />
 
-        <!-- Calendar (placeholder) -->
-        <div v-else-if="activeModule === 'calendar'" class="h-full flex items-center justify-center">
-          <div class="text-center py-12 text-base-content/50">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <p class="text-lg font-medium">Calendrier partagé</p>
-            <p class="text-sm">(Bientôt disponible)</p>
-          </div>
-        </div>
+        <!-- Calendar Module -->
+        <CalendarModule
+          v-else-if="activeModule === 'calendar' && availableModules.includes('calendar')"
+          :room-id="roomId"
+          class="h-full"
+        />
 
         <!-- Default / No module selected -->
         <div v-else class="h-full flex items-center justify-center">

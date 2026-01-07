@@ -1,0 +1,36 @@
+<?php
+
+namespace App\Dto\Auth;
+
+use App\Dto\EntrepriseSimpleOutput;
+use App\Dto\TeamSimpleOutput;
+use App\Entity\User;
+
+final class UserOutput
+{
+    public int $id;
+    public string $email;
+    public string $displayName;
+    public string $role;
+    public ?EntrepriseSimpleOutput $entreprise = null;
+    public ?TeamSimpleOutput $team = null;
+
+    public static function fromEntity(User $user): self
+    {
+        $output = new self();
+        $output->id = $user->getId();
+        $output->email = $user->getEmail();
+        $output->displayName = $user->getDisplayName();
+        $output->role = $user->getRole();
+
+        if ($user->getEntreprise()) {
+            $output->entreprise = EntrepriseSimpleOutput::fromEntity($user->getEntreprise());
+        }
+
+        if ($user->getTeam()) {
+            $output->team = TeamSimpleOutput::fromEntity($user->getTeam());
+        }
+
+        return $output;
+    }
+}

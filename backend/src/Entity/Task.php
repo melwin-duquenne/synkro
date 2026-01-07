@@ -2,6 +2,19 @@
 
 namespace App\Entity;
 
+use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Delete;
+use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\Patch;
+use ApiPlatform\Metadata\Post;
+use ApiPlatform\Metadata\Put;
+use App\Dto\Task\CreateTaskInput;
+use App\Dto\Task\ReorderTasksInput;
+use App\Dto\Task\TaskOutput;
+use App\Dto\Task\UpdateTaskInput;
+use App\State\TaskProcessor;
+use App\State\TaskProvider;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
 
@@ -9,7 +22,57 @@ use Symfony\Component\Serializer\Annotation\Groups;
 #[ORM\Table(name: 'task')]
 #[ORM\Index(name: 'idx_task_room', columns: ['room_id'])]
 #[ORM\Index(name: 'idx_task_status', columns: ['status'])]
-// API Platform disabled - using custom TaskController instead
+#[ApiResource(
+    operations: [
+        new GetCollection(
+            uriTemplate: '/rooms/{roomId}/tasks',
+            provider: TaskProvider::class,
+            output: TaskOutput::class,
+            uriVariables: ['roomId']
+        ),
+        new Get(
+            uriTemplate: '/rooms/{roomId}/tasks/{id}',
+            provider: TaskProvider::class,
+            output: TaskOutput::class,
+            uriVariables: ['roomId', 'id']
+        ),
+        new Post(
+            uriTemplate: '/rooms/{roomId}/tasks',
+            input: CreateTaskInput::class,
+            output: TaskOutput::class,
+            processor: TaskProcessor::class,
+            uriVariables: ['roomId']
+        ),
+        new Put(
+            uriTemplate: '/rooms/{roomId}/tasks/{id}',
+            input: UpdateTaskInput::class,
+            output: TaskOutput::class,
+            processor: TaskProcessor::class,
+            uriVariables: ['roomId', 'id']
+        ),
+        new Patch(
+            uriTemplate: '/rooms/{roomId}/tasks/{id}',
+            input: UpdateTaskInput::class,
+            output: TaskOutput::class,
+            processor: TaskProcessor::class,
+            uriVariables: ['roomId', 'id']
+        ),
+        new Delete(
+            uriTemplate: '/rooms/{roomId}/tasks/{id}',
+            processor: TaskProcessor::class,
+            uriVariables: ['roomId', 'id']
+        ),
+        new Post(
+            uriTemplate: '/rooms/{roomId}/tasks/reorder',
+            input: ReorderTasksInput::class,
+            processor: TaskProcessor::class,
+            uriVariables: ['roomId'],
+            name: 'reorder_tasks'
+        )
+    ],
+    normalizationContext: ['groups' => ['task:read']],
+    denormalizationContext: ['groups' => ['task:write']]
+)]
 class Task
 {
     public const STATUS_TODO = 'todo';
