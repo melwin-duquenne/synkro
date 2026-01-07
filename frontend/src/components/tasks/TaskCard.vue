@@ -11,6 +11,7 @@ interface Task {
   status: 'todo' | 'in_progress' | 'done'
   position: number
   assignedTo: TaskUser | null
+  estimation: number | null
   createdAt: string
 }
 
@@ -71,12 +72,19 @@ function formatDate(dateString: string): string {
             <span class="text-xs">{{ getInitials(task.assignedTo.displayName) }}</span>
           </div>
         </div>
-        <span class="text-xs text-base-content/70">{{ task.assignedTo.displayName }}</span>
+        <span class="text-xs text-base-content/70 truncate max-w-[80px]">{{ task.assignedTo.displayName }}</span>
       </div>
       <div v-else></div>
 
-      <!-- Date -->
-      <span class="text-xs text-base-content/50">{{ formatDate(task.createdAt) }}</span>
+      <div class="flex items-center gap-2">
+        <!-- Estimation -->
+        <span v-if="task.estimation" class="badge badge-sm badge-primary">
+          {{ task.estimation }}pt
+        </span>
+
+        <!-- Date -->
+        <span class="text-xs text-base-content/50">{{ formatDate(task.createdAt) }}</span>
+      </div>
     </div>
   </div>
 </template>

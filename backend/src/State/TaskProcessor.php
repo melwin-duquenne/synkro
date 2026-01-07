@@ -94,6 +94,10 @@ class TaskProcessor implements ProcessorInterface
             }
         }
 
+        if ($data->estimation !== null) {
+            $task->setEstimation($data->estimation);
+        }
+
         $this->entityManager->persist($task);
         $this->entityManager->flush();
 
@@ -133,6 +137,9 @@ class TaskProcessor implements ProcessorInterface
         if ($data->assignedToId !== null) {
             $assignedTo = $this->entityManager->getRepository(User::class)->find($data->assignedToId);
             $task->setAssignedTo($assignedTo);
+        }
+        if ($data->estimation !== null) {
+            $task->setEstimation($data->estimation);
         }
 
         $this->entityManager->flush();

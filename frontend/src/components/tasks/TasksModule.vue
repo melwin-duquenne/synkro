@@ -21,6 +21,7 @@ interface Task {
   status: 'todo' | 'in_progress' | 'done'
   position: number
   assignedTo: TaskUser | null
+  estimation: number | null
   createdAt: string
 }
 
@@ -74,7 +75,9 @@ async function fetchTasks() {
 
     if (!response.ok) throw new Error('Failed to fetch tasks')
 
-    tasks.value = await response.json()
+    const data = await response.json()
+    // API Platform retourne les données dans hydra:member (format JSON-LD)
+    tasks.value = data['hydra:member'] || data.member || (Array.isArray(data) ? data : [])
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to fetch tasks'
   } finally {

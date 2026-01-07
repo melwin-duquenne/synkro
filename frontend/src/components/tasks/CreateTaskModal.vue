@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 
 interface TaskUser {
@@ -14,6 +14,7 @@ interface Task {
   status: 'todo' | 'in_progress' | 'done'
   position: number
   assignedTo: TaskUser | null
+  estimation: number | null
   createdAt: string
 }
 
@@ -33,14 +34,47 @@ const authStore = useAuthStore()
 const title = ref('')
 const description = ref('')
 const status = ref<'todo' | 'in_progress' | 'done'>('todo')
+const assignedToId = ref<number | null>(null)
+const estimation = ref<number | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
+
+const members = ref<TaskUser[]>([])
+const loadingMembers = ref(false)
 
 const statusOptions = [
   { value: 'todo', label: 'À faire' },
   { value: 'in_progress', label: 'En cours' },
   { value: 'done', label: 'Terminé' }
 ]
+
+const estimationOptions = [
+  { value: null, label: 'Non estimé' },
+  { value: 1, label: '1 point' },
+  { value: 2, label: '2 points' },
+  { value: 3, label: '3 points' },
+  { value: 5, label: '5 points' },
+  { value: 8, label: '8 points' },
+  { value: 13, label: '13 points' },
+  { value: 21, label: '21 points' }
+]
+
+async function fetchMembers() {
+  loadingMembers.value = true
+  try {
+    const response = await fetch('/api/entreprise/members', {
+      headers: authStore.getAuthHeaders()
+    })
+    if (response.ok) {
+      const data = await response.json()
+      members.value = data['hydra:member'] || data.member || (Array.isArray(data) ? data : [])
+    }
+  } catch (e) {
+    console.error('Failed to fetch members:', e)
+  } finally {
+    loadingMembers.value = false
+  }
+}
 
 watch(() => props.initialStatus, (newStatus) => {
   if (newStatus) {
@@ -49,9 +83,18 @@ watch(() => props.initialStatus, (newStatus) => {
 }, { immediate: true })
 
 watch(() => props.open, (isOpen) => {
-  if (isOpen && props.initialStatus) {
-    status.value = props.initialStatus
+  if (isOpen) {
+    if (props.initialStatus) {
+      status.value = props.initialStatus
+    }
+    if (members.value.length === 0) {
+      fetchMembers()
+    }
   }
+})
+
+onMounted(() => {
+  fetchMembers()
 })
 
 async function handleSubmit() {
@@ -70,7 +113,9 @@ async function handleSubmit() {
       body: JSON.stringify({
         title: title.value,
         description: description.value || null,
-        status: status.value
+        status: status.value,
+        assignedToId: assignedToId.value,
+        estimation: estimation.value
       })
     })
 
@@ -93,6 +138,8 @@ function resetForm() {
   title.value = ''
   description.value = ''
   status.value = props.initialStatus || 'todo'
+  assignedToId.value = null
+  estimation.value = null
   error.value = null
 }
 
@@ -143,6 +190,33 @@ function handleClose() {
           </label>
           <select v-model="status" class="select select-bordered w-full">
             <option v-for="option in statusOptions" :key="option.value" :value="option.value">
+              {{ option.label }}
+            </option>
+          </select>
+        </div>
+
+        <!-- Assignation -->
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text">Assigné à</span>
+            <span class="label-text-alt">Optionnel</span>
+          </label>
+          <select v-model="assignedToId" class="select select-bordered w-full" :disabled="loadingMembers">
+            <option :value="null">Non assigné</option>
+            <option v-for="member in members" :key="member.id" :value="member.id">
+              {{ member.displayName }}
+            </option>
+          </select>
+        </div>
+
+        <!-- Estimation -->
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text">Estimation (points)</span>
+            <span class="label-text-alt">Optionnel</span>
+          </label>
+          <select v-model="estimation" class="select select-bordered w-full">
+            <option v-for="option in estimationOptions" :key="option.value" :value="option.value">
               {{ option.label }}
             </option>
           </select>

@@ -17,4 +17,7 @@ final class UpdateTaskInput
     public ?int $position = null;
 
     public ?int $assignedToId = null;
+
+    #[Assert\PositiveOrZero]
+    public ?int $estimation = null;
 }

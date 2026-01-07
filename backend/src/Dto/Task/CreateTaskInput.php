@@ -17,6 +17,9 @@ final class CreateTaskInput
 
     public ?int $assignedToId = null;
 
+    #[Assert\PositiveOrZero]
+    public ?int $estimation = null;
+
     #[Assert\NotNull]
     public int $roomId;
 }

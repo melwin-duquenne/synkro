@@ -176,18 +176,18 @@ export const useCalendarStore = defineStore('calendar', () => {
     const authStore = useAuthStore()
 
     try {
-      const response = await fetch('/api/users', {
+      const response = await fetch('/api/entreprise/members', {
         headers: authStore.getAuthHeaders()
       })
 
       if (response.ok) {
         const data = await response.json()
         // Handle API Platform format
-        const users = data['hydra:member'] || data
-        enterpriseUsers.value = users.map((u: { id: number; displayName: string; email: string }) => ({
+        const users = data['hydra:member'] || data.member || (Array.isArray(data) ? data : [])
+        enterpriseUsers.value = users.map((u: { id: number; displayName: string; email?: string }) => ({
           id: u.id,
           displayName: u.displayName,
-          email: u.email
+          email: u.email || ''
         }))
       }
     } catch (e) {

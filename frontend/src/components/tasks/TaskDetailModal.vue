@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 
 interface TaskUser {
@@ -14,6 +14,7 @@ interface Task {
   status: 'todo' | 'in_progress' | 'done'
   position: number
   assignedTo: TaskUser | null
+  estimation: number | null
   createdAt: string
 }
 
@@ -38,6 +39,11 @@ const deleteConfirm = ref(false)
 const editTitle = ref('')
 const editDescription = ref('')
 const editStatus = ref<'todo' | 'in_progress' | 'done'>('todo')
+const editAssignedToId = ref<number | null>(null)
+const editEstimation = ref<number | null>(null)
+
+const members = ref<TaskUser[]>([])
+const loadingMembers = ref(false)
 
 const statusOptions = [
   { value: 'todo', label: 'À faire', color: 'badge-ghost' },
@@ -45,16 +51,58 @@ const statusOptions = [
   { value: 'done', label: 'Terminé', color: 'badge-success' }
 ]
 
+const estimationOptions = [
+  { value: null, label: 'Non estimé' },
+  { value: 1, label: '1 point' },
+  { value: 2, label: '2 points' },
+  { value: 3, label: '3 points' },
+  { value: 5, label: '5 points' },
+  { value: 8, label: '8 points' },
+  { value: 13, label: '13 points' },
+  { value: 21, label: '21 points' }
+]
+
+async function fetchMembers() {
+  loadingMembers.value = true
+  try {
+    const response = await fetch('/api/entreprise/members', {
+      headers: authStore.getAuthHeaders()
+    })
+    if (response.ok) {
+      const data = await response.json()
+      members.value = data['hydra:member'] || data.member || (Array.isArray(data) ? data : [])
+    }
+  } catch (e) {
+    console.error('Failed to fetch members:', e)
+  } finally {
+    loadingMembers.value = false
+  }
+}
+
 watch(() => props.task, (task) => {
   editTitle.value = task.title
   editDescription.value = task.description || ''
   editStatus.value = task.status
+  editAssignedToId.value = task.assignedTo?.id || null
+  editEstimation.value = task.estimation
 }, { immediate: true })
+
+watch(() => props.open, (isOpen) => {
+  if (isOpen && members.value.length === 0) {
+    fetchMembers()
+  }
+})
+
+onMounted(() => {
+  fetchMembers()
+})
 
 function startEditing() {
   editTitle.value = props.task.title
   editDescription.value = props.task.description || ''
   editStatus.value = props.task.status
+  editAssignedToId.value = props.task.assignedTo?.id || null
+  editEstimation.value = props.task.estimation
   isEditing.value = true
 }
 
@@ -78,7 +126,9 @@ async function saveChanges() {
       body: JSON.stringify({
         title: editTitle.value,
         description: editDescription.value || null,
-        status: editStatus.value
+        status: editStatus.value,
+        assignedToId: editAssignedToId.value,
+        estimation: editEstimation.value
       })
     })
 
@@ -210,17 +260,60 @@ function handleClose() {
         <label class="label">
           <span class="label-text font-medium">Assigné à</span>
         </label>
-        <div v-if="task.assignedTo" class="flex items-center gap-2">
-          <div class="avatar placeholder">
-            <div class="bg-primary text-primary-content rounded-full w-8">
-              <span class="text-sm">
-                {{ task.assignedTo.displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) }}
-              </span>
+
+        <!-- View mode -->
+        <div v-if="!isEditing">
+          <div v-if="task.assignedTo" class="flex items-center gap-2">
+            <div class="avatar placeholder">
+              <div class="bg-primary text-primary-content rounded-full w-8">
+                <span class="text-sm">
+                  {{ task.assignedTo.displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) }}
+                </span>
+              </div>
             </div>
+            <span>{{ task.assignedTo.displayName }}</span>
           </div>
-          <span>{{ task.assignedTo.displayName }}</span>
+          <p v-else class="text-base-content/50 italic">Non assigné</p>
         </div>
-        <p v-else class="text-base-content/50 italic">Non assigné</p>
+
+        <!-- Edit mode -->
+        <select
+          v-else
+          v-model="editAssignedToId"
+          class="select select-bordered w-full max-w-xs"
+          :disabled="loadingMembers"
+        >
+          <option :value="null">Non assigné</option>
+          <option v-for="member in members" :key="member.id" :value="member.id">
+            {{ member.displayName }}
+          </option>
+        </select>
+      </div>
+
+      <!-- Estimation -->
+      <div class="mb-4">
+        <label class="label">
+          <span class="label-text font-medium">Estimation</span>
+        </label>
+
+        <!-- View mode -->
+        <div v-if="!isEditing">
+          <span v-if="task.estimation" class="badge badge-primary">
+            {{ task.estimation }} point{{ task.estimation > 1 ? 's' : '' }}
+          </span>
+          <p v-else class="text-base-content/50 italic">Non estimé</p>
+        </div>
+
+        <!-- Edit mode -->
+        <select
+          v-else
+          v-model="editEstimation"
+          class="select select-bordered w-full max-w-xs"
+        >
+          <option v-for="option in estimationOptions" :key="option.value" :value="option.value">
+            {{ option.label }}
+          </option>
+        </select>
       </div>
 
       <!-- Meta info -->

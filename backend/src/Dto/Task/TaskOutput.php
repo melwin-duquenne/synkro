@@ -13,6 +13,7 @@ final class TaskOutput
     public string $status;
     public int $position;
     public ?UserSimpleOutput $assignedTo = null;
+    public ?int $estimation = null;
     public string $createdAt;
     public int $roomId;
 
@@ -26,6 +27,7 @@ final class TaskOutput
         $output->position = $task->getPosition();
         $output->createdAt = $task->getCreatedAt()->format('c');
         $output->roomId = $task->getRoom()->getId();
+        $output->estimation = $task->getEstimation();
 
         if ($task->getAssignedTo()) {
             $output->assignedTo = UserSimpleOutput::fromEntity($task->getAssignedTo());

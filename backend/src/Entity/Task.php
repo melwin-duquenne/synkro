@@ -111,6 +111,10 @@ class Task
     #[Groups(['task:read', 'task:write'])]
     private ?User $assignedTo = null;
 
+    #[ORM\Column(type: 'integer', nullable: true)]
+    #[Groups(['task:read', 'task:write'])]
+    private ?int $estimation = null;
+
     #[ORM\Column(type: 'datetime')]
     #[Groups(['task:read'])]
     private ?\DateTimeInterface $createdAt = null;
@@ -188,6 +192,17 @@ class Task
     public function setAssignedTo(?User $assignedTo): self
     {
         $this->assignedTo = $assignedTo;
+        return $this;
+    }
+
+    public function getEstimation(): ?int
+    {
+        return $this->estimation;
+    }
+
+    public function setEstimation(?int $estimation): self
+    {
+        $this->estimation = $estimation;
         return $this;
     }
 

@@ -32,7 +32,8 @@ use Doctrine\ORM\Mapping as ORM;
         new GetCollection(
             uriTemplate: '/rooms/{roomId}/calendar-events',
             provider: CalendarEventProvider::class,
-            output: CalendarEventOutput::class
+            output: CalendarEventOutput::class,
+            uriVariables: ['roomId']
         ),
         new Get(
             uriTemplate: '/calendar-events/{id}',
