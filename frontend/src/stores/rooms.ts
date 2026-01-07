@@ -34,7 +34,9 @@ export const useRoomsStore = defineStore('rooms', () => {
     try {
       const response = await fetch('/api/templates')
       if (response.ok) {
-        templates.value = await response.json()
+        const data = await response.json()
+        // Handle both API Platform format and custom format
+        templates.value = data.member || data['hydra:member'] || data
       }
     } catch (e) {
       console.error('Failed to fetch templates:', e)
@@ -51,7 +53,9 @@ export const useRoomsStore = defineStore('rooms', () => {
         headers: authStore.getAuthHeaders()
       })
       if (response.ok) {
-        rooms.value = await response.json()
+        const data = await response.json()
+        // Handle both API Platform format and custom format
+        rooms.value = data.member || data['hydra:member'] || data
       }
     } catch (e) {
       error.value = 'Failed to fetch rooms'
@@ -74,7 +78,8 @@ export const useRoomsStore = defineStore('rooms', () => {
       const response = await fetch('/api/rooms', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/ld+json',
+          'Accept': 'application/ld+json',
           ...authStore.getAuthHeaders()
         },
         body: JSON.stringify(data)
