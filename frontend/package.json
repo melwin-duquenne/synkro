@@ -12,6 +12,8 @@
     "@tailwindcss/vite": "^4.1.18",
     "@tiptap/extension-collaboration": "^2.27.1",
     "@tiptap/extension-collaboration-cursor": "^2.26.2",
+    "@tiptap/extension-text-align": "^2.27.1",
+    "@tiptap/extension-underline": "^2.27.1",
     "@tiptap/starter-kit": "^2.27.1",
     "@tiptap/vue-3": "^2.27.1",
     "daisyui": "^5.5.14",

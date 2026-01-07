@@ -3,7 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import type { Room } from '@/types'
-import CollaborativeEditor from '@/components/editor/CollaborativeEditor.vue'
+import EditorModule from '@/components/editor/EditorModule.vue'
 import ChatModule from '@/components/chat/ChatModule.vue'
 import TasksModule from '@/components/tasks/TasksModule.vue'
 import CalendarModule from '@/components/calendar/CalendarModule.vue'
@@ -88,7 +88,7 @@ onMounted(async () => {
       <!-- Module Content -->
       <div class="flex-1 bg-base-100 rounded-lg overflow-hidden shadow-lg">
         <!-- Editor Module -->
-        <CollaborativeEditor
+        <EditorModule
           v-if="activeModule === 'editor' && availableModules.includes('editor')"
           :room-id="roomId"
           class="h-full"
