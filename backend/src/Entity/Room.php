@@ -100,6 +100,9 @@ class Room
     #[ORM\OneToOne(mappedBy: 'room', targetEntity: Document::class, cascade: ['persist', 'remove'])]
     private ?Document $document = null;
 
+    #[ORM\OneToOne(mappedBy: 'room', targetEntity: Whiteboard::class, cascade: ['persist', 'remove'])]
+    private ?Whiteboard $whiteboard = null;
+
     #[ORM\OneToMany(mappedBy: 'room', targetEntity: FileResource::class, cascade: ['remove'])]
     private Collection $files;
 
@@ -276,6 +279,20 @@ class Room
             $document->setRoom($this);
         }
         $this->document = $document;
+        return $this;
+    }
+
+    public function getWhiteboard(): ?Whiteboard
+    {
+        return $this->whiteboard;
+    }
+
+    public function setWhiteboard(?Whiteboard $whiteboard): self
+    {
+        if ($whiteboard !== null && $whiteboard->getRoom() !== $this) {
+            $whiteboard->setRoom($this);
+        }
+        $this->whiteboard = $whiteboard;
         return $this;
     }
 
