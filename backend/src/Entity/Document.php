@@ -3,12 +3,33 @@
 namespace App\Entity;
 
 use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\Put;
+use App\Dto\Document\DocumentOutput;
+use App\Dto\Document\UpdateDocumentInput;
+use App\State\DocumentProcessor;
+use App\State\DocumentProvider;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'document')]
 #[ApiResource(
+    operations: [
+        new Get(
+            uriTemplate: '/rooms/{roomId}/document',
+            provider: DocumentProvider::class,
+            output: DocumentOutput::class,
+            uriVariables: ['roomId']
+        ),
+        new Put(
+            uriTemplate: '/rooms/{roomId}/document',
+            input: UpdateDocumentInput::class,
+            output: DocumentOutput::class,
+            processor: DocumentProcessor::class,
+            uriVariables: ['roomId']
+        )
+    ],
     normalizationContext: ['groups' => ['document:read']],
     denormalizationContext: ['groups' => ['document:write']]
 )]
@@ -27,7 +48,7 @@ class Document
 
     #[ORM\Column(type: 'text', nullable: true)]
     #[Groups(['document:read', 'document:write'])]
-    private ?string $contentMarkdown = null;
+    private ?string $contentHtml = null;
 
     #[ORM\Column(type: 'blob', nullable: true)]
     private $yjsState = null;
@@ -57,14 +78,14 @@ class Document
         return $this;
     }
 
-    public function getContentMarkdown(): ?string
+    public function getContentHtml(): ?string
     {
-        return $this->contentMarkdown;
+        return $this->contentHtml;
     }
 
-    public function setContentMarkdown(?string $contentMarkdown): self
+    public function setContentHtml(?string $contentHtml): self
     {
-        $this->contentMarkdown = $contentMarkdown;
+        $this->contentHtml = $contentHtml;
         $this->updatedAt = new \DateTime();
         return $this;
     }

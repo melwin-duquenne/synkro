@@ -93,11 +93,17 @@ export interface Task {
 // Calendar types
 export type EventType = 'meeting' | 'absence' | 'blocked' | 'reminder' | 'other'
 
+export interface CalendarEventParticipant {
+  id: number
+  userId: number
+  displayName: string
+  status: 'pending' | 'accepted' | 'declined'
+}
+
 export interface CalendarEvent {
   id: number
-  room?: Room
-  user: User
-  entreprise: Entreprise
+  roomId: number | null
+  user: { id: number; displayName: string }
   title: string
   description?: string
   eventType: EventType
@@ -109,6 +115,22 @@ export interface CalendarEvent {
   location?: string
   isPrivate: boolean
   createdAt: string
+  participants: CalendarEventParticipant[]
+}
+
+export interface CreateCalendarEventData {
+  title: string
+  description?: string
+  eventType: EventType
+  startDate: string
+  endDate: string
+  isAllDay?: boolean
+  recurrence?: string
+  color?: string
+  location?: string
+  isPrivate?: boolean
+  roomId?: number | null
+  participantIds?: number[]
 }
 
 // Document types

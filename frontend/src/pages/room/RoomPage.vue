@@ -3,8 +3,10 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import type { Room } from '@/types'
-import CollaborativeEditor from '@/components/editor/CollaborativeEditor.vue'
+import EditorModule from '@/components/editor/EditorModule.vue'
 import ChatModule from '@/components/chat/ChatModule.vue'
+import TasksModule from '@/components/tasks/TasksModule.vue'
+import CalendarModule from '@/components/calendar/CalendarModule.vue'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -86,7 +88,7 @@ onMounted(async () => {
       <!-- Module Content -->
       <div class="flex-1 bg-base-100 rounded-lg overflow-hidden shadow-lg">
         <!-- Editor Module -->
-        <CollaborativeEditor
+        <EditorModule
           v-if="activeModule === 'editor' && availableModules.includes('editor')"
           :room-id="roomId"
           class="h-full"
@@ -132,27 +134,19 @@ onMounted(async () => {
           </div>
         </div>
 
-        <!-- Tasks (placeholder) -->
-        <div v-else-if="activeModule === 'tasks'" class="h-full flex items-center justify-center">
-          <div class="text-center py-12 text-base-content/50">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-            </svg>
-            <p class="text-lg font-medium">Kanban des tâches</p>
-            <p class="text-sm">(Bientôt disponible)</p>
-          </div>
-        </div>
+        <!-- Tasks Module -->
+        <TasksModule
+          v-else-if="activeModule === 'tasks' && availableModules.includes('tasks')"
+          :room-id="roomId"
+          class="h-full"
+        />
 
-        <!-- Calendar (placeholder) -->
-        <div v-else-if="activeModule === 'calendar'" class="h-full flex items-center justify-center">
-          <div class="text-center py-12 text-base-content/50">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <p class="text-lg font-medium">Calendrier partagé</p>
-            <p class="text-sm">(Bientôt disponible)</p>
-          </div>
-        </div>
+        <!-- Calendar Module -->
+        <CalendarModule
+          v-else-if="activeModule === 'calendar' && availableModules.includes('calendar')"
+          :room-id="roomId"
+          class="h-full"
+        />
 
         <!-- Default / No module selected -->
         <div v-else class="h-full flex items-center justify-center">
