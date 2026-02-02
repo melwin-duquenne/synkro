@@ -4,6 +4,7 @@ export interface User {
   email: string
   displayName: string
   role: 'admin' | 'user'
+  avatarUrl?: string | null
   entreprise: Entreprise | null
   team: Team | null
   createdAt?: string
@@ -153,6 +154,22 @@ export interface FileResource {
   createdAt: string
 }
 
+// Account types
+export interface UpdateProfileData {
+  displayName?: string
+  email?: string
+}
+
+export interface AdminUser {
+  id: number
+  email: string
+  displayName: string
+  role: 'admin' | 'user'
+  avatarUrl?: string | null
+  team: Team | null
+  createdAt: string
+}
+
 // Auth types
 export interface LoginCredentials {
   email: string
@@ -168,3 +185,6 @@ export interface RegisterData {
 export interface AuthResponse {
   token: string
 }
+
+// WebRTC types
+export * from './webrtc'

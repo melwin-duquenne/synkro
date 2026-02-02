@@ -39,6 +39,8 @@ security:
         - { path: ^/api/docs, roles: PUBLIC_ACCESS }
         - { path: ^/api/modules, roles: PUBLIC_ACCESS }
         - { path: ^/api/templates, roles: PUBLIC_ACCESS }
+        - { path: ^/api/account/reset-password, roles: PUBLIC_ACCESS }
+        - { path: ^/api/account/delete/confirm, roles: PUBLIC_ACCESS }
         - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
 
 when@test:

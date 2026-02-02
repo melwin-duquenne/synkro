@@ -46,6 +46,35 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/forgot-password',
+      name: 'forgot-password',
+      component: () => import('@/pages/auth/ForgotPasswordPage.vue'),
+      meta: { guest: true }
+    },
+    {
+      path: '/reset-password',
+      name: 'reset-password',
+      component: () => import('@/pages/auth/ResetPasswordPage.vue'),
+      meta: { guest: true }
+    },
+    {
+      path: '/confirm-delete',
+      name: 'confirm-delete',
+      component: () => import('@/pages/account/ConfirmDeletePage.vue')
+    },
+    {
+      path: '/profile',
+      name: 'profile',
+      component: () => import('@/pages/account/ProfilePage.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/admin/users',
+      name: 'admin-users',
+      component: () => import('@/pages/admin/UsersPage.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
       component: () => import('@/pages/NotFoundPage.vue')
@@ -58,6 +87,8 @@ router.beforeEach((to, _from, next) => {
 
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     next({ name: 'login', query: { redirect: to.fullPath } })
+  } else if (to.meta.requiresAdmin && authStore.user?.role !== 'admin') {
+    next({ name: 'dashboard' })
   } else if (to.meta.guest && authStore.isAuthenticated) {
     next({ name: 'dashboard' })
   } else {

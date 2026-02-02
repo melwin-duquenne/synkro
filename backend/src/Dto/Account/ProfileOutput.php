@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Dto\Auth;
+namespace App\Dto\Account;
 
 use App\Dto\EntrepriseSimpleOutput;
 use App\Dto\TeamSimpleOutput;
 use App\Entity\User;
 
-final class UserOutput
+final class ProfileOutput
 {
     public int $id;
     public string $email;

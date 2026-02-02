@@ -7,6 +7,8 @@ import EditorModule from '@/components/editor/EditorModule.vue'
 import ChatModule from '@/components/chat/ChatModule.vue'
 import TasksModule from '@/components/tasks/TasksModule.vue'
 import CalendarModule from '@/components/calendar/CalendarModule.vue'
+import WhiteboardModule from '@/components/whiteboard/WhiteboardModule.vue'
+import VideoModule from '@/components/video/VideoModule.vue'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -101,27 +103,19 @@ onMounted(async () => {
           class="h-full"
         />
 
-        <!-- Whiteboard (placeholder) -->
-        <div v-else-if="activeModule === 'whiteboard'" class="h-full flex items-center justify-center">
-          <div class="text-center py-12 text-base-content/50">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-            </svg>
-            <p class="text-lg font-medium">Tableau blanc collaboratif</p>
-            <p class="text-sm">(Bientôt disponible)</p>
-          </div>
-        </div>
+        <!-- Whiteboard Module -->
+        <WhiteboardModule
+          v-else-if="activeModule === 'whiteboard' && availableModules.includes('whiteboard')"
+          :room-id="roomId"
+          class="h-full"
+        />
 
-        <!-- Video (placeholder) -->
-        <div v-else-if="activeModule === 'video'" class="h-full flex items-center justify-center">
-          <div class="text-center py-12 text-base-content/50">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-            </svg>
-            <p class="text-lg font-medium">Visioconférence WebRTC</p>
-            <p class="text-sm">(Bientôt disponible)</p>
-          </div>
-        </div>
+        <!-- Video Module -->
+        <VideoModule
+          v-else-if="activeModule === 'video' && availableModules.includes('video')"
+          :room-id="roomId"
+          class="h-full"
+        />
 
         <!-- Files (placeholder) -->
         <div v-else-if="activeModule === 'files'" class="h-full flex items-center justify-center">
