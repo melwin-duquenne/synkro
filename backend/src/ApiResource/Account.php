@@ -15,10 +15,13 @@ use App\Dto\Account\ProfileOutput;
 use App\Dto\Account\RequestResetPasswordInput;
 use App\Dto\Account\ResetPasswordInput;
 use App\Dto\Account\UpdateProfileInput;
+use App\Dto\Entreprise\EntrepriseOutput;
+use App\Dto\Entreprise\UpdateEntrepriseInput;
 use App\State\AdminUserProcessor;
 use App\State\AdminUsersProvider;
 use App\State\AvatarProcessor;
 use App\State\DeleteAccountProcessor;
+use App\State\EntrepriseProcessor;
 use App\State\ProfileProcessor;
 use App\State\ProfileProvider;
 use App\State\ResetPasswordProcessor;
@@ -80,6 +83,15 @@ use App\State\ResetPasswordProcessor;
             input: ConfirmDeleteAccountInput::class,
             processor: DeleteAccountProcessor::class,
             name: 'account_delete_confirm'
+        ),
+
+        // Entreprise
+        new Patch(
+            uriTemplate: '/account/entreprise',
+            input: UpdateEntrepriseInput::class,
+            output: EntrepriseOutput::class,
+            processor: EntrepriseProcessor::class,
+            name: 'account_entreprise_update'
         ),
 
         // Admin

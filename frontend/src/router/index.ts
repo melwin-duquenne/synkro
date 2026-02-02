@@ -64,6 +64,11 @@ const router = createRouter({
       meta: { guest: true }
     },
     {
+      path: '/invitation/accept',
+      name: 'invitation-accept',
+      component: () => import('@/pages/invitation/AcceptInvitationPage.vue')
+    },
+    {
       path: '/confirm-delete',
       name: 'confirm-delete',
       component: () => import('@/pages/account/ConfirmDeletePage.vue')
