@@ -1,9 +1,21 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
 
 const authStore = useAuthStore()
 const router = useRouter()
+
+const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || ''
+
+const avatarUrl = computed(() => {
+  if (authStore.user?.avatarUrl) {
+    return `${API_BASE}${authStore.user.avatarUrl}`
+  }
+  return null
+})
+
+const isAdmin = computed(() => authStore.user?.role === 'admin')
 
 function handleLogout() {
   authStore.logout()
@@ -26,8 +38,9 @@ function handleLogout() {
         </ul>
         <div class="dropdown dropdown-end">
           <div tabindex="0" role="button" class="btn btn-ghost btn-circle avatar placeholder">
-            <div class="bg-primary text-primary-content rounded-full w-10">
-              <span>{{ authStore.user?.displayName?.charAt(0)?.toUpperCase() || 'U' }}</span>
+            <div class="rounded-full w-10" :class="avatarUrl ? '' : 'bg-primary text-primary-content'">
+              <img v-if="avatarUrl" :src="avatarUrl" alt="Avatar" class="rounded-full" />
+              <span v-else>{{ authStore.user?.displayName?.charAt(0)?.toUpperCase() || 'U' }}</span>
             </div>
           </div>
           <ul tabindex="0" class="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-52">
@@ -35,8 +48,8 @@ function handleLogout() {
               <span>{{ authStore.user?.displayName }}</span>
               <span class="text-xs opacity-60">{{ authStore.user?.email }}</span>
             </li>
-            <li><a>Profil</a></li>
-            <li><a>Paramètres</a></li>
+            <li><router-link to="/profile">Profil</router-link></li>
+            <li v-if="isAdmin"><router-link to="/admin/users">Gestion utilisateurs</router-link></li>
             <li><a @click="handleLogout">Déconnexion</a></li>
           </ul>
         </div>

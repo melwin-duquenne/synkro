@@ -19,5 +19,13 @@ services:
     App\:
         resource: '../src/'
 
+    App\State\AvatarProcessor:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
+
+    App\Service\MailerService:
+        arguments:
+            $frontendUrl: '%env(APP_FRONTEND_URL)%'
+
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
