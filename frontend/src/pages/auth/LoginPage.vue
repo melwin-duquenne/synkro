@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import GoogleLogin from '@/components/GoogleLogin.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -70,6 +71,8 @@ async function handleSubmit() {
       </form>
 
       <div class="divider">OU</div>
+
+      <GoogleLogin />
 
       <p class="text-center">
         Pas encore de compte ?

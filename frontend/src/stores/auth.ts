@@ -19,7 +19,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/ld+json' },
         body: JSON.stringify(credentials)
       })
 
@@ -42,6 +42,19 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function loginWithGoogle(): Promise<void> {
+    loading.value = true
+    error.value = null
+
+    try {
+      // Rediriger vers l'endpoint OAuth du backend
+      window.location.href = `${API_URL.replace('/api', '')}/auth/google`
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Google login failed'
+      loading.value = false
+    }
+  }
+
   async function register(data: RegisterData): Promise<boolean> {
     loading.value = true
     error.value = null
@@ -49,7 +62,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const response = await fetch(`${API_URL}/auth/register`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/ld+json' },
         body: JSON.stringify(data)
       })
 
@@ -86,6 +99,12 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  function loginWithGoogle(): void {
+    // Ne pas utiliser API_URL car la route OAuth n'est pas sous /api
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'
+    window.location.href = `${backendUrl}/auth/google`
+  }
+
   function logout(): void {
     token.value = null
     user.value = null
@@ -103,7 +122,7 @@ export const useAuthStore = defineStore('auth', () => {
       const response = await fetch(`${API_URL}/auth/setup-entreprise`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/ld+json',
           'Authorization': `Bearer ${token.value}`
         },
         body: JSON.stringify({ companyName })
@@ -336,6 +355,7 @@ export const useAuthStore = defineStore('auth', () => {
     error,
     isAuthenticated,
     login,
+    loginWithGoogle,
     register,
     fetchUser,
     logout,
