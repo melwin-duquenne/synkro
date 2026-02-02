@@ -146,7 +146,7 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *         cookie_name?: scalar|null, // The name of the cookie to use when using stateless protection. // Default: "csrf-token"
  *     },
  *     form?: bool|array{ // Form configuration
- *         enabled?: bool, // Default: false
+ *         enabled?: bool, // Default: true
  *         csrf_protection?: array{
  *             enabled?: scalar|null, // Default: null
  *             token_id?: scalar|null, // Default: null
@@ -470,7 +470,7 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *     },
  *     disallow_search_engine_index?: bool, // Enabled by default when debug is enabled. // Default: true
  *     http_client?: bool|array{ // HTTP Client configuration
- *         enabled?: bool, // Default: false
+ *         enabled?: bool, // Default: true
  *         max_host_connections?: int, // The maximum number of connections to a single host.
  *         default_options?: array{
  *             headers?: array<string, mixed>,
@@ -574,7 +574,7 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *         }>,
  *     },
  *     mailer?: bool|array{ // Mailer configuration
- *         enabled?: bool, // Default: false
+ *         enabled?: bool, // Default: true
  *         message_bus?: scalar|null, // The message bus to use. Defaults to the default bus if the Messenger component is installed. // Default: null
  *         dsn?: scalar|null, // Default: null
  *         transports?: array<string, scalar|null>,
@@ -1083,6 +1083,32 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *             lock_factory?: scalar|null, // The service ID of the lock factory used by the login rate limiter (or null to disable locking). // Default: null
  *             cache_pool?: string, // The cache pool to use for storing the limiter state // Default: "cache.rate_limiter"
  *             storage_service?: string, // The service ID of a custom storage implementation, this precedes any configured "cache_pool" // Default: null
+ *         },
+ *         oauth?: array{
+ *             provider?: scalar|null,
+ *             remember_me?: bool, // Default: true
+ *             success_handler?: scalar|null,
+ *             failure_handler?: scalar|null,
+ *             check_path?: scalar|null, // Default: "/login_check"
+ *             use_forward?: bool, // Default: false
+ *             login_path: scalar|null,
+ *             always_use_default_target_path?: bool, // Default: false
+ *             default_target_path?: scalar|null, // Default: "/"
+ *             target_path_parameter?: scalar|null, // Default: "_target_path"
+ *             use_referer?: bool, // Default: false
+ *             failure_path?: scalar|null, // Default: null
+ *             failure_forward?: bool, // Default: false
+ *             failure_path_parameter?: scalar|null, // Default: "_failure_path"
+ *             oauth_user_provider: array{
+ *                 orm?: array{
+ *                     class: scalar|null,
+ *                     manager_name?: scalar|null, // Default: null
+ *                     properties: array<string, scalar|null>,
+ *                 },
+ *                 service?: scalar|null,
+ *                 oauth?: scalar|null,
+ *             },
+ *             resource_owners: array<string, scalar|null>,
  *         },
  *         x509?: array{
  *             provider?: scalar|null,
@@ -1665,6 +1691,50 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *         cache?: scalar|null, // Storage to track blocked tokens // Default: "cache.app"
  *     },
  * }
+ * @psalm-type HwiOauthConfig = array{
+ *     firewall_names?: list<scalar|null>,
+ *     target_path_parameter?: scalar|null, // Default: null
+ *     target_path_domains_whitelist?: list<scalar|null>,
+ *     use_referer?: bool, // Default: false
+ *     failed_use_referer?: bool, // Default: false
+ *     failed_auth_path?: scalar|null, // Default: "hwi_oauth_connect"
+ *     grant_rule?: scalar|null, // Default: "IS_AUTHENTICATED_REMEMBERED"
+ *     connect?: array{
+ *         confirmation?: bool, // Default: true
+ *         account_connector?: scalar|null,
+ *         registration_form_handler?: scalar|null,
+ *         registration_form?: scalar|null,
+ *     },
+ *     resource_owners: array<string, array{ // Default: []
+ *         base_url?: scalar|null,
+ *         access_token_url?: scalar|null,
+ *         authorization_url?: scalar|null,
+ *         request_token_url?: scalar|null,
+ *         revoke_token_url?: scalar|null,
+ *         infos_url?: scalar|null,
+ *         client_id?: scalar|null,
+ *         client_secret?: scalar|null,
+ *         realm?: scalar|null,
+ *         scope?: scalar|null,
+ *         user_response_class?: scalar|null,
+ *         service?: scalar|null,
+ *         class?: scalar|null,
+ *         type?: scalar|null,
+ *         use_authorization_to_get_token?: scalar|null,
+ *         paths?: array<string, mixed>,
+ *         options?: array<string, scalar|null>,
+ *         ...<mixed>
+ *     }>,
+ * }
+ * @psalm-type KnpuOauth2ClientConfig = array{
+ *     http_client?: scalar|null, // Service id of HTTP client to use (must implement GuzzleHttp\ClientInterface) // Default: null
+ *     http_client_options?: array{
+ *         timeout?: int,
+ *         proxy?: scalar|null,
+ *         verify?: bool, // Use only with proxy option set
+ *     },
+ *     clients?: array<string, array<string, mixed>>,
+ * }
  * @psalm-type ConfigType = array{
  *     imports?: ImportsConfig,
  *     parameters?: ParametersConfig,
@@ -1677,6 +1747,8 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *     nelmio_cors?: NelmioCorsConfig,
  *     api_platform?: ApiPlatformConfig,
  *     lexik_jwt_authentication?: LexikJwtAuthenticationConfig,
+ *     hwi_oauth?: HwiOauthConfig,
+ *     knpu_oauth2_client?: KnpuOauth2ClientConfig,
  *     "when@dev"?: array{
  *         imports?: ImportsConfig,
  *         parameters?: ParametersConfig,
@@ -1690,6 +1762,8 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *         nelmio_cors?: NelmioCorsConfig,
  *         api_platform?: ApiPlatformConfig,
  *         lexik_jwt_authentication?: LexikJwtAuthenticationConfig,
+ *         hwi_oauth?: HwiOauthConfig,
+ *         knpu_oauth2_client?: KnpuOauth2ClientConfig,
  *     },
  *     "when@prod"?: array{
  *         imports?: ImportsConfig,
@@ -1703,6 +1777,8 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *         nelmio_cors?: NelmioCorsConfig,
  *         api_platform?: ApiPlatformConfig,
  *         lexik_jwt_authentication?: LexikJwtAuthenticationConfig,
+ *         hwi_oauth?: HwiOauthConfig,
+ *         knpu_oauth2_client?: KnpuOauth2ClientConfig,
  *     },
  *     "when@test"?: array{
  *         imports?: ImportsConfig,
@@ -1716,6 +1792,8 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *         nelmio_cors?: NelmioCorsConfig,
  *         api_platform?: ApiPlatformConfig,
  *         lexik_jwt_authentication?: LexikJwtAuthenticationConfig,
+ *         hwi_oauth?: HwiOauthConfig,
+ *         knpu_oauth2_client?: KnpuOauth2ClientConfig,
  *     },
  *     ...<string, ExtensionType|array{ // extra keys must follow the when@%env% pattern or match an extension alias
  *         imports?: ImportsConfig,

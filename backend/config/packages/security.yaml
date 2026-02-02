@@ -32,13 +32,29 @@ security:
         main:
             lazy: true
             provider: app_user_provider
+            oauth:
+                resource_owners:
+                    google: google_login
+                login_path: /auth/google
+                use_forward: false
+                default_target_path: /auth/google/success
+                failure_path: /auth/google/failure
+                oauth_user_provider:
+                    service: App\Security\OAuthUserProvider
 
     access_control:
+        - { path: ^/auth/google, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/login, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/register, roles: PUBLIC_ACCESS }
         - { path: ^/api/docs, roles: PUBLIC_ACCESS }
         - { path: ^/api/modules, roles: PUBLIC_ACCESS }
         - { path: ^/api/templates, roles: PUBLIC_ACCESS }
+        - { path: ^/api/account/reset-password, roles: PUBLIC_ACCESS }
+        - { path: ^/api/account/delete/confirm, roles: PUBLIC_ACCESS }
+        - { path: ^/auth/google, roles: PUBLIC_ACCESS }
+        - { path: ^/auth/google/callback, roles: PUBLIC_ACCESS }
+        - { path: ^/auth/google/success, roles: PUBLIC_ACCESS }
+        - { path: ^/auth/google/failure, roles: PUBLIC_ACCESS }
         - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
 
 when@test:

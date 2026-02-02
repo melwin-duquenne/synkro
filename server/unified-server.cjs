@@ -4,6 +4,17 @@ const { setupWSConnection } = require('y-websocket/bin/utils');
 
 const port = process.env.PORT || 3001;
 
+// WebRTC signaling message types
+const WEBRTC_MESSAGE_TYPES = {
+  OFFER: 2,
+  ANSWER: 3,
+  ICE_CANDIDATE: 4,
+  CONTROL: 5,
+};
+
+// Track WebRTC peers per room
+const webrtcPeers = new Map(); // roomId -> Map<peerId, { ws, userId, userName }>
+
 // Create HTTP server with CORS support
 const server = http.createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -31,9 +42,68 @@ const wss = new WebSocket.Server({ server });
 // Track connections per room
 const roomConnections = new Map();
 
+// Handle WebRTC signaling messages
+function handleWebRTCMessage(ws, roomId, messageType, payload) {
+  try {
+    const message = JSON.parse(payload.toString());
+    const { targetPeerId, fromPeerId } = message;
+
+    // Get room peers
+    const roomPeerMap = webrtcPeers.get(roomId);
+    if (!roomPeerMap) return;
+
+    if (targetPeerId) {
+      // Send to specific peer
+      const targetPeer = roomPeerMap.get(targetPeerId);
+      if (targetPeer && targetPeer.ws.readyState === WebSocket.OPEN) {
+        const forwardMessage = Buffer.concat([
+          Buffer.from([messageType]),
+          Buffer.from(JSON.stringify({ ...message, fromPeerId }))
+        ]);
+        targetPeer.ws.send(forwardMessage);
+      }
+    } else {
+      // Broadcast to all peers in room except sender
+      roomPeerMap.forEach((peer, peerId) => {
+        if (peerId !== fromPeerId && peer.ws.readyState === WebSocket.OPEN) {
+          const forwardMessage = Buffer.concat([
+            Buffer.from([messageType]),
+            Buffer.from(JSON.stringify({ ...message, fromPeerId }))
+          ]);
+          peer.ws.send(forwardMessage);
+        }
+      });
+    }
+  } catch (e) {
+    console.error(`[${new Date().toISOString()}] WebRTC message error:`, e.message);
+  }
+}
+
+// Register a WebRTC peer
+function registerWebRTCPeer(ws, roomId, peerId, userId, userName) {
+  if (!webrtcPeers.has(roomId)) {
+    webrtcPeers.set(roomId, new Map());
+  }
+  webrtcPeers.get(roomId).set(peerId, { ws, userId, userName });
+  console.log(`[${new Date().toISOString()}] WebRTC peer ${peerId} registered in room ${roomId}`);
+}
+
+// Unregister a WebRTC peer
+function unregisterWebRTCPeer(roomId, peerId) {
+  const roomPeerMap = webrtcPeers.get(roomId);
+  if (roomPeerMap) {
+    roomPeerMap.delete(peerId);
+    if (roomPeerMap.size === 0) {
+      webrtcPeers.delete(roomId);
+    }
+    console.log(`[${new Date().toISOString()}] WebRTC peer ${peerId} unregistered from room ${roomId}`);
+  }
+}
+
 wss.on('connection', (ws, req) => {
   // Extract room ID from URL path (e.g., /room-123)
   const roomId = req.url?.slice(1) || 'default';
+  let webrtcPeerId = null;
 
   console.log(`[${new Date().toISOString()}] New connection to room: ${roomId}`);
 
@@ -43,11 +113,54 @@ wss.on('connection', (ws, req) => {
   }
   roomConnections.get(roomId).add(ws);
 
+  // Intercept messages for WebRTC signaling
+  const originalSend = ws.send.bind(ws);
+
+  // Add message handler for WebRTC signaling
+  ws.on('message', (data) => {
+    try {
+      // Check if it's a binary message with WebRTC type
+      if (Buffer.isBuffer(data) && data.length > 0) {
+        const messageType = data[0];
+
+        // WebRTC message types (2-5)
+        if (messageType >= 2 && messageType <= 5) {
+          const payload = data.slice(1);
+
+          // Handle peer registration from control messages
+          if (messageType === WEBRTC_MESSAGE_TYPES.CONTROL) {
+            try {
+              const controlMsg = JSON.parse(payload.toString());
+              if (controlMsg.action === 'join' && controlMsg.peerId) {
+                webrtcPeerId = controlMsg.peerId;
+                registerWebRTCPeer(ws, roomId, controlMsg.peerId, controlMsg.userId, controlMsg.userName);
+              } else if (controlMsg.action === 'leave' && controlMsg.peerId) {
+                unregisterWebRTCPeer(roomId, controlMsg.peerId);
+                webrtcPeerId = null;
+              }
+            } catch (e) {}
+          }
+
+          handleWebRTCMessage(ws, roomId, messageType, payload);
+          return; // Don't pass to Yjs
+        }
+      }
+    } catch (e) {
+      // Not a WebRTC message, let Yjs handle it
+    }
+  });
+
   // Setup Yjs WebSocket connection
   setupWSConnection(ws, req, { docName: roomId });
 
   ws.on('close', () => {
     console.log(`[${new Date().toISOString()}] Connection closed for room: ${roomId}`);
+
+    // Cleanup WebRTC peer
+    if (webrtcPeerId) {
+      unregisterWebRTCPeer(roomId, webrtcPeerId);
+    }
+
     const connections = roomConnections.get(roomId);
     if (connections) {
       connections.delete(ws);

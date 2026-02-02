@@ -2,6 +2,15 @@
 
 namespace App\Entity;
 
+use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Delete;
+use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\Post;
+use App\Dto\Room\CreateRoomInput;
+use App\Dto\Room\RoomOutput;
+use App\State\RoomProcessor;
+use App\State\RoomProvider;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -9,7 +18,30 @@ use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'room')]
-// API Platform disabled - using custom RoomController instead
+#[ApiResource(
+    operations: [
+        new GetCollection(
+            uriTemplate: '/rooms',
+            provider: RoomProvider::class,
+            output: RoomOutput::class
+        ),
+        new Get(
+            uriTemplate: '/rooms/{id}',
+            provider: RoomProvider::class,
+            output: RoomOutput::class
+        ),
+        new Post(
+            uriTemplate: '/rooms',
+            input: CreateRoomInput::class,
+            output: RoomOutput::class,
+            processor: RoomProcessor::class
+        ),
+        new Delete(
+            uriTemplate: '/rooms/{id}',
+            processor: RoomProcessor::class
+        )
+    ]
+)]
 class Room
 {
     public const VISIBILITY_ENTERPRISE = 'enterprise';
@@ -67,6 +99,9 @@ class Room
 
     #[ORM\OneToOne(mappedBy: 'room', targetEntity: Document::class, cascade: ['persist', 'remove'])]
     private ?Document $document = null;
+
+    #[ORM\OneToOne(mappedBy: 'room', targetEntity: Whiteboard::class, cascade: ['persist', 'remove'])]
+    private ?Whiteboard $whiteboard = null;
 
     #[ORM\OneToMany(mappedBy: 'room', targetEntity: FileResource::class, cascade: ['remove'])]
     private Collection $files;
@@ -244,6 +279,20 @@ class Room
             $document->setRoom($this);
         }
         $this->document = $document;
+        return $this;
+    }
+
+    public function getWhiteboard(): ?Whiteboard
+    {
+        return $this->whiteboard;
+    }
+
+    public function setWhiteboard(?Whiteboard $whiteboard): self
+    {
+        if ($whiteboard !== null && $whiteboard->getRoom() !== $this) {
+            $whiteboard->setRoom($this);
+        }
+        $this->whiteboard = $whiteboard;
         return $this;
     }
 

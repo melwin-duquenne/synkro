@@ -83,3 +83,6 @@ jspm_packages/
 
 # DynamoDB Local files
 .dynamodb/
+
+# md inutile
+sauvegarde.md

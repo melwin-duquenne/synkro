@@ -4,6 +4,7 @@ export interface User {
   email: string
   displayName: string
   role: 'admin' | 'user'
+  avatarUrl?: string | null
   entreprise: Entreprise | null
   team: Team | null
   createdAt?: string
@@ -93,11 +94,17 @@ export interface Task {
 // Calendar types
 export type EventType = 'meeting' | 'absence' | 'blocked' | 'reminder' | 'other'
 
+export interface CalendarEventParticipant {
+  id: number
+  userId: number
+  displayName: string
+  status: 'pending' | 'accepted' | 'declined'
+}
+
 export interface CalendarEvent {
   id: number
-  room?: Room
-  user: User
-  entreprise: Entreprise
+  roomId: number | null
+  user: { id: number; displayName: string }
   title: string
   description?: string
   eventType: EventType
@@ -109,6 +116,22 @@ export interface CalendarEvent {
   location?: string
   isPrivate: boolean
   createdAt: string
+  participants: CalendarEventParticipant[]
+}
+
+export interface CreateCalendarEventData {
+  title: string
+  description?: string
+  eventType: EventType
+  startDate: string
+  endDate: string
+  isAllDay?: boolean
+  recurrence?: string
+  color?: string
+  location?: string
+  isPrivate?: boolean
+  roomId?: number | null
+  participantIds?: number[]
 }
 
 // Document types
@@ -131,6 +154,22 @@ export interface FileResource {
   createdAt: string
 }
 
+// Account types
+export interface UpdateProfileData {
+  displayName?: string
+  email?: string
+}
+
+export interface AdminUser {
+  id: number
+  email: string
+  displayName: string
+  role: 'admin' | 'user'
+  avatarUrl?: string | null
+  team: Team | null
+  createdAt: string
+}
+
 // Auth types
 export interface LoginCredentials {
   email: string
@@ -146,3 +185,6 @@ export interface RegisterData {
 export interface AuthResponse {
   token: string
 }
+
+// WebRTC types
+export * from './webrtc'

@@ -3,8 +3,12 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import type { Room } from '@/types'
-import CollaborativeEditor from '@/components/editor/CollaborativeEditor.vue'
+import EditorModule from '@/components/editor/EditorModule.vue'
 import ChatModule from '@/components/chat/ChatModule.vue'
+import TasksModule from '@/components/tasks/TasksModule.vue'
+import CalendarModule from '@/components/calendar/CalendarModule.vue'
+import WhiteboardModule from '@/components/whiteboard/WhiteboardModule.vue'
+import VideoModule from '@/components/video/VideoModule.vue'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -86,7 +90,7 @@ onMounted(async () => {
       <!-- Module Content -->
       <div class="flex-1 bg-base-100 rounded-lg overflow-hidden shadow-lg">
         <!-- Editor Module -->
-        <CollaborativeEditor
+        <EditorModule
           v-if="activeModule === 'editor' && availableModules.includes('editor')"
           :room-id="roomId"
           class="h-full"
@@ -99,27 +103,19 @@ onMounted(async () => {
           class="h-full"
         />
 
-        <!-- Whiteboard (placeholder) -->
-        <div v-else-if="activeModule === 'whiteboard'" class="h-full flex items-center justify-center">
-          <div class="text-center py-12 text-base-content/50">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-            </svg>
-            <p class="text-lg font-medium">Tableau blanc collaboratif</p>
-            <p class="text-sm">(Bientôt disponible)</p>
-          </div>
-        </div>
+        <!-- Whiteboard Module -->
+        <WhiteboardModule
+          v-else-if="activeModule === 'whiteboard' && availableModules.includes('whiteboard')"
+          :room-id="roomId"
+          class="h-full"
+        />
 
-        <!-- Video (placeholder) -->
-        <div v-else-if="activeModule === 'video'" class="h-full flex items-center justify-center">
-          <div class="text-center py-12 text-base-content/50">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-            </svg>
-            <p class="text-lg font-medium">Visioconférence WebRTC</p>
-            <p class="text-sm">(Bientôt disponible)</p>
-          </div>
-        </div>
+        <!-- Video Module -->
+        <VideoModule
+          v-else-if="activeModule === 'video' && availableModules.includes('video')"
+          :room-id="roomId"
+          class="h-full"
+        />
 
         <!-- Files (placeholder) -->
         <div v-else-if="activeModule === 'files'" class="h-full flex items-center justify-center">
@@ -132,27 +128,19 @@ onMounted(async () => {
           </div>
         </div>
 
-        <!-- Tasks (placeholder) -->
-        <div v-else-if="activeModule === 'tasks'" class="h-full flex items-center justify-center">
-          <div class="text-center py-12 text-base-content/50">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-            </svg>
-            <p class="text-lg font-medium">Kanban des tâches</p>
-            <p class="text-sm">(Bientôt disponible)</p>
-          </div>
-        </div>
+        <!-- Tasks Module -->
+        <TasksModule
+          v-else-if="activeModule === 'tasks' && availableModules.includes('tasks')"
+          :room-id="roomId"
+          class="h-full"
+        />
 
-        <!-- Calendar (placeholder) -->
-        <div v-else-if="activeModule === 'calendar'" class="h-full flex items-center justify-center">
-          <div class="text-center py-12 text-base-content/50">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <p class="text-lg font-medium">Calendrier partagé</p>
-            <p class="text-sm">(Bientôt disponible)</p>
-          </div>
-        </div>
+        <!-- Calendar Module -->
+        <CalendarModule
+          v-else-if="activeModule === 'calendar' && availableModules.includes('calendar')"
+          :room-id="roomId"
+          class="h-full"
+        />
 
         <!-- Default / No module selected -->
         <div v-else class="h-full flex items-center justify-center">
