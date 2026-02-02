@@ -4,6 +4,7 @@ export interface User {
   email: string
   displayName: string
   role: 'admin' | 'user'
+  avatarUrl?: string | null
   entreprise: Entreprise | null
   team: Team | null
   createdAt?: string
@@ -150,6 +151,22 @@ export interface FileResource {
   filePath: string
   mimeType: string
   size: number
+  createdAt: string
+}
+
+// Account types
+export interface UpdateProfileData {
+  displayName?: string
+  email?: string
+}
+
+export interface AdminUser {
+  id: number
+  email: string
+  displayName: string
+  role: 'admin' | 'user'
+  avatarUrl?: string | null
+  team: Team | null
   createdAt: string
 }
 

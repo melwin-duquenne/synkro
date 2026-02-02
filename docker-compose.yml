@@ -28,6 +28,16 @@ services:
     networks:
       - synkronet-synkro
 
+  mailpit-synkro:
+    image: axllent/mailpit
+    container_name: mailpit
+    restart: unless-stopped
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+    networks:
+      - synkronet-synkro
+
   postgres-synkro:
     image: postgres:16
     container_name: postgres_db

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { User, LoginCredentials, RegisterData } from '@/types'
+import type { User, LoginCredentials, RegisterData, UpdateProfileData } from '@/types'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 
@@ -122,6 +122,208 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function updateProfile(data: UpdateProfileData): Promise<boolean> {
+    if (!token.value) return false
+    loading.value = true
+    error.value = null
+
+    try {
+      const response = await fetch(`${API_URL}/account/profile`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/merge-patch+json',
+          'Authorization': `Bearer ${token.value}`
+        },
+        body: JSON.stringify(data)
+      })
+
+      if (!response.ok) {
+        const responseData = await response.json()
+        throw new Error(responseData['hydra:description'] || responseData.detail || 'Failed to update profile')
+      }
+
+      const updatedProfile = await response.json()
+      if (user.value) {
+        user.value.displayName = updatedProfile.displayName
+        user.value.email = updatedProfile.email
+      }
+      return true
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Failed to update profile'
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function uploadAvatar(file: File): Promise<boolean> {
+    if (!token.value) return false
+    loading.value = true
+    error.value = null
+
+    try {
+      const formData = new FormData()
+      formData.append('avatar', file)
+
+      const response = await fetch(`${API_URL}/account/avatar`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token.value}`
+        },
+        body: formData
+      })
+
+      if (!response.ok) {
+        const responseData = await response.json()
+        throw new Error(responseData['hydra:description'] || responseData.detail || 'Failed to upload avatar')
+      }
+
+      const updatedProfile = await response.json()
+      if (user.value) {
+        user.value.avatarUrl = updatedProfile.avatarUrl
+      }
+      return true
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Failed to upload avatar'
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function deleteAvatar(): Promise<boolean> {
+    if (!token.value) return false
+    loading.value = true
+    error.value = null
+
+    try {
+      const response = await fetch(`${API_URL}/account/avatar`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token.value}`
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete avatar')
+      }
+
+      if (user.value) {
+        user.value.avatarUrl = null
+      }
+      return true
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Failed to delete avatar'
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function requestResetPassword(email: string): Promise<boolean> {
+    loading.value = true
+    error.value = null
+
+    try {
+      const response = await fetch(`${API_URL}/account/reset-password/request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/ld+json' },
+        body: JSON.stringify({ email })
+      })
+
+      if (!response.ok) {
+        const responseData = await response.json()
+        throw new Error(responseData['hydra:description'] || responseData.detail || 'Failed to send reset email')
+      }
+
+      return true
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Failed to send reset email'
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function confirmResetPassword(resetToken: string, password: string): Promise<boolean> {
+    loading.value = true
+    error.value = null
+
+    try {
+      const response = await fetch(`${API_URL}/account/reset-password/confirm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/ld+json' },
+        body: JSON.stringify({ token: resetToken, password })
+      })
+
+      if (!response.ok) {
+        const responseData = await response.json()
+        throw new Error(responseData['hydra:description'] || responseData.detail || 'Failed to reset password')
+      }
+
+      return true
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Failed to reset password'
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function requestDeleteAccount(): Promise<boolean> {
+    if (!token.value) return false
+    loading.value = true
+    error.value = null
+
+    try {
+      const response = await fetch(`${API_URL}/account/delete/request`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/ld+json',
+          'Authorization': `Bearer ${token.value}`
+        }
+      })
+
+      if (!response.ok) {
+        const responseData = await response.json()
+        throw new Error(responseData['hydra:description'] || responseData.detail || 'Failed to request account deletion')
+      }
+
+      return true
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Failed to request account deletion'
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function confirmDeleteAccount(deleteToken: string): Promise<boolean> {
+    loading.value = true
+    error.value = null
+
+    try {
+      const response = await fetch(`${API_URL}/account/delete/confirm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/ld+json' },
+        body: JSON.stringify({ token: deleteToken })
+      })
+
+      if (!response.ok) {
+        const responseData = await response.json()
+        throw new Error(responseData['hydra:description'] || responseData.detail || 'Failed to delete account')
+      }
+
+      logout()
+      return true
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Failed to delete account'
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
   // Initialize user on store creation
   if (token.value) {
     fetchUser()
@@ -138,6 +340,13 @@ export const useAuthStore = defineStore('auth', () => {
     fetchUser,
     logout,
     getAuthHeaders,
-    setupEntreprise
+    setupEntreprise,
+    updateProfile,
+    uploadAvatar,
+    deleteAvatar,
+    requestResetPassword,
+    confirmResetPassword,
+    requestDeleteAccount,
+    confirmDeleteAccount
   }
 })

@@ -49,9 +49,25 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[Groups(['user:read', 'user:write'])]
     private ?Team $team = null;
 
+    #[ORM\Column(type: 'string', length: 500, nullable: true)]
+    #[Groups(['user:read'])]
+    private ?string $avatarPath = null;
+
     #[ORM\Column(type: 'datetime')]
     #[Groups(['user:read'])]
     private ?\DateTimeInterface $createdAt = null;
+
+    #[ORM\Column(type: 'string', length: 100, nullable: true)]
+    private ?string $resetPasswordToken = null;
+
+    #[ORM\Column(type: 'datetime', nullable: true)]
+    private ?\DateTimeInterface $resetPasswordExpiresAt = null;
+
+    #[ORM\Column(type: 'string', length: 100, nullable: true)]
+    private ?string $deleteAccountToken = null;
+
+    #[ORM\Column(type: 'datetime', nullable: true)]
+    private ?\DateTimeInterface $deleteAccountExpiresAt = null;
 
     #[ORM\OneToMany(mappedBy: 'creator', targetEntity: Room::class)]
     private Collection $createdRooms;
@@ -161,6 +177,61 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setCreatedAt(\DateTimeInterface $createdAt): self
     {
         $this->createdAt = $createdAt;
+        return $this;
+    }
+
+    public function getAvatarPath(): ?string
+    {
+        return $this->avatarPath;
+    }
+
+    public function setAvatarPath(?string $avatarPath): self
+    {
+        $this->avatarPath = $avatarPath;
+        return $this;
+    }
+
+    public function getResetPasswordToken(): ?string
+    {
+        return $this->resetPasswordToken;
+    }
+
+    public function setResetPasswordToken(?string $resetPasswordToken): self
+    {
+        $this->resetPasswordToken = $resetPasswordToken;
+        return $this;
+    }
+
+    public function getResetPasswordExpiresAt(): ?\DateTimeInterface
+    {
+        return $this->resetPasswordExpiresAt;
+    }
+
+    public function setResetPasswordExpiresAt(?\DateTimeInterface $resetPasswordExpiresAt): self
+    {
+        $this->resetPasswordExpiresAt = $resetPasswordExpiresAt;
+        return $this;
+    }
+
+    public function getDeleteAccountToken(): ?string
+    {
+        return $this->deleteAccountToken;
+    }
+
+    public function setDeleteAccountToken(?string $deleteAccountToken): self
+    {
+        $this->deleteAccountToken = $deleteAccountToken;
+        return $this;
+    }
+
+    public function getDeleteAccountExpiresAt(): ?\DateTimeInterface
+    {
+        return $this->deleteAccountExpiresAt;
+    }
+
+    public function setDeleteAccountExpiresAt(?\DateTimeInterface $deleteAccountExpiresAt): self
+    {
+        $this->deleteAccountExpiresAt = $deleteAccountExpiresAt;
         return $this;
     }
 
