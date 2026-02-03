@@ -14,6 +14,8 @@ const currentDate = ref(new Date())
 const selectedDate = ref<Date | null>(null)
 const showEventModal = ref(false)
 const selectedEvent = ref<CalendarEvent | null>(null)
+const showDayDetail = ref(false)
+const dayDetailDate = ref<Date | null>(null)
 
 // Filters
 const filterUserId = ref<number | null>(null)
@@ -133,8 +135,28 @@ function openCreateModal(date: Date) {
 function openEditModal(event: CalendarEvent) {
   selectedEvent.value = event
   selectedDate.value = null
+  showDayDetail.value = false
   showEventModal.value = true
 }
+
+function openDayDetail(date: Date) {
+  dayDetailDate.value = date
+  showDayDetail.value = true
+}
+
+function formatTime(dateStr: string): string {
+  const date = new Date(dateStr)
+  return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+}
+
+function formatDayDetailDate(date: Date): string {
+  return date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+}
+
+const dayDetailEvents = computed(() => {
+  if (!dayDetailDate.value) return []
+  return getEventsForDate(dayDetailDate.value)
+})
 
 function handleEventSaved() {
   showEventModal.value = false
@@ -278,7 +300,8 @@ onMounted(() => {
             </div>
             <div
               v-if="getEventsForDate(day.date).length > 3"
-              class="text-xs text-base-content/50 pl-1"
+              class="text-xs text-primary pl-1 cursor-pointer hover:underline"
+              @click.stop="openDayDetail(day.date)"
             >
               +{{ getEventsForDate(day.date).length - 3 }} autres
             </div>
@@ -295,6 +318,45 @@ onMounted(() => {
         <span class="text-base-content/70">{{ type.label }}</span>
       </div>
     </div>
+
+    <!-- Day Detail Modal -->
+    <dialog class="modal" :class="{ 'modal-open': showDayDetail }">
+      <div class="modal-box max-w-lg">
+        <h3 class="font-bold text-lg mb-4 capitalize">
+          {{ dayDetailDate ? formatDayDetailDate(dayDetailDate) : '' }}
+        </h3>
+        <div class="space-y-2">
+          <div
+            v-for="event in dayDetailEvents"
+            :key="event.id"
+            class="flex items-center gap-3 p-3 rounded-lg hover:bg-base-200 cursor-pointer transition-colors"
+            @click="openEditModal(event)"
+          >
+            <div class="w-3 h-3 rounded-full flex-shrink-0" :class="getEventColor(event)"></div>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-sm truncate">{{ event.title }}</div>
+              <div class="text-xs text-base-content/60">
+                <template v-if="event.isAllDay">Journée entière</template>
+                <template v-else>{{ formatTime(event.startDate) }} - {{ formatTime(event.endDate) }}</template>
+              </div>
+            </div>
+            <div class="text-xs text-base-content/50">{{ event.user?.displayName }}</div>
+          </div>
+          <div v-if="dayDetailEvents.length === 0" class="text-center text-base-content/50 py-4">
+            Aucun événement
+          </div>
+        </div>
+        <div class="modal-action">
+          <button class="btn btn-sm btn-primary" @click="showDayDetail = false; openCreateModal(dayDetailDate!)">
+            + Nouvel événement
+          </button>
+          <button class="btn btn-sm" @click="showDayDetail = false">Fermer</button>
+        </div>
+      </div>
+      <form method="dialog" class="modal-backdrop">
+        <button @click="showDayDetail = false">close</button>
+      </form>
+    </dialog>
 
     <!-- Event Modal -->
     <CalendarEventModal
