@@ -55,6 +55,7 @@ security:
         - { path: ^/auth/google/callback, roles: PUBLIC_ACCESS }
         - { path: ^/auth/google/success, roles: PUBLIC_ACCESS }
         - { path: ^/auth/google/failure, roles: PUBLIC_ACCESS }
+        - { path: ^/api/invitations/accept, roles: PUBLIC_ACCESS }
         - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
 
 when@test:

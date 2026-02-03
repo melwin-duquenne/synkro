@@ -2,6 +2,7 @@
 
 namespace App\Service;
 
+use App\Entity\Invitation;
 use App\Entity\User;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Email;
@@ -50,6 +51,28 @@ class MailerService
                 "Ce lien est valable pendant 1 heure.\n\n" .
                 "Si vous n'avez pas fait cette demande, ignorez cet email et votre compte restera intact.\n\n" .
                 "— L'équipe Synkro"
+            );
+
+        $this->mailer->send($email);
+    }
+
+    public function sendInvitationEmail(Invitation $invitation, User $invitedBy): void
+    {
+        $acceptLink = $this->frontendUrl . '/invitation/accept?token=' . $invitation->getToken();
+        $entrepriseName = $invitation->getEntreprise()->getName();
+
+        $email = (new Email())
+            ->from('noreply@synkro.app')
+            ->to($invitation->getEmail())
+            ->subject("Synkro — Invitation a rejoindre {$entrepriseName}")
+            ->text(
+                "Bonjour,\n\n" .
+                "{$invitedBy->getDisplayName()} vous invite a rejoindre l'entreprise \"{$entrepriseName}\" sur Synkro.\n\n" .
+                "Cliquez sur le lien suivant pour accepter l'invitation :\n" .
+                "{$acceptLink}\n\n" .
+                "Cette invitation est valable pendant 7 jours.\n\n" .
+                "Si vous n'avez pas de compte Synkro, vous pourrez en creer un en cliquant sur le lien.\n\n" .
+                "— L'equipe Synkro"
             );
 
         $this->mailer->send($email);

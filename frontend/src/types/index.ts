@@ -48,13 +48,19 @@ export interface ModuleRoom {
   module: Module
   configJson?: Record<string, unknown>
 }
-
+type TemplateModule = {
+  id: number
+  module: {
+    code: string
+    name: string
+  }
+}
 export interface RoomTemplate {
   id: number
   name: string
   description?: string
   isDefault: boolean
-  templateModules: { module: Module }[]
+  templateModules: TemplateModule[]
 }
 
 // Permission types
@@ -168,6 +174,23 @@ export interface AdminUser {
   avatarUrl?: string | null
   team: Team | null
   createdAt: string
+}
+
+// Invitation types
+export interface Invitation {
+  id: number
+  email: string
+  status: 'pending' | 'accepted' | 'expired'
+  createdAt: string
+  expiresAt: string
+  invitedBy: {
+    id: number
+    displayName: string
+  }
+}
+
+export interface SendInvitationData {
+  email: string
 }
 
 // Auth types

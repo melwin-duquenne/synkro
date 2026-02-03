@@ -23,9 +23,10 @@ const isValid = computed(() => name.value.trim() && selectedModules.value.length
 
 function applyTemplate(templateId: number) {
   const template = roomsStore.templates.find(t => t.id === templateId)
-  if (template) {
+  console.log('Applying template:', template)
+  if (template && Array.isArray(template.templateModules)) {
     selectedTemplate.value = templateId
-    selectedModules.value = template.modules.map(m => m.code)
+    selectedModules.value = template.templateModules.map(tm => tm.module.code)
   }
 }
 

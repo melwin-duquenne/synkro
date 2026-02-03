@@ -33,7 +33,7 @@ export const useAdminStore = defineStore('admin', () => {
       }
 
       const data = await response.json()
-      users.value = Array.isArray(data) ? data : (data['hydra:member'] ?? [])
+      users.value = Array.isArray(data) ? data : (data['hydra:member'] ?? data['member'] ?? [])
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to fetch users'
     } finally {
