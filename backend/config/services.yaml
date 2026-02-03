@@ -23,6 +23,14 @@ services:
         arguments:
             $projectDir: '%kernel.project_dir%'
 
+    App\State\FileResourceProcessor:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
+
+    App\State\FileResourceProvider:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
+
     App\Service\MailerService:
         arguments:
             $frontendUrl: '%env(APP_FRONTEND_URL)%'

@@ -151,13 +151,16 @@ export interface Document {
 // File types
 export interface FileResource {
   id: number
-  room: Room
-  user: User
   fileName: string
-  filePath: string
-  mimeType: string
+  filePath: string | null
+  mimeType: string | null
   size: number
+  isFolder: boolean
+  parentId: number | null
+  roomId: number
+  user: { id: number; displayName: string } | null
   createdAt: string
+  childCount: number
 }
 
 // Account types
