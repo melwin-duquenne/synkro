@@ -25,7 +25,7 @@ export const useInvitationStore = defineStore('invitation', () => {
       }
 
       const data = await response.json()
-      invitations.value = data['hydra:member'] || data
+      invitations.value = Array.isArray(data) ? data : (data['hydra:member'] ?? data['member'] ?? [])
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to fetch invitations'
     } finally {
