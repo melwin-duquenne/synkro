@@ -9,6 +9,7 @@ import TasksModule from '@/components/tasks/TasksModule.vue'
 import CalendarModule from '@/components/calendar/CalendarModule.vue'
 import WhiteboardModule from '@/components/whiteboard/WhiteboardModule.vue'
 import VideoModule from '@/components/video/VideoModule.vue'
+import FileModule from '@/components/files/FileModule.vue'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -117,16 +118,12 @@ onMounted(async () => {
           class="h-full"
         />
 
-        <!-- Files (placeholder) -->
-        <div v-else-if="activeModule === 'files'" class="h-full flex items-center justify-center">
-          <div class="text-center py-12 text-base-content/50">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-            </svg>
-            <p class="text-lg font-medium">Gestionnaire de fichiers</p>
-            <p class="text-sm">(Bientôt disponible)</p>
-          </div>
-        </div>
+        <!-- Files Module -->
+        <FileModule
+          v-else-if="activeModule === 'files' && availableModules.includes('files')"
+          :room-id="roomId"
+          class="h-full"
+        />
 
         <!-- Tasks Module -->
         <TasksModule
