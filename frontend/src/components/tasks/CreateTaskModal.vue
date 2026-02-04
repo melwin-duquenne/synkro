@@ -107,7 +107,7 @@ async function handleSubmit() {
     const response = await fetch(`/api/rooms/${props.roomId}/tasks`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/ld+json',
         ...authStore.getAuthHeaders()
       },
       body: JSON.stringify({

@@ -6,6 +6,7 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\Link;
 use ApiPlatform\Metadata\Patch;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
@@ -28,45 +29,63 @@ use Symfony\Component\Serializer\Annotation\Groups;
             uriTemplate: '/rooms/{roomId}/tasks',
             provider: TaskProvider::class,
             output: TaskOutput::class,
-            uriVariables: ['roomId']
+            uriVariables: [
+                'roomId' => new Link(fromClass: Room::class, identifiers: ['id'])
+            ]
         ),
         new Get(
             uriTemplate: '/rooms/{roomId}/tasks/{id}',
             provider: TaskProvider::class,
             output: TaskOutput::class,
-            uriVariables: ['roomId', 'id']
+            uriVariables: [
+                'roomId' => new Link(fromClass: Room::class, identifiers: ['id']),
+                'id' => new Link(fromClass: Task::class, identifiers: ['id'])
+            ]
         ),
         new Post(
             uriTemplate: '/rooms/{roomId}/tasks',
             input: CreateTaskInput::class,
             output: TaskOutput::class,
             processor: TaskProcessor::class,
-            uriVariables: ['roomId']
+            uriVariables: [
+                'roomId' => new Link(fromClass: Room::class, identifiers: ['id'])
+            ]
         ),
         new Put(
             uriTemplate: '/rooms/{roomId}/tasks/{id}',
             input: UpdateTaskInput::class,
             output: TaskOutput::class,
             processor: TaskProcessor::class,
-            uriVariables: ['roomId', 'id']
+            uriVariables: [
+                'roomId' => new Link(fromClass: Room::class, identifiers: ['id']),
+                'id' => new Link(fromClass: Task::class, identifiers: ['id'])
+            ]
         ),
         new Patch(
             uriTemplate: '/rooms/{roomId}/tasks/{id}',
             input: UpdateTaskInput::class,
             output: TaskOutput::class,
             processor: TaskProcessor::class,
-            uriVariables: ['roomId', 'id']
+            uriVariables: [
+                'roomId' => new Link(fromClass: Room::class, identifiers: ['id']),
+                'id' => new Link(fromClass: Task::class, identifiers: ['id'])
+            ]
         ),
         new Delete(
             uriTemplate: '/rooms/{roomId}/tasks/{id}',
             processor: TaskProcessor::class,
-            uriVariables: ['roomId', 'id']
+            uriVariables: [
+                'roomId' => new Link(fromClass: Room::class, identifiers: ['id']),
+                'id' => new Link(fromClass: Task::class, identifiers: ['id'])
+            ]
         ),
         new Post(
             uriTemplate: '/rooms/{roomId}/tasks/reorder',
             input: ReorderTasksInput::class,
             processor: TaskProcessor::class,
-            uriVariables: ['roomId'],
+            uriVariables: [
+                'roomId' => new Link(fromClass: Room::class, identifiers: ['id'])
+            ],
             name: 'reorder_tasks'
         )
     ],
