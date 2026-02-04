@@ -1,10 +1,23 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
 import { useCalendarStore } from '@/stores/calendar'
+import { useWorkload } from '@/composables/useWorkload'
 import type { CalendarEvent, EventType } from '@/types'
 import CalendarEventModal from '@/components/calendar/CalendarEventModal.vue'
+import WorkloadIndicator from '@/components/calendar/WorkloadIndicator.vue'
 
 const calendarStore = useCalendarStore()
+const { 
+  workload: dailyWorkload, 
+  loading: dailyLoading, 
+  fetchDailyWorkload 
+} = useWorkload()
+
+const { 
+  workload: weeklyWorkload, 
+  loading: weeklyLoading, 
+  fetchWeeklyWorkload 
+} = useWorkload()
 
 const currentDate = ref(new Date())
 const selectedDate = ref<Date | null>(null)
@@ -12,6 +25,7 @@ const showEventModal = ref(false)
 const selectedEvent = ref<CalendarEvent | null>(null)
 const showDayDetail = ref(false)
 const dayDetailDate = ref<Date | null>(null)
+const showWorkloadDetail = ref(false)
 
 // Filters
 const filterEventType = ref<EventType | null>(null)
@@ -141,11 +155,13 @@ function handleEventSaved() {
   selectedEvent.value = null
   selectedDate.value = null
   fetchEvents()
+  loadWorkload()
 }
 
 function handleEventDeleted() {
   showEventModal.value = false
   selectedEvent.value = null
+  loadWorkload()
   fetchEvents()
 }
 
@@ -170,22 +186,80 @@ watch([currentMonth, currentYear], () => {
   fetchEvents()
 })
 
+async function loadWorkload() {
+  await Promise.all([
+    fetchDailyWorkload(),
+    fetchWeeklyWorkload()
+  ])
+}
+
 onMounted(() => {
   fetchEvents()
+  loadWorkload()
 })
 </script>
 
 <template>
   <div class="space-y-6">
     <!-- Header -->
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
       <div>
         <h1 class="text-3xl font-bold">Mon Calendrier</h1>
         <p class="text-base-content/70">Vos événements personnels</p>
       </div>
-      <button class="btn btn-primary" @click="openCreateModal(new Date())">
-        + Nouvel événement
-      </button>
+      
+      <!-- Compact Workload Indicator -->
+      <div class="flex items-center gap-4">
+        <div v-if="(dailyWorkload || weeklyWorkload) && !dailyLoading && !weeklyLoading" class="flex items-center gap-3">
+          <span class="text-sm font-medium text-base-content/70">Charge de travail :</span>
+          
+          <!-- Daily Badge -->
+          <button 
+            v-if="dailyWorkload"
+            @click="showWorkloadDetail = true"
+            :class="[
+              'badge badge-lg gap-2 cursor-pointer hover:brightness-110 transition-all',
+              dailyWorkload.status === 'normal' ? 'badge-success' : 
+              dailyWorkload.status === 'busy' ? 'badge-warning' : 'badge-error'
+            ]"
+            :title="`Aujourd'hui: ${dailyWorkload.totalHours}h / ${dailyWorkload.standardHours}h`"
+          >
+            <span class="text-lg">
+              {{ dailyWorkload.status === 'normal' ? '🟢' : dailyWorkload.status === 'busy' ? '🟡' : '🔴' }}
+            </span>
+            <span class="font-semibold">{{ dailyWorkload.percentage }}%</span>
+            <span class="text-xs opacity-70">jour</span>
+          </button>
+          
+          <!-- Weekly Badge -->
+          <button 
+            v-if="weeklyWorkload"
+            @click="showWorkloadDetail = true"
+            :class="[
+              'badge badge-lg gap-2 cursor-pointer hover:brightness-110 transition-all',
+              weeklyWorkload.status === 'normal' ? 'badge-success' : 
+              weeklyWorkload.status === 'busy' ? 'badge-warning' : 'badge-error'
+            ]"
+            :title="`Cette semaine: ${weeklyWorkload.totalHours}h / ${weeklyWorkload.standardHours}h`"
+          >
+            <span class="text-lg">
+              {{ weeklyWorkload.status === 'normal' ? '🟢' : weeklyWorkload.status === 'busy' ? '🟡' : '🔴' }}
+            </span>
+            <span class="font-semibold">{{ weeklyWorkload.percentage }}%</span>
+            <span class="text-xs opacity-70">sem.</span>
+          </button>
+        </div>
+        
+        <div v-else-if="dailyLoading || weeklyLoading" class="flex items-center gap-3">
+          <span class="text-sm font-medium text-base-content/70">Charge de travail</span>
+          <div class="skeleton h-8 w-24"></div>
+          <div class="skeleton h-8 w-24"></div>
+        </div>
+        
+        <button class="btn btn-primary" @click="openCreateModal(new Date())">
+          + Nouvel événement
+        </button>
+      </div>
     </div>
 
     <div class="card bg-base-100 shadow-xl">
@@ -345,5 +419,43 @@ onMounted(() => {
       @saved="handleEventSaved"
       @deleted="handleEventDeleted"
     />
+
+    <!-- Workload Detail Modal -->
+    <dialog :class="['modal', { 'modal-open': showWorkloadDetail }]">
+      <div class="modal-box max-w-4xl">
+        <h3 class="font-bold text-lg mb-4">📊 Charge de travail détaillée</h3>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Daily Workload -->
+          <div>
+            <h4 class="font-semibold mb-2">Aujourd'hui</h4>
+            <WorkloadIndicator 
+              v-if="dailyWorkload"
+              :workload="dailyWorkload" 
+              :loading="dailyLoading"
+              :show-details="true"
+            />
+          </div>
+          
+          <!-- Weekly Workload -->
+          <div>
+            <h4 class="font-semibold mb-2">Cette semaine</h4>
+            <WorkloadIndicator 
+              v-if="weeklyWorkload"
+              :workload="weeklyWorkload" 
+              :loading="weeklyLoading"
+              :show-details="true"
+            />
+          </div>
+        </div>
+        
+        <div class="modal-action">
+          <button class="btn btn-sm" @click="showWorkloadDetail = false">Fermer</button>
+        </div>
+      </div>
+      <form method="dialog" class="modal-backdrop">
+        <button @click="showWorkloadDetail = false">close</button>
+      </form>
+    </dialog>
   </div>
 </template>

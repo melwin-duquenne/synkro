@@ -7,7 +7,7 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      redirect: '/dashboard'
+      redirect: '/rooms'
     },
     {
       path: '/login',
@@ -30,7 +30,7 @@ const router = createRouter({
     {
       path: '/dashboard',
       name: 'dashboard',
-      component: () => import('@/pages/dashboard/DashboardPage.vue'),
+      component: () => import('@/pages/DashboardPage.vue'),
       meta: { requiresAuth: true }
     },
     {

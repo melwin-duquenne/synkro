@@ -12,6 +12,7 @@ final class ModuleRoomOutput
     public int $id;
     public ModuleSimpleOutput $module;
     public ?array $configJson = null;
+    public int $displayOrder;
 
     public static function fromEntity(ModuleRoom $moduleRoom): self
     {
@@ -19,6 +20,7 @@ final class ModuleRoomOutput
         $output->id = $moduleRoom->getId();
         $output->module = ModuleSimpleOutput::fromEntity($moduleRoom->getModule());
         $output->configJson = $moduleRoom->getConfigJson();
+        $output->displayOrder = $moduleRoom->getDisplayOrder();
 
         return $output;
     }

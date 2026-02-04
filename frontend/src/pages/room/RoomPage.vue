@@ -10,18 +10,84 @@ import CalendarModule from '@/components/calendar/CalendarModule.vue'
 import WhiteboardModule from '@/components/whiteboard/WhiteboardModule.vue'
 import VideoModule from '@/components/video/VideoModule.vue'
 import FileModule from '@/components/files/FileModule.vue'
+import LayoutSelectorModal from '@/components/room/LayoutSelectorModal.vue'
+import ModuleOrderModal from '@/components/room/ModuleOrderModal.vue'
 
 const route = useRoute()
 const authStore = useAuthStore()
 const room = ref<Room | null>(null)
 const loading = ref(true)
 const activeModule = ref<string | null>(null)
+const showLayoutSelector = ref(false)
+const showModuleOrder = ref(false)
 
 const roomId = computed(() => Number(route.params.id))
 
 const availableModules = computed(() => {
   return room.value?.moduleRooms?.map(mr => mr.module.code) || []
 })
+
+const sortedModuleRooms = computed(() => {
+  if (!room.value?.moduleRooms) return []
+  return [...room.value.moduleRooms].sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0))
+})
+
+const layoutType = computed(() => room.value?.layoutType || 'tabs')
+
+function getModuleComponent(moduleCode: string | null) {
+  if (!moduleCode) return null
+  
+  const components: Record<string, any> = {
+    editor: EditorModule,
+    chat: ChatModule,
+    tasks: TasksModule,
+    calendar: CalendarModule,
+    whiteboard: WhiteboardModule,
+    video: VideoModule,
+    files: FileModule
+  }
+  
+  return components[moduleCode] || null
+}
+
+async function updateLayout(newLayout: string) {
+  try {
+    const response = await fetch(`/api/rooms/${route.params.id}`, {
+      method: 'PATCH',
+      headers: {
+        ...authStore.getAuthHeaders(),
+        'Content-Type': 'application/merge-patch+json'
+      },
+      body: JSON.stringify({ layoutType: newLayout })
+    })
+    
+    if (response.ok) {
+      room.value = await response.json()
+    }
+  } catch (error) {
+    console.error('Failed to update layout:', error)
+  }
+}
+
+async function updateModuleOrder(orderedIds: number[]) {
+  try {
+    const response = await fetch(`/api/rooms/${route.params.id}/reorder-modules`, {
+      method: 'POST',
+      headers: {
+        ...authStore.getAuthHeaders(),
+        'Content-Type': 'application/ld+json'
+      },
+      body: JSON.stringify({ moduleOrder: orderedIds })
+    })
+    
+    if (response.ok) {
+      room.value = await response.json()
+      showModuleOrder.value = false
+    }
+  } catch (error) {
+    console.error('Failed to update module order:', error)
+  }
+}
 
 onMounted(async () => {
   try {
@@ -65,7 +131,27 @@ onMounted(async () => {
             Créée par {{ room.creator?.displayName }}
           </p>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-wrap">
+          <button 
+            class="btn btn-sm btn-ghost gap-1" 
+            @click="showModuleOrder = true"
+            title="Réorganiser les modules"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16" />
+            </svg>
+            <span class="hidden sm:inline">Ordre</span>
+          </button>
+          <button 
+            class="btn btn-sm btn-ghost gap-1" 
+            @click="showLayoutSelector = true"
+            title="Changer la disposition"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM14 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1v-3z" />
+            </svg>
+            <span class="hidden sm:inline">Disposition</span>
+          </button>
           <span
             class="badge"
             :class="room.visibility === 'private' ? 'badge-warning' : 'badge-success'"
@@ -75,77 +161,219 @@ onMounted(async () => {
         </div>
       </div>
 
-      <!-- Module Tabs -->
-      <div class="tabs tabs-boxed mb-4">
-        <a
-          v-for="mr in room.moduleRooms"
+      <!-- Tabs Layout -->
+      <template v-if="layoutType === 'tabs'">
+        <div class="tabs tabs-boxed mb-4 overflow-x-auto">
+          <a
+            v-for="mr in sortedModuleRooms"
+            :key="mr.id"
+            class="tab"
+            :class="{ 'tab-active': activeModule === mr.module.code }"
+            @click="activeModule = mr.module.code"
+          >
+            {{ mr.module.name }}
+          </a>
+        </div>
+
+        <div class="flex-1 bg-base-100 rounded-lg overflow-hidden shadow-lg">
+          <component 
+            :is="getModuleComponent(activeModule)" 
+            v-if="activeModule"
+            :room-id="roomId"
+            class="h-full"
+          />
+        </div>
+      </template>
+
+      <!-- Grid 2x2 Layout -->
+      <div v-else-if="layoutType === 'grid-2x2'" class="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 overflow-auto p-1">
+        <div 
+          v-for="mr in sortedModuleRooms" 
           :key="mr.id"
-          class="tab"
-          :class="{ 'tab-active': activeModule === mr.module.code }"
-          @click="activeModule = mr.module.code"
+          class="bg-base-100 rounded-lg overflow-hidden shadow-lg flex flex-col h-[400px] sm:h-auto"
         >
-          {{ mr.module.name }}
-        </a>
+          <div class="bg-base-200 px-4 py-2 font-semibold border-b border-base-300 flex-shrink-0">
+            {{ mr.module.name }}
+          </div>
+          <div class="flex-1 overflow-auto">
+            <component 
+              :is="getModuleComponent(mr.module.code)" 
+              :room-id="roomId"
+              class="h-full"
+            />
+          </div>
+        </div>
       </div>
 
-      <!-- Module Content -->
-      <div class="flex-1 bg-base-100 rounded-lg overflow-hidden shadow-lg">
-        <!-- Editor Module -->
-        <EditorModule
-          v-if="activeModule === 'editor' && availableModules.includes('editor')"
-          :room-id="roomId"
-          class="h-full"
-        />
+      <!-- Split Horizontal Layout -->
+      <div v-else-if="layoutType === 'split-horizontal'" class="flex-1 flex flex-col gap-3 sm:gap-4 overflow-hidden p-1">
+        <div 
+          v-for="mr in sortedModuleRooms" 
+          :key="mr.id"
+          class="flex-1 bg-base-100 rounded-lg overflow-hidden shadow-lg flex flex-col"
+          style="min-height: 0; flex-basis: 0;"
+        >
+          <div class="bg-base-200 px-4 py-2 font-semibold border-b border-base-300 flex-shrink-0">
+            {{ mr.module.name }}
+          </div>
+          <div class="flex-1 overflow-auto min-h-0">
+            <component 
+              :is="getModuleComponent(mr.module.code)" 
+              :room-id="roomId"
+              class="h-full"
+            />
+          </div>
+        </div>
+      </div>
 
-        <!-- Chat Module -->
-        <ChatModule
-          v-else-if="activeModule === 'chat' && availableModules.includes('chat')"
-          :room-id="roomId"
-          class="h-full"
-        />
+      <!-- Split Vertical Layout -->
+      <div v-else-if="layoutType === 'split-vertical'" class="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 overflow-hidden p-1">
+        <div 
+          v-for="mr in sortedModuleRooms" 
+          :key="mr.id"
+          class="bg-base-100 rounded-lg overflow-hidden shadow-lg flex flex-col h-[400px] sm:h-auto"
+          style="min-height: 0; min-width: 0; flex-basis: 0;"
+        >
+          <div class="bg-base-200 px-4 py-2 font-semibold border-b border-base-300 flex-shrink-0">
+            {{ mr.module.name }}
+          </div>
+          <div class="flex-1 overflow-auto min-h-0">
+            <component 
+              :is="getModuleComponent(mr.module.code)" 
+              :room-id="roomId"
+              class="h-full"
+            />
+          </div>
+        </div>
+      </div>
 
-        <!-- Whiteboard Module -->
-        <WhiteboardModule
-          v-else-if="activeModule === 'whiteboard' && availableModules.includes('whiteboard')"
-          :room-id="roomId"
-          class="h-full"
-        />
+      <!-- Sidebar Left Layout -->
+      <div v-else-if="layoutType === 'sidebar-left'" class="flex-1 flex flex-col sm:flex-row gap-3 sm:gap-4 overflow-hidden p-1">
+        <div 
+          v-if="sortedModuleRooms[0]"
+          class="flex-none w-full sm:w-1/3 bg-base-100 rounded-lg overflow-hidden shadow-lg flex flex-col min-h-[300px] sm:min-h-0">
+          <div class="bg-base-200 px-3 sm:px-4 py-2 font-semibold text-sm sm:text-base border-b border-base-300 flex-shrink-0">
+            {{ sortedModuleRooms[0].module.name }}
+          </div>
+          <div class="flex-1 overflow-auto min-h-0">
+            <component 
+              :is="getModuleComponent(sortedModuleRooms[0].module.code)" 
+              :room-id="roomId"
+              class="h-full"
+            />
+          </div>
+        </div>
+        <div class="flex-1 flex flex-col gap-3 sm:gap-4 overflow-hidden min-h-0" style="min-width: 0;">
+          <div 
+            v-for="mr in sortedModuleRooms.slice(1, 3)" 
+            :key="mr.id"
+            class="flex-1 bg-base-100 rounded-lg overflow-hidden shadow-lg flex flex-col"
+            style="min-height: 0; flex-basis: 0;"
+          >
+            <div class="bg-base-200 px-4 py-2 font-semibold border-b border-base-300 flex-shrink-0">
+              {{ mr.module.name }}
+            </div>
+            <div class="flex-1 overflow-auto min-h-0">
+              <component 
+                :is="getModuleComponent(mr.module.code)" 
+                :room-id="roomId"
+                class="h-full"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
 
-        <!-- Video Module -->
-        <VideoModule
-          v-else-if="activeModule === 'video' && availableModules.includes('video')"
-          :room-id="roomId"
-          class="h-full"
-        />
+      <!-- Sidebar Right Layout -->
+      <div v-else-if="layoutType === 'sidebar-right'" class="flex-1 flex flex-col sm:flex-row gap-3 sm:gap-4 overflow-hidden p-1">
+        <div class="flex-1 flex flex-col gap-3 sm:gap-4 overflow-hidden min-h-0" style="min-width: 0;">
+          <div 
+            v-for="mr in sortedModuleRooms.slice(0, 2)" 
+            :key="mr.id"
+            class="flex-1 bg-base-100 rounded-lg overflow-hidden shadow-lg flex flex-col"
+            style="min-height: 0; flex-basis: 0;"
+          >
+            <div class="bg-base-200 px-4 py-2 font-semibold border-b border-base-300 flex-shrink-0">
+              {{ mr.module.name }}
+            </div>
+            <div class="flex-1 overflow-auto min-h-0">
+              <component 
+                :is="getModuleComponent(mr.module.code)" 
+                :room-id="roomId"
+                class="h-full"
+              />
+            </div>
+          </div>
+        </div>
+        <div 
+          v-if="sortedModuleRooms[2]"
+          class="flex-none w-full sm:w-1/3 bg-base-100 rounded-lg overflow-hidden shadow-lg flex flex-col min-h-[300px] sm:min-h-0"
+        >
+          <div class="bg-base-200 px-3 sm:px-4 py-2 font-semibold text-sm sm:text-base border-b border-base-300 flex-shrink-0">
+            {{ sortedModuleRooms[2].module.name }}
+          </div>
+          <div class="flex-1 overflow-auto min-h-0">
+            <component 
+              :is="getModuleComponent(sortedModuleRooms[2].module.code)"
+              :room-id="roomId"
+              class="h-full"
+            />
+          </div>
+        </div>
+      </div>
 
-        <!-- Files Module -->
-        <FileModule
-          v-else-if="activeModule === 'files' && availableModules.includes('files')"
-          :room-id="roomId"
-          class="h-full"
-        />
-
-        <!-- Tasks Module -->
-        <TasksModule
-          v-else-if="activeModule === 'tasks' && availableModules.includes('tasks')"
-          :room-id="roomId"
-          class="h-full"
-        />
-
-        <!-- Calendar Module -->
-        <CalendarModule
-          v-else-if="activeModule === 'calendar' && availableModules.includes('calendar')"
-          :room-id="roomId"
-          class="h-full"
-        />
-
-        <!-- Default / No module selected -->
-        <div v-else class="h-full flex items-center justify-center">
-          <div class="text-center py-12 text-base-content/50">
-            <p>Sélectionnez un module pour commencer</p>
+      <!-- Main + Sidebar Layout -->
+      <div v-else-if="layoutType === 'main-sidebar'" class="flex-1 flex flex-col lg:flex-row gap-3 sm:gap-4 overflow-hidden p-1">
+        <div 
+          v-if="sortedModuleRooms[0]"
+          class="flex-1 bg-base-100 rounded-lg overflow-hidden shadow-lg flex flex-col min-h-[300px] lg:min-h-0"
+        >
+          <div class="bg-base-200 px-3 sm:px-4 py-2 font-semibold text-sm sm:text-base border-b border-base-300 flex-shrink-0">
+            {{ sortedModuleRooms[0].module.name }}
+          </div>
+          <div class="flex-1 overflow-auto min-h-0">
+            <component 
+              :is="getModuleComponent(sortedModuleRooms[0].module.code)" 
+              :room-id="roomId"
+              class="h-full"
+            />
+          </div>
+        </div>
+        <div class="flex-none w-full lg:w-80 flex flex-col gap-3 sm:gap-4 overflow-hidden min-h-0" style="min-width: 0;">
+          <div 
+            v-for="mr in sortedModuleRooms.slice(1, 4)" 
+            :key="mr.id"
+            class="flex-1 bg-base-100 rounded-lg overflow-hidden shadow-lg flex flex-col"
+            style="min-height: 0; flex-basis: 0;"
+          >
+            <div class="bg-base-200 px-4 py-2 font-semibold text-sm border-b border-base-300 flex-shrink-0">
+              {{ mr.module.name }}
+            </div>
+            <div class="flex-1 overflow-auto min-h-0">
+              <component 
+                :is="getModuleComponent(mr.module.code)" 
+                :room-id="roomId"
+                class="h-full"
+              />
+            </div>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- Layout Selector Modal -->
+    <LayoutSelectorModal 
+      v-if="showLayoutSelector" 
+      @close="showLayoutSelector = false"
+      @select="updateLayout"
+    />
+
+    <!-- Module Order Modal -->
+    <ModuleOrderModal 
+      v-if="showModuleOrder && room" 
+      :module-rooms="room.moduleRooms"
+      @close="showModuleOrder = false"
+      @save="updateModuleOrder"
+    />
   </div>
 </template>

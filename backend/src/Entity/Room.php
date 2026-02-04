@@ -6,6 +6,7 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\Patch;
 use ApiPlatform\Metadata\Post;
 use App\Dto\Room\CreateRoomInput;
 use App\Dto\Room\RoomOutput;
@@ -33,6 +34,16 @@ use Symfony\Component\Serializer\Annotation\Groups;
         new Post(
             uriTemplate: '/rooms',
             input: CreateRoomInput::class,
+            output: RoomOutput::class,
+            processor: RoomProcessor::class
+        ),
+        new Patch(
+            uriTemplate: '/rooms/{id}',
+            output: RoomOutput::class,
+            processor: RoomProcessor::class
+        ),
+        new Post(
+            uriTemplate: '/rooms/{id}/reorder-modules',
             output: RoomOutput::class,
             processor: RoomProcessor::class
         ),
@@ -83,6 +94,10 @@ class Room
     #[ORM\Column(type: 'datetime')]
     #[Groups(['room:read'])]
     private ?\DateTimeInterface $createdAt = null;
+
+    #[ORM\Column(type: 'string', length: 50, nullable: false)]
+    #[Groups(['room:read', 'room:write'])]
+    private string $layoutType = 'tabs';
 
     #[ORM\OneToMany(mappedBy: 'room', targetEntity: ModuleRoom::class, cascade: ['persist', 'remove'])]
     #[Groups(['room:read'])]
@@ -309,5 +324,16 @@ class Room
     public function getCalendarEvents(): Collection
     {
         return $this->calendarEvents;
+    }
+
+    public function getLayoutType(): string
+    {
+        return $this->layoutType;
+    }
+
+    public function setLayoutType(string $layoutType): self
+    {
+        $this->layoutType = $layoutType;
+        return $this;
     }
 }

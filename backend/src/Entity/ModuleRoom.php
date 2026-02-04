@@ -31,6 +31,10 @@ class ModuleRoom
     #[Groups(['room:read'])]
     private ?array $configJson = null;
 
+    #[ORM\Column(type: 'integer', nullable: false)]
+    #[Groups(['room:read'])]
+    private int $displayOrder = 0;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -66,6 +70,17 @@ class ModuleRoom
     public function setConfigJson(?array $configJson): self
     {
         $this->configJson = $configJson;
+        return $this;
+    }
+
+    public function getDisplayOrder(): int
+    {
+        return $this->displayOrder;
+    }
+
+    public function setDisplayOrder(int $displayOrder): self
+    {
+        $this->displayOrder = $displayOrder;
         return $this;
     }
 }
