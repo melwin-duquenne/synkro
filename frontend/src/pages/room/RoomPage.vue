@@ -29,7 +29,14 @@ const availableModules = computed(() => {
 
 const sortedModuleRooms = computed(() => {
   if (!room.value?.moduleRooms) return []
-  return [...room.value.moduleRooms].sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0))
+  // Filtrer le chat pour ne pas l'afficher dans les layouts (il sera en mode flottant)
+  return [...room.value.moduleRooms]
+    .filter(mr => mr.module.code !== 'chat')
+    .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0))
+})
+
+const hasChatModule = computed(() => {
+  return room.value?.moduleRooms?.some(mr => mr.module.code === 'chat') || false
 })
 
 const layoutType = computed(() => room.value?.layoutType || 'tabs')
@@ -374,6 +381,13 @@ onMounted(async () => {
       :module-rooms="room.moduleRooms"
       @close="showModuleOrder = false"
       @save="updateModuleOrder"
+    />
+
+    <!-- Chat flottant -->
+    <ChatModule 
+      v-if="room && hasChatModule"
+      :room-id="roomId"
+      :floating="true"
     />
   </div>
 </template>

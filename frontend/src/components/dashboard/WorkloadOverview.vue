@@ -7,12 +7,12 @@
         </svg>
         Charge de travail
       </h2>
-      
+
       <!-- État vide -->
       <div v-if="!workload || !workload.daily || workload.daily.length === 0" class="text-center py-8 text-base-content/60">
         <p>Aucune donnée de charge de travail disponible pour le moment.</p>
       </div>
-      
+
       <template v-else>
       <!-- Alerte surcharge -->
       <div v-if="workload.hasAlert" class="alert alert-warning mb-4">
@@ -28,7 +28,7 @@
           <div class="w-12 text-sm font-medium">{{ day.dayName }}</div>
           <div class="flex-1">
             <div class="relative h-8 bg-base-200 rounded-lg overflow-hidden">
-              <div 
+              <div
                 class="absolute h-full transition-all duration-300 flex items-center justify-end px-2 text-xs font-bold"
                 :class="{
                   'bg-success': day.percentage < 80,
