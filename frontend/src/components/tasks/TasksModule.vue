@@ -149,7 +149,7 @@ async function onDrop(e: DragEvent, newStatus: 'todo' | 'in_progress' | 'done') 
     const response = await fetch(`/api/rooms/${props.roomId}/tasks/${task.id}`, {
       method: 'PATCH',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/ld+json',
         ...authStore.getAuthHeaders()
       },
       body: JSON.stringify({
