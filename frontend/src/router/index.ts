@@ -6,8 +6,9 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      name: 'home',
-      redirect: '/rooms'
+      name: 'landing',
+      component: () => import('@/pages/LandingPage.vue'),
+      meta: { layout: 'landing' }
     },
     {
       path: '/login',
@@ -96,13 +97,19 @@ const router = createRouter({
 router.beforeEach((to, _from, next) => {
   const authStore = useAuthStore()
 
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    next({ name: 'login', query: { redirect: to.fullPath } })
-  } else if (to.meta.requiresAdmin && authStore.user?.role !== 'admin') {
-    next({ name: 'dashboard' })
-  } else if (to.meta.guest && authStore.isAuthenticated) {
-    next({ name: 'dashboard' })
-  } else {
+  // Si connecté et qu'on essaie d'aller sur landing ou pages guest → redirect vers rooms
+  if (authStore.isAuthenticated && (to.name === 'landing' || to.meta.guest)) {
+    next({ name: 'rooms' })
+  }
+  // Si non connecté et page protégée → redirect vers landing
+  else if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+    next({ name: 'landing' })
+  }
+  // Si pas admin et page admin → redirect vers rooms
+  else if (to.meta.requiresAdmin && authStore.user?.role !== 'admin') {
+    next({ name: 'rooms' })
+  }
+  else {
     next()
   }
 })
