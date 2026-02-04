@@ -14,6 +14,7 @@ final class RoomOutput
     public string $visibility;
     public bool $isTemporary;
     public string $createdAt;
+    public string $layoutType;
     public UserSimpleOutput $creator;
     /** @var ModuleRoomOutput[] */
     public array $moduleRooms = [];
@@ -27,6 +28,7 @@ final class RoomOutput
         $output->visibility = $room->getVisibility();
         $output->isTemporary = $room->isTemporary();
         $output->createdAt = $room->getCreatedAt()->format('c');
+        $output->layoutType = $room->getLayoutType();
         $output->creator = UserSimpleOutput::fromEntity($room->getCreator());
 
         $output->moduleRooms = array_map(

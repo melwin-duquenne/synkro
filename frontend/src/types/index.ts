@@ -34,6 +34,7 @@ export interface Room {
   template?: RoomTemplate
   moduleRooms: ModuleRoom[]
   createdAt: string
+  layoutType?: string
 }
 
 export interface Module {
@@ -47,6 +48,7 @@ export interface ModuleRoom {
   id: number
   module: Module
   configJson?: Record<string, unknown>
+  displayOrder?: number
 }
 type TemplateModule = {
   id: number

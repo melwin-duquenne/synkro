@@ -71,6 +71,14 @@ function formatTimeForInput(date: Date): string {
   return date.toTimeString().slice(0, 5)
 }
 
+function parseDateTimeString(dateTimeStr: string): { date: string; time: string } {
+  // Parse la chaîne ISO sans conversion de timezone
+  const parts = dateTimeStr.split('T')
+  const date = parts[0]
+  const time = parts[1] ? parts[1].substring(0, 5) : '00:00'
+  return { date, time }
+}
+
 watch(() => props.open, (isOpen) => {
   if (isOpen) {
     // Load users when modal opens
@@ -88,12 +96,12 @@ watch(() => props.open, (isOpen) => {
       isPrivate.value = props.event.isPrivate
       selectedParticipantIds.value = props.event.participants?.map(p => p.userId) || []
 
-      const start = new Date(props.event.startDate)
-      const end = new Date(props.event.endDate)
-      startDate.value = formatDateForInput(start)
-      startTime.value = formatTimeForInput(start)
-      endDate.value = formatDateForInput(end)
-      endTime.value = formatTimeForInput(end)
+      const startParsed = parseDateTimeString(props.event.startDate)
+      const endParsed = parseDateTimeString(props.event.endDate)
+      startDate.value = startParsed.date
+      startTime.value = startParsed.time
+      endDate.value = endParsed.date
+      endTime.value = endParsed.time
     } else if (props.initialDate) {
       // Create mode with initial date
       resetForm()

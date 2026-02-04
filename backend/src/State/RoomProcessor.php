@@ -4,6 +4,7 @@ namespace App\State;
 
 use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\Operation;
+use ApiPlatform\Metadata\Patch;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\State\ProcessorInterface;
 use App\Dto\Room\CreateRoomInput;
@@ -35,8 +36,18 @@ class RoomProcessor implements ProcessorInterface
             throw new AccessDeniedHttpException('Not authenticated');
         }
 
+        // Handle custom operations via context FIRST before checking operation type
+        $request = $context['request'] ?? null;
+        if ($request && str_contains($request->getPathInfo(), '/reorder-modules')) {
+            return $this->reorderModules($data, $uriVariables['id'], $user, $context);
+        }
+
         if ($operation instanceof Post) {
             return $this->create($data, $user);
+        }
+
+        if ($operation instanceof Patch) {
+            return $this->update($data, $uriVariables['id'], $user);
         }
 
         if ($operation instanceof Delete) {
@@ -85,6 +96,28 @@ class RoomProcessor implements ProcessorInterface
         return RoomOutput::fromEntity($room);
     }
 
+    private function update(mixed $data, int $id, User $user): RoomOutput
+    {
+        $room = $this->entityManager->getRepository(Room::class)->find($id);
+
+        if (!$room) {
+            throw new NotFoundHttpException('La room n\'a pas été trouvée');
+        }
+
+        if (!$this->accessChecker->canEdit($user, $room)) {
+            throw new AccessDeniedHttpException('Vous n\'avez pas la permission de modifier cette room');
+        }
+
+        // Update layoutType if provided
+        if (isset($data->layoutType)) {
+            $room->setLayoutType($data->layoutType);
+        }
+
+        $this->entityManager->flush();
+
+        return RoomOutput::fromEntity($room);
+    }
+
     private function delete(int $id, User $user): null
     {
         $room = $this->entityManager->getRepository(Room::class)->find($id);
@@ -101,5 +134,39 @@ class RoomProcessor implements ProcessorInterface
         $this->entityManager->flush();
 
         return null;
+    }
+
+    private function reorderModules(mixed $data, int $id, User $user, array $context = []): RoomOutput
+    {
+        $room = $this->entityManager->getRepository(Room::class)->find($id);
+
+        if (!$room) {
+            throw new NotFoundHttpException('La room n\'a pas été trouvée');
+        }
+
+        if (!$this->accessChecker->canEdit($user, $room)) {
+            throw new AccessDeniedHttpException('Vous n\'avez pas la permission de modifier cette room');
+        }
+
+        // Get request body
+        $request = $context['request'] ?? null;
+        $requestData = [];
+        if ($request) {
+            $content = $request->getContent();
+            $requestData = json_decode($content, true) ?? [];
+        }
+
+        $moduleOrder = $requestData['moduleOrder'] ?? [];
+
+        foreach ($room->getModuleRooms() as $moduleRoom) {
+            $position = array_search($moduleRoom->getId(), $moduleOrder);
+            if ($position !== false) {
+                $moduleRoom->setDisplayOrder($position);
+            }
+        }
+
+        $this->entityManager->flush();
+
+        return RoomOutput::fromEntity($room);
     }
 }
