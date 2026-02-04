@@ -1,19 +1,35 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
 import { useCalendarStore } from '@/stores/calendar'
+import { useWorkload } from '@/composables/useWorkload'
 import type { CalendarEvent, EventType } from '@/types'
 import CalendarEventModal from './CalendarEventModal.vue'
+import WorkloadIndicator from './WorkloadIndicator.vue'
 
 const props = defineProps<{
   roomId: number
 }>()
 
 const calendarStore = useCalendarStore()
+const { 
+  workload: dailyWorkload, 
+  loading: dailyLoading, 
+  fetchDailyWorkload 
+} = useWorkload()
+
+const { 
+  workload: weeklyWorkload, 
+  loading: weeklyLoading, 
+  fetchWeeklyWorkload 
+} = useWorkload()
 
 const currentDate = ref(new Date())
 const selectedDate = ref<Date | null>(null)
 const showEventModal = ref(false)
 const selectedEvent = ref<CalendarEvent | null>(null)
+const showDayDetail = ref(false)
+const dayDetailDate = ref<Date | null>(null)
+const showWorkloadDetail = ref(false)
 
 // Filters
 const filterUserId = ref<number | null>(null)
@@ -133,20 +149,42 @@ function openCreateModal(date: Date) {
 function openEditModal(event: CalendarEvent) {
   selectedEvent.value = event
   selectedDate.value = null
+  showDayDetail.value = false
   showEventModal.value = true
 }
+
+function openDayDetail(date: Date) {
+  dayDetailDate.value = date
+  showDayDetail.value = true
+}
+
+function formatTime(dateStr: string): string {
+  const date = new Date(dateStr)
+  return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+}
+
+function formatDayDetailDate(date: Date): string {
+  return date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+}
+
+const dayDetailEvents = computed(() => {
+  if (!dayDetailDate.value) return []
+  return getEventsForDate(dayDetailDate.value)
+})
 
 function handleEventSaved() {
   showEventModal.value = false
   selectedEvent.value = null
   selectedDate.value = null
   fetchEvents()
+  loadWorkload()
 }
 
 function handleEventDeleted() {
   showEventModal.value = false
   selectedEvent.value = null
   fetchEvents()
+  loadWorkload()
 }
 
 function isToday(date: Date): boolean {
@@ -169,6 +207,22 @@ watch([currentMonth, currentYear], () => {
   fetchEvents()
 })
 
+// Watch for user filter changes to update workload
+watch(filterUserId, () => {
+  if (filterUserId.value) {
+    loadWorkload()
+  }
+})
+
+async function loadWorkload() {
+  if (!filterUserId.value) return
+  
+  await Promise.all([
+    fetchDailyWorkload(undefined, filterUserId.value),
+    fetchWeeklyWorkload(undefined, filterUserId.value)
+  ])
+}
+
 onMounted(() => {
   fetchEvents()
 })
@@ -177,48 +231,91 @@ onMounted(() => {
 <template>
   <div class="calendar-module h-full flex flex-col bg-base-200 p-4">
     <!-- Header -->
-    <div class="flex items-center justify-between mb-4">
-      <div class="flex items-center gap-4">
-        <h3 class="font-semibold text-lg capitalize">{{ monthName }}</h3>
-        <div class="flex gap-1">
-          <button class="btn btn-ghost btn-sm btn-square" @click="previousMonth">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <button class="btn btn-ghost btn-sm" @click="goToToday">Aujourd'hui</button>
-          <button class="btn btn-ghost btn-sm btn-square" @click="nextMonth">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
+    <div class="flex flex-col gap-4 mb-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-4">
+          <h3 class="font-semibold text-lg capitalize">{{ monthName }}</h3>
+          <div class="flex gap-1">
+            <button class="btn btn-ghost btn-sm btn-square" @click="previousMonth">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <button class="btn btn-ghost btn-sm" @click="goToToday">Aujourd'hui</button>
+            <button class="btn btn-ghost btn-sm btn-square" @click="nextMonth">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="flex items-center gap-2">
+          <select
+            v-model="filterUserId"
+            class="select select-sm select-bordered"
+          >
+            <option :value="null">Tous les utilisateurs</option>
+            <option v-for="user in eventUsers" :key="user.id" :value="user.id">
+              {{ user.displayName }}
+            </option>
+          </select>
+
+          <select
+            v-model="filterEventType"
+            class="select select-sm select-bordered"
+          >
+            <option :value="null">Tous les types</option>
+            <option v-for="type in eventTypes" :key="type.value" :value="type.value">
+              {{ type.label }}
+            </option>
+          </select>
+
+          <button class="btn btn-primary btn-sm" @click="openCreateModal(new Date())">
+            + Nouvel événement
           </button>
         </div>
       </div>
-
-      <!-- Filters -->
-      <div class="flex items-center gap-2">
-        <select
-          v-model="filterUserId"
-          class="select select-sm select-bordered"
+      
+      <!-- Workload Indicator for Selected User -->
+      <div v-if="filterUserId && (dailyWorkload || weeklyWorkload)" class="flex items-center gap-3 px-2">
+        <span class="text-sm font-medium text-base-content/70">Charge de travail</span>
+        
+        <!-- Daily Badge -->
+        <button 
+          v-if="dailyWorkload"
+          @click="showWorkloadDetail = true"
+          :class="[
+            'badge badge-lg gap-2 cursor-pointer hover:brightness-110 transition-all',
+            dailyWorkload.status === 'normal' ? 'badge-success' : 
+            dailyWorkload.status === 'busy' ? 'badge-warning' : 'badge-error'
+          ]"
+          :title="`Aujourd'hui: ${dailyWorkload.totalHours}h / ${dailyWorkload.standardHours}h`"
         >
-          <option :value="null">Tous les utilisateurs</option>
-          <option v-for="user in eventUsers" :key="user.id" :value="user.id">
-            {{ user.displayName }}
-          </option>
-        </select>
-
-        <select
-          v-model="filterEventType"
-          class="select select-sm select-bordered"
+          <span class="text-lg">
+            {{ dailyWorkload.status === 'normal' ? '🟢' : dailyWorkload.status === 'busy' ? '🟡' : '🔴' }}
+          </span>
+          <span class="font-semibold">{{ dailyWorkload.percentage }}%</span>
+          <span class="text-xs opacity-70">jour</span>
+        </button>
+        
+        <!-- Weekly Badge -->
+        <button 
+          v-if="weeklyWorkload"
+          @click="showWorkloadDetail = true"
+          :class="[
+            'badge badge-lg gap-2 cursor-pointer hover:brightness-110 transition-all',
+            weeklyWorkload.status === 'normal' ? 'badge-success' : 
+            weeklyWorkload.status === 'busy' ? 'badge-warning' : 'badge-error'
+          ]"
+          :title="`Cette semaine: ${weeklyWorkload.totalHours}h / ${weeklyWorkload.standardHours}h`"
         >
-          <option :value="null">Tous les types</option>
-          <option v-for="type in eventTypes" :key="type.value" :value="type.value">
-            {{ type.label }}
-          </option>
-        </select>
-
-        <button class="btn btn-primary btn-sm" @click="openCreateModal(new Date())">
-          + Nouvel événement
+          <span class="text-lg">
+            {{ weeklyWorkload.status === 'normal' ? '🟢' : weeklyWorkload.status === 'busy' ? '🟡' : '🔴' }}
+          </span>
+          <span class="font-semibold">{{ weeklyWorkload.percentage }}%</span>
+          <span class="text-xs opacity-70">sem.</span>
         </button>
       </div>
     </div>
@@ -278,7 +375,8 @@ onMounted(() => {
             </div>
             <div
               v-if="getEventsForDate(day.date).length > 3"
-              class="text-xs text-base-content/50 pl-1"
+              class="text-xs text-primary pl-1 cursor-pointer hover:underline"
+              @click.stop="openDayDetail(day.date)"
             >
               +{{ getEventsForDate(day.date).length - 3 }} autres
             </div>
@@ -296,6 +394,45 @@ onMounted(() => {
       </div>
     </div>
 
+    <!-- Day Detail Modal -->
+    <dialog class="modal" :class="{ 'modal-open': showDayDetail }">
+      <div class="modal-box max-w-lg">
+        <h3 class="font-bold text-lg mb-4 capitalize">
+          {{ dayDetailDate ? formatDayDetailDate(dayDetailDate) : '' }}
+        </h3>
+        <div class="space-y-2">
+          <div
+            v-for="event in dayDetailEvents"
+            :key="event.id"
+            class="flex items-center gap-3 p-3 rounded-lg hover:bg-base-200 cursor-pointer transition-colors"
+            @click="openEditModal(event)"
+          >
+            <div class="w-3 h-3 rounded-full flex-shrink-0" :class="getEventColor(event)"></div>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-sm truncate">{{ event.title }}</div>
+              <div class="text-xs text-base-content/60">
+                <template v-if="event.isAllDay">Journée entière</template>
+                <template v-else>{{ formatTime(event.startDate) }} - {{ formatTime(event.endDate) }}</template>
+              </div>
+            </div>
+            <div class="text-xs text-base-content/50">{{ event.user?.displayName }}</div>
+          </div>
+          <div v-if="dayDetailEvents.length === 0" class="text-center text-base-content/50 py-4">
+            Aucun événement
+          </div>
+        </div>
+        <div class="modal-action">
+          <button class="btn btn-sm btn-primary" @click="showDayDetail = false; openCreateModal(dayDetailDate!)">
+            + Nouvel événement
+          </button>
+          <button class="btn btn-sm" @click="showDayDetail = false">Fermer</button>
+        </div>
+      </div>
+      <form method="dialog" class="modal-backdrop">
+        <button @click="showDayDetail = false">close</button>
+      </form>
+    </dialog>
+
     <!-- Event Modal -->
     <CalendarEventModal
       :open="showEventModal"
@@ -306,6 +443,44 @@ onMounted(() => {
       @saved="handleEventSaved"
       @deleted="handleEventDeleted"
     />
+
+    <!-- Workload Detail Modal -->
+    <dialog :class="['modal', { 'modal-open': showWorkloadDetail }]">
+      <div class="modal-box max-w-4xl">
+        <h3 class="font-bold text-lg mb-4">📊 Charge de travail détaillée</h3>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Daily Workload -->
+          <div>
+            <h4 class="font-semibold mb-2">Aujourd'hui</h4>
+            <WorkloadIndicator 
+              v-if="dailyWorkload"
+              :workload="dailyWorkload" 
+              :loading="dailyLoading"
+              :show-details="true"
+            />
+          </div>
+          
+          <!-- Weekly Workload -->
+          <div>
+            <h4 class="font-semibold mb-2">Cette semaine</h4>
+            <WorkloadIndicator 
+              v-if="weeklyWorkload"
+              :workload="weeklyWorkload" 
+              :loading="weeklyLoading"
+              :show-details="true"
+            />
+          </div>
+        </div>
+        
+        <div class="modal-action">
+          <button class="btn btn-sm" @click="showWorkloadDetail = false">Fermer</button>
+        </div>
+      </div>
+      <form method="dialog" class="modal-backdrop">
+        <button @click="showWorkloadDetail = false">close</button>
+      </form>
+    </dialog>
   </div>
 </template>
 

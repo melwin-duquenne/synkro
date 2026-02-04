@@ -27,7 +27,6 @@ const endDate = ref('')
 const endTime = ref('10:00')
 const isAllDay = ref(false)
 const location = ref('')
-const color = ref('')
 const isPrivate = ref(false)
 const loading = ref(false)
 const selectedParticipantIds = ref<number[]>([])
@@ -46,15 +45,6 @@ const eventTypes: { value: EventType; label: string }[] = [
   { value: 'other', label: 'Autre' }
 ]
 
-const colorOptions = [
-  { value: '', label: 'Par défaut' },
-  { value: '#3b82f6', label: 'Bleu' },
-  { value: '#10b981', label: 'Vert' },
-  { value: '#f59e0b', label: 'Orange' },
-  { value: '#ef4444', label: 'Rouge' },
-  { value: '#8b5cf6', label: 'Violet' },
-  { value: '#ec4899', label: 'Rose' }
-]
 
 const filteredUsers = computed(() => {
   const search = participantSearch.value.toLowerCase()
@@ -81,6 +71,14 @@ function formatTimeForInput(date: Date): string {
   return date.toTimeString().slice(0, 5)
 }
 
+function parseDateTimeString(dateTimeStr: string): { date: string; time: string } {
+  // Parse la chaîne ISO sans conversion de timezone
+  const parts = dateTimeStr.split('T')
+  const date = parts[0]
+  const time = parts[1] ? parts[1].substring(0, 5) : '00:00'
+  return { date, time }
+}
+
 watch(() => props.open, (isOpen) => {
   if (isOpen) {
     // Load users when modal opens
@@ -95,16 +93,15 @@ watch(() => props.open, (isOpen) => {
       eventType.value = props.event.eventType
       isAllDay.value = props.event.isAllDay
       location.value = props.event.location || ''
-      color.value = props.event.color || ''
       isPrivate.value = props.event.isPrivate
       selectedParticipantIds.value = props.event.participants?.map(p => p.userId) || []
 
-      const start = new Date(props.event.startDate)
-      const end = new Date(props.event.endDate)
-      startDate.value = formatDateForInput(start)
-      startTime.value = formatTimeForInput(start)
-      endDate.value = formatDateForInput(end)
-      endTime.value = formatTimeForInput(end)
+      const startParsed = parseDateTimeString(props.event.startDate)
+      const endParsed = parseDateTimeString(props.event.endDate)
+      startDate.value = startParsed.date
+      startTime.value = startParsed.time
+      endDate.value = endParsed.date
+      endTime.value = endParsed.time
     } else if (props.initialDate) {
       // Create mode with initial date
       resetForm()
@@ -127,7 +124,6 @@ function resetForm() {
   endTime.value = '10:00'
   isAllDay.value = false
   location.value = ''
-  color.value = ''
   isPrivate.value = false
   selectedParticipantIds.value = []
   participantSearch.value = ''
@@ -152,11 +148,11 @@ async function handleSubmit() {
   loading.value = true
 
   const startDateTime = isAllDay.value
-    ? `${startDate.value}T00:00:00`
+    ? `${startDate.value}T08:00:00`
     : `${startDate.value}T${startTime.value}:00`
 
   const endDateTime = isAllDay.value
-    ? `${endDate.value}T23:59:59`
+    ? `${endDate.value}T19:00:00`
     : `${endDate.value}T${endTime.value}:00`
 
   const data = {
@@ -167,7 +163,6 @@ async function handleSubmit() {
     endDate: endDateTime,
     isAllDay: isAllDay.value,
     location: location.value || undefined,
-    color: color.value || undefined,
     isPrivate: isPrivate.value,
     roomId: props.roomId > 0 ? props.roomId : null,
     participantIds: showParticipants.value ? selectedParticipantIds.value : []
@@ -389,26 +384,6 @@ onMounted(() => {
           ></textarea>
         </div>
 
-        <!-- Color -->
-        <div class="form-control">
-          <label class="label">
-            <span class="label-text">Couleur</span>
-          </label>
-          <div class="flex gap-2">
-            <button
-              v-for="c in colorOptions"
-              :key="c.value"
-              type="button"
-              class="w-8 h-8 rounded-full border-2 transition-transform hover:scale-110"
-              :class="{
-                'border-primary ring-2 ring-primary ring-offset-2': color === c.value,
-                'border-base-300': color !== c.value
-              }"
-              :style="{ backgroundColor: c.value || 'var(--fallback-b2, oklch(var(--b2)))' }"
-              @click="color = c.value"
-            ></button>
-          </div>
-        </div>
 
         <!-- Private Toggle -->
         <div class="form-control">

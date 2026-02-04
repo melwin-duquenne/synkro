@@ -59,8 +59,8 @@ class CalendarEventProvider implements ProviderInterface
             if (!$this->accessChecker->canAccess($user, $room)) {
                 throw new AccessDeniedHttpException('Access denied to this room');
             }
-            $qb->andWhere('e.room = :room')
-                ->setParameter('room', $room);
+            // Room calendar: show all public enterprise events (not just room-specific ones)
+            // Privacy filter below handles hiding private events from other users
         }
 
         // Personal calendar: show personal events + room events where user is author or participant

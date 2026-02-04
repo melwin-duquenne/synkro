@@ -34,6 +34,7 @@ export interface Room {
   template?: RoomTemplate
   moduleRooms: ModuleRoom[]
   createdAt: string
+  layoutType?: string
 }
 
 export interface Module {
@@ -47,14 +48,21 @@ export interface ModuleRoom {
   id: number
   module: Module
   configJson?: Record<string, unknown>
+  displayOrder?: number
 }
-
+type TemplateModule = {
+  id: number
+  module: {
+    code: string
+    name: string
+  }
+}
 export interface RoomTemplate {
   id: number
   name: string
   description?: string
   isDefault: boolean
-  templateModules: { module: Module }[]
+  templateModules: TemplateModule[]
 }
 
 // Permission types
@@ -145,13 +153,16 @@ export interface Document {
 // File types
 export interface FileResource {
   id: number
-  room: Room
-  user: User
   fileName: string
-  filePath: string
-  mimeType: string
+  filePath: string | null
+  mimeType: string | null
   size: number
+  isFolder: boolean
+  parentId: number | null
+  roomId: number
+  user: { id: number; displayName: string } | null
   createdAt: string
+  childCount: number
 }
 
 // Account types
@@ -168,6 +179,23 @@ export interface AdminUser {
   avatarUrl?: string | null
   team: Team | null
   createdAt: string
+}
+
+// Invitation types
+export interface Invitation {
+  id: number
+  email: string
+  status: 'pending' | 'accepted' | 'expired'
+  createdAt: string
+  expiresAt: string
+  invitedBy: {
+    id: number
+    displayName: string
+  }
+}
+
+export interface SendInvitationData {
+  email: string
 }
 
 // Auth types
