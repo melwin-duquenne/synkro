@@ -8,7 +8,10 @@ interface Task {
   id: number
   title: string
   description: string | null
-  status: 'todo' | 'in_progress' | 'done'
+  columnId: number
+  columnName: string
+  columnColor: string
+  type: 'active' | 'archived'
   position: number
   assignedTo: TaskUser | null
   estimation: number | null
@@ -47,6 +50,7 @@ function formatDate(dateString: string): string {
 <template>
   <div
     class="task-card bg-base-100 rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer border border-base-300"
+    :class="{ 'opacity-60': task.type === 'archived' }"
     :draggable="draggable"
     @click="$emit('click')"
     @dragstart="$emit('dragstart')"
@@ -77,6 +81,11 @@ function formatDate(dateString: string): string {
       <div v-else></div>
 
       <div class="flex items-center gap-2">
+        <!-- Archived badge -->
+        <span v-if="task.type === 'archived'" class="badge badge-sm badge-warning">
+          Archivée
+        </span>
+
         <!-- Estimation -->
         <span v-if="task.estimation" class="badge badge-sm badge-primary">
           {{ task.estimation }}pt

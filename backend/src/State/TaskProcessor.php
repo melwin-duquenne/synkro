@@ -12,6 +12,7 @@ use App\Dto\Task\CreateTaskInput;
 use App\Dto\Task\ReorderTasksInput;
 use App\Dto\Task\TaskOutput;
 use App\Dto\Task\UpdateTaskInput;
+use App\Entity\KanbanColumn;
 use App\Entity\Room;
 use App\Entity\Task;
 use App\Entity\User;
@@ -19,6 +20,7 @@ use App\Security\RoomAccessChecker;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class TaskProcessor implements ProcessorInterface
@@ -69,14 +71,32 @@ class TaskProcessor implements ProcessorInterface
             throw new AccessDeniedHttpException('Access denied');
         }
 
-        // Get max position for the status column
+        // Resolve column
+        $column = null;
+        if ($data->columnId) {
+            $column = $this->entityManager->getRepository(KanbanColumn::class)->find($data->columnId);
+            if (!$column || $column->getRoom()->getId() !== $roomId) {
+                throw new BadRequestHttpException('Invalid column');
+            }
+        } else {
+            // Default to first column
+            $column = $this->entityManager->getRepository(KanbanColumn::class)->findOneBy(
+                ['room' => $room],
+                ['position' => 'ASC']
+            );
+            if (!$column) {
+                throw new BadRequestHttpException('No kanban columns exist for this room');
+            }
+        }
+
+        // Get max position for the column
         $maxPosition = $this->entityManager->createQueryBuilder()
             ->select('MAX(t.position)')
             ->from(Task::class, 't')
-            ->where('t.room = :room')
-            ->andWhere('t.status = :status')
-            ->setParameter('room', $room)
-            ->setParameter('status', $data->status)
+            ->where('t.column = :column')
+            ->andWhere('t.type = :active')
+            ->setParameter('column', $column)
+            ->setParameter('active', Task::TYPE_ACTIVE)
             ->getQuery()
             ->getSingleScalarResult() ?? -1;
 
@@ -84,7 +104,7 @@ class TaskProcessor implements ProcessorInterface
         $task->setRoom($room);
         $task->setTitle($data->title);
         $task->setDescription($data->description);
-        $task->setStatus($data->status);
+        $task->setColumn($column);
         $task->setPosition($maxPosition + 1);
 
         if ($data->assignedToId) {
@@ -128,8 +148,12 @@ class TaskProcessor implements ProcessorInterface
         if ($data->description !== null) {
             $task->setDescription($data->description);
         }
-        if ($data->status !== null) {
-            $task->setStatus($data->status);
+        if ($data->columnId !== null) {
+            $column = $this->entityManager->getRepository(KanbanColumn::class)->find($data->columnId);
+            if (!$column || $column->getRoom()->getId() !== $roomId) {
+                throw new BadRequestHttpException('Invalid column');
+            }
+            $task->setColumn($column);
         }
         if ($data->position !== null) {
             $task->setPosition($data->position);
@@ -140,6 +164,9 @@ class TaskProcessor implements ProcessorInterface
         }
         if ($data->estimation !== null) {
             $task->setEstimation($data->estimation);
+        }
+        if ($data->type !== null) {
+            $task->setType($data->type);
         }
 
         $this->entityManager->flush();
@@ -186,7 +213,10 @@ class TaskProcessor implements ProcessorInterface
         foreach ($data->tasks as $taskData) {
             $task = $this->entityManager->getRepository(Task::class)->find($taskData['id']);
             if ($task && $task->getRoom()->getId() === $roomId) {
-                $task->setStatus($taskData['status']);
+                $column = $this->entityManager->getRepository(KanbanColumn::class)->find($taskData['columnId']);
+                if ($column && $column->getRoom()->getId() === $roomId) {
+                    $task->setColumn($column);
+                }
                 $task->setPosition($taskData['position']);
             }
         }

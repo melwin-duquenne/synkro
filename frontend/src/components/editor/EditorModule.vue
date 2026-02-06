@@ -112,7 +112,7 @@ async function saveDocument() {
     const response = await fetch(`/api/rooms/${props.roomId}/document`, {
       method: 'PUT',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/ld+json',
         ...authStore.getAuthHeaders()
       },
       body: JSON.stringify({

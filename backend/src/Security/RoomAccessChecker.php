@@ -4,20 +4,32 @@ namespace App\Security;
 
 use App\Entity\Room;
 use App\Entity\User;
-use App\Entity\UserRoomPermission;
 
 class RoomAccessChecker
 {
+    /**
+     * Check if user can access (view) the room
+     */
     public function canAccess(User $user, Room $room): bool
     {
+        // Must be in the same enterprise
+        if ($user->getEntreprise() !== $room->getEntreprise()) {
+            return false;
+        }
+
         // Creator always has access
         if ($room->getCreator() === $user) {
             return true;
         }
 
+        // Admin can access all rooms in their enterprise
+        if ($user->getRole() === User::ROLE_ADMIN) {
+            return true;
+        }
+
         // Check enterprise visibility
         if ($room->getVisibility() === Room::VISIBILITY_ENTERPRISE) {
-            return $user->getEntreprise() === $room->getEntreprise();
+            return true;
         }
 
         // Check private room permissions
@@ -39,64 +51,61 @@ class RoomAccessChecker
         return false;
     }
 
-    public function canDelete(User $user, Room $room): bool
-    {
-        return $room->getCreator() === $user || $user->getRole() === 'admin';
-    }
-
+    /**
+     * Check if user can edit the room (editor+ or creator)
+     */
     public function canEdit(User $user, Room $room): bool
     {
+        if (!$this->canAccess($user, $room)) {
+            return false;
+        }
+
         // Creator can always edit
         if ($room->getCreator() === $user) {
             return true;
         }
 
-        // Admin can edit
-        if ($user->getRole() === 'admin') {
+        // User with editor role or higher can edit
+        return $user->isAtLeast(User::ROLE_EDITOR);
+    }
+
+    /**
+     * Check if user can delete the room (editor+ or creator)
+     */
+    public function canDelete(User $user, Room $room): bool
+    {
+        // Creator can always delete
+        if ($room->getCreator() === $user) {
             return true;
         }
 
-        // Check user permissions for edit/owner role
-        foreach ($room->getUserPermissions() as $permission) {
-            if ($permission->getUser() === $user) {
-                $role = $permission->getRole();
-                return in_array($role, [UserRoomPermission::ROLE_OWNER, UserRoomPermission::ROLE_EDIT]);
-            }
-        }
-
-        // Check team permissions for edit/owner role
-        if ($user->getTeam()) {
-            foreach ($room->getTeamPermissions() as $permission) {
-                if ($permission->getTeam() === $user->getTeam()) {
-                    $role = $permission->getRole();
-                    return in_array($role, [UserRoomPermission::ROLE_OWNER, UserRoomPermission::ROLE_EDIT]);
-                }
-            }
-        }
-
-        return false;
+        // User with editor role or higher can delete
+        return $user->isAtLeast(User::ROLE_EDITOR);
     }
 
-    public function getPermissionRole(User $user, Room $room): ?string
+    /**
+     * Check if user can manage members of a private room (editor+)
+     */
+    public function canManageMembers(User $user, Room $room): bool
     {
-        if ($room->getCreator() === $user) {
-            return UserRoomPermission::ROLE_OWNER;
+        if (!$this->canAccess($user, $room)) {
+            return false;
         }
 
-        foreach ($room->getUserPermissions() as $permission) {
-            if ($permission->getUser() === $user) {
-                return $permission->getRole();
-            }
+        // Only private rooms have manageable members
+        if ($room->getVisibility() !== Room::VISIBILITY_PRIVATE) {
+            return false;
         }
 
-        if ($user->getTeam()) {
-            foreach ($room->getTeamPermissions() as $permission) {
-                if ($permission->getTeam() === $user->getTeam()) {
-                    return $permission->getRole();
-                }
-            }
-        }
+        // User with editor role or higher can manage members
+        return $user->isAtLeast(User::ROLE_EDITOR);
+    }
 
-        return null;
+    /**
+     * Check if user can create rooms (editor+)
+     */
+    public function canCreateRoom(User $user): bool
+    {
+        return $user->isAtLeast(User::ROLE_EDITOR);
     }
 }

@@ -12,10 +12,6 @@ use Symfony\Component\Serializer\Annotation\Groups;
 #[ApiResource]
 class UserRoomPermission
 {
-    public const ROLE_VIEWER = 'viewer';
-    public const ROLE_EDITOR = 'editor';
-    public const ROLE_OWNER = 'owner';
-
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'integer')]
@@ -29,10 +25,6 @@ class UserRoomPermission
     #[ORM\JoinColumn(nullable: false)]
     #[Groups(['room:read'])]
     private ?User $user = null;
-
-    #[ORM\Column(type: 'string', length: 20)]
-    #[Groups(['room:read'])]
-    private string $role = self::ROLE_VIEWER;
 
     public function getId(): ?int
     {
@@ -58,17 +50,6 @@ class UserRoomPermission
     public function setUser(?User $user): self
     {
         $this->user = $user;
-        return $this;
-    }
-
-    public function getRole(): string
-    {
-        return $this->role;
-    }
-
-    public function setRole(string $role): self
-    {
-        $this->role = $role;
         return $this;
     }
 }

@@ -18,4 +18,7 @@ final class CreateRoomInput
     public string $visibility = 'enterprise';
 
     public bool $isTemporary = false;
+
+    /** @var int[] User IDs to invite (for private rooms) */
+    public array $memberIds = [];
 }

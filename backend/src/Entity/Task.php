@@ -6,6 +6,7 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\Link;
 use ApiPlatform\Metadata\Patch;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
@@ -21,52 +22,82 @@ use Symfony\Component\Serializer\Annotation\Groups;
 #[ORM\Entity]
 #[ORM\Table(name: 'task')]
 #[ORM\Index(name: 'idx_task_room', columns: ['room_id'])]
-#[ORM\Index(name: 'idx_task_status', columns: ['status'])]
+#[ORM\Index(name: 'idx_task_column', columns: ['column_id'])]
+#[ORM\Index(name: 'idx_task_type', columns: ['type'])]
 #[ApiResource(
     operations: [
         new GetCollection(
             uriTemplate: '/rooms/{roomId}/tasks',
             provider: TaskProvider::class,
             output: TaskOutput::class,
-            uriVariables: ['roomId']
+            normalizationContext: [],
+            uriVariables: [
+                'roomId' => new Link(fromClass: Room::class, toProperty: 'room', identifiers: ['id'])
+            ]
         ),
         new Get(
             uriTemplate: '/rooms/{roomId}/tasks/{id}',
             provider: TaskProvider::class,
             output: TaskOutput::class,
-            uriVariables: ['roomId', 'id']
+            normalizationContext: [],
+            uriVariables: [
+                'roomId' => new Link(fromClass: Room::class, toProperty: 'room', identifiers: ['id']),
+                'id' => new Link(fromClass: Task::class, identifiers: ['id'])
+            ]
         ),
         new Post(
             uriTemplate: '/rooms/{roomId}/tasks',
+            read: false,
             input: CreateTaskInput::class,
             output: TaskOutput::class,
             processor: TaskProcessor::class,
-            uriVariables: ['roomId']
+            normalizationContext: [],
+            denormalizationContext: [],
+            uriVariables: [
+                'roomId' => new Link(fromClass: Room::class, toProperty: 'room', identifiers: ['id'])
+            ]
         ),
         new Put(
             uriTemplate: '/rooms/{roomId}/tasks/{id}',
             input: UpdateTaskInput::class,
             output: TaskOutput::class,
             processor: TaskProcessor::class,
-            uriVariables: ['roomId', 'id']
+            normalizationContext: [],
+            denormalizationContext: [],
+            uriVariables: [
+                'roomId' => new Link(fromClass: Room::class, toProperty: 'room', identifiers: ['id']),
+                'id' => new Link(fromClass: Task::class, identifiers: ['id'])
+            ]
         ),
         new Patch(
             uriTemplate: '/rooms/{roomId}/tasks/{id}',
             input: UpdateTaskInput::class,
             output: TaskOutput::class,
             processor: TaskProcessor::class,
-            uriVariables: ['roomId', 'id']
+            normalizationContext: [],
+            denormalizationContext: [],
+            uriVariables: [
+                'roomId' => new Link(fromClass: Room::class, toProperty: 'room', identifiers: ['id']),
+                'id' => new Link(fromClass: Task::class, identifiers: ['id'])
+            ]
         ),
         new Delete(
             uriTemplate: '/rooms/{roomId}/tasks/{id}',
             processor: TaskProcessor::class,
-            uriVariables: ['roomId', 'id']
+            uriVariables: [
+                'roomId' => new Link(fromClass: Room::class, toProperty: 'room', identifiers: ['id']),
+                'id' => new Link(fromClass: Task::class, identifiers: ['id'])
+            ]
         ),
         new Post(
             uriTemplate: '/rooms/{roomId}/tasks/reorder',
+            read: false,
             input: ReorderTasksInput::class,
             processor: TaskProcessor::class,
-            uriVariables: ['roomId'],
+            denormalizationContext: [],
+            uriVariables: [
+                'roomId' => new Link(fromClass: Room::class, toProperty: 'room', identifiers: ['id'])
+            ],
             name: 'reorder_tasks'
         )
     ],
@@ -75,9 +106,8 @@ use Symfony\Component\Serializer\Annotation\Groups;
 )]
 class Task
 {
-    public const STATUS_TODO = 'todo';
-    public const STATUS_IN_PROGRESS = 'in_progress';
-    public const STATUS_DONE = 'done';
+    public const TYPE_ACTIVE = 'active';
+    public const TYPE_ARCHIVED = 'archived';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -98,9 +128,14 @@ class Task
     #[Groups(['task:read', 'task:write'])]
     private ?string $description = null;
 
-    #[ORM\Column(type: 'string', length: 50)]
+    #[ORM\ManyToOne(targetEntity: KanbanColumn::class, inversedBy: 'tasks')]
+    #[ORM\JoinColumn(nullable: false)]
     #[Groups(['task:read', 'task:write'])]
-    private string $status = self::STATUS_TODO;
+    private ?KanbanColumn $column = null;
+
+    #[ORM\Column(type: 'string', length: 20)]
+    #[Groups(['task:read', 'task:write'])]
+    private string $type = self::TYPE_ACTIVE;
 
     #[ORM\Column(type: 'integer')]
     #[Groups(['task:read', 'task:write'])]
@@ -162,14 +197,25 @@ class Task
         return $this;
     }
 
-    public function getStatus(): string
+    public function getColumn(): ?KanbanColumn
     {
-        return $this->status;
+        return $this->column;
     }
 
-    public function setStatus(string $status): self
+    public function setColumn(?KanbanColumn $column): self
     {
-        $this->status = $status;
+        $this->column = $column;
+        return $this;
+    }
+
+    public function getType(): string
+    {
+        return $this->type;
+    }
+
+    public function setType(string $type): self
+    {
+        $this->type = $type;
         return $this;
     }
 

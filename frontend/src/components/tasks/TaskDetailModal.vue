@@ -7,11 +7,23 @@ interface TaskUser {
   displayName: string
 }
 
+interface KanbanColumn {
+  id: number
+  name: string
+  color: string
+  position: number
+  roomId: number
+  taskCount: number
+}
+
 interface Task {
   id: number
   title: string
   description: string | null
-  status: 'todo' | 'in_progress' | 'done'
+  columnId: number
+  columnName: string
+  columnColor: string
+  type: 'active' | 'archived'
   position: number
   assignedTo: TaskUser | null
   estimation: number | null
@@ -22,6 +34,7 @@ const props = defineProps<{
   open: boolean
   roomId: number
   task: Task
+  columns: KanbanColumn[]
 }>()
 
 const emit = defineEmits<{
@@ -38,18 +51,12 @@ const deleteConfirm = ref(false)
 
 const editTitle = ref('')
 const editDescription = ref('')
-const editStatus = ref<'todo' | 'in_progress' | 'done'>('todo')
+const editColumnId = ref<number | null>(null)
 const editAssignedToId = ref<number | null>(null)
 const editEstimation = ref<number | null>(null)
 
 const members = ref<TaskUser[]>([])
 const loadingMembers = ref(false)
-
-const statusOptions = [
-  { value: 'todo', label: 'À faire', color: 'badge-ghost' },
-  { value: 'in_progress', label: 'En cours', color: 'badge-info' },
-  { value: 'done', label: 'Terminé', color: 'badge-success' }
-]
 
 const estimationOptions = [
   { value: null, label: 'Non estimé' },
@@ -82,7 +89,7 @@ async function fetchMembers() {
 watch(() => props.task, (task) => {
   editTitle.value = task.title
   editDescription.value = task.description || ''
-  editStatus.value = task.status
+  editColumnId.value = task.columnId
   editAssignedToId.value = task.assignedTo?.id || null
   editEstimation.value = task.estimation
 }, { immediate: true })
@@ -100,7 +107,7 @@ onMounted(() => {
 function startEditing() {
   editTitle.value = props.task.title
   editDescription.value = props.task.description || ''
-  editStatus.value = props.task.status
+  editColumnId.value = props.task.columnId
   editAssignedToId.value = props.task.assignedTo?.id || null
   editEstimation.value = props.task.estimation
   isEditing.value = true
@@ -120,13 +127,13 @@ async function saveChanges() {
     const response = await fetch(`/api/rooms/${props.roomId}/tasks/${props.task.id}`, {
       method: 'PATCH',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/merge-patch+json',
         ...authStore.getAuthHeaders()
       },
       body: JSON.stringify({
         title: editTitle.value,
         description: editDescription.value || null,
-        status: editStatus.value,
+        columnId: editColumnId.value,
         assignedToId: editAssignedToId.value,
         estimation: editEstimation.value
       })
@@ -139,6 +146,33 @@ async function saveChanges() {
     isEditing.value = false
   } catch (e) {
     console.error('Failed to update task:', e)
+  } finally {
+    loading.value = false
+  }
+}
+
+async function toggleArchive() {
+  loading.value = true
+
+  try {
+    const newType = props.task.type === 'active' ? 'archived' : 'active'
+    const response = await fetch(`/api/rooms/${props.roomId}/tasks/${props.task.id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/merge-patch+json',
+        ...authStore.getAuthHeaders()
+      },
+      body: JSON.stringify({
+        type: newType
+      })
+    })
+
+    if (!response.ok) throw new Error('Failed to update task')
+
+    const updatedTask = await response.json()
+    emit('updated', updatedTask)
+  } catch (e) {
+    console.error('Failed to toggle archive:', e)
   } finally {
     loading.value = false
   }
@@ -208,28 +242,46 @@ function handleClose() {
         </button>
       </div>
 
-      <!-- Status -->
+      <!-- Column -->
+      <div class="mb-4">
+        <label class="label">
+          <span class="label-text font-medium">Colonne</span>
+        </label>
+        <div v-if="!isEditing" class="flex items-center gap-2">
+          <div :class="[task.columnColor, 'w-3 h-3 rounded-full']"></div>
+          <span class="badge badge-ghost">{{ task.columnName }}</span>
+        </div>
+        <select
+          v-else
+          v-model="editColumnId"
+          class="select select-bordered w-full max-w-xs"
+        >
+          <option v-for="col in columns" :key="col.id" :value="col.id">
+            {{ col.name }}
+          </option>
+        </select>
+      </div>
+
+      <!-- Type / Archive status -->
       <div class="mb-4">
         <label class="label">
           <span class="label-text font-medium">Statut</span>
         </label>
-        <div v-if="!isEditing" class="flex gap-2">
+        <div class="flex items-center gap-2">
           <span
             class="badge"
-            :class="statusOptions.find(s => s.value === task.status)?.color"
+            :class="task.type === 'archived' ? 'badge-warning' : 'badge-success'"
           >
-            {{ statusOptions.find(s => s.value === task.status)?.label }}
+            {{ task.type === 'archived' ? 'Archivée' : 'Active' }}
           </span>
+          <button
+            class="btn btn-xs btn-outline"
+            :class="{ 'loading': loading }"
+            @click="toggleArchive"
+          >
+            {{ task.type === 'archived' ? 'Désarchiver' : 'Archiver' }}
+          </button>
         </div>
-        <select
-          v-else
-          v-model="editStatus"
-          class="select select-bordered w-full max-w-xs"
-        >
-          <option v-for="option in statusOptions" :key="option.value" :value="option.value">
-            {{ option.label }}
-          </option>
-        </select>
       </div>
 
       <!-- Description -->
