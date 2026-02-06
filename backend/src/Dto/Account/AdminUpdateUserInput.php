@@ -6,7 +6,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 final class AdminUpdateUserInput
 {
-    #[Assert\Choice(choices: ['admin', 'user'])]
+    #[Assert\Choice(choices: ['user', 'editor', 'owner', 'admin'])]
     public ?string $role = null;
 
     public ?int $teamId = null;

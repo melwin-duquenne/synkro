@@ -25,8 +25,9 @@ class AdminUsersProvider implements ProviderInterface
             throw new AccessDeniedHttpException('Not authenticated');
         }
 
-        if ($user->getRole() !== 'admin') {
-            throw new AccessDeniedHttpException('Admin access required');
+        // Only owner and admin can see user list
+        if (!$user->isAtLeast(User::ROLE_OWNER)) {
+            throw new AccessDeniedHttpException('Owner or admin access required');
         }
 
         $entreprise = $user->getEntreprise();

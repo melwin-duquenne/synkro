@@ -11,8 +11,7 @@ final class UpdateTaskInput
 
     public ?string $description = null;
 
-    #[Assert\Choice(choices: ['todo', 'in_progress', 'done'])]
-    public ?string $status = null;
+    public ?int $columnId = null;
 
     public ?int $position = null;
 
@@ -20,4 +19,7 @@ final class UpdateTaskInput
 
     #[Assert\PositiveOrZero]
     public ?int $estimation = null;
+
+    #[Assert\Choice(choices: ['active', 'archived'])]
+    public ?string $type = null;
 }

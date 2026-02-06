@@ -18,6 +18,18 @@ use Symfony\Component\Serializer\Annotation\Groups;
 )]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
+    public const ROLE_USER = 'user';
+    public const ROLE_EDITOR = 'editor';
+    public const ROLE_OWNER = 'owner';
+    public const ROLE_ADMIN = 'admin';
+
+    private const ROLE_HIERARCHY = [
+        self::ROLE_USER,
+        self::ROLE_EDITOR,
+        self::ROLE_OWNER,
+        self::ROLE_ADMIN,
+    ];
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'integer')]
@@ -276,11 +288,40 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this->files;
     }
 
+    public function isAtLeast(string $role): bool
+    {
+        $userLevel = array_search($this->role, self::ROLE_HIERARCHY);
+        $requiredLevel = array_search($role, self::ROLE_HIERARCHY);
+        if ($userLevel === false || $requiredLevel === false) {
+            return false;
+        }
+        return $userLevel >= $requiredLevel;
+    }
+
+    public function canAssignRole(string $targetRole): bool
+    {
+        // Admin peut tout attribuer
+        if ($this->role === self::ROLE_ADMIN) {
+            return true;
+        }
+        // Owner peut attribuer user/editor/owner (pas admin)
+        if ($this->role === self::ROLE_OWNER && $targetRole !== self::ROLE_ADMIN) {
+            return true;
+        }
+        return false;
+    }
+
     // UserInterface methods
     public function getRoles(): array
     {
         $roles = ['ROLE_USER'];
-        if ($this->role === 'admin') {
+        if ($this->isAtLeast(self::ROLE_EDITOR)) {
+            $roles[] = 'ROLE_EDITOR';
+        }
+        if ($this->isAtLeast(self::ROLE_OWNER)) {
+            $roles[] = 'ROLE_OWNER';
+        }
+        if ($this->role === self::ROLE_ADMIN) {
             $roles[] = 'ROLE_ADMIN';
         }
         return array_unique($roles);

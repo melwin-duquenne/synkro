@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useAuthStore } from './auth'
-import type { Room, Module } from '@/types'
+import type { Room, Module, RoomMember, User } from '@/types'
 
 export interface TemplateItem {
   id: number
@@ -10,10 +10,17 @@ export interface TemplateItem {
   modules: { code: string; name: string }[]
 }
 
+export interface EnterpriseUser {
+  id: number
+  displayName: string
+  email: string
+}
+
 export const useRoomsStore = defineStore('rooms', () => {
   const rooms = ref<Room[]>([])
   const modules = ref<Module[]>([])
   const templates = ref<TemplateItem[]>([])
+  const enterpriseUsers = ref<EnterpriseUser[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
 
@@ -64,11 +71,73 @@ export const useRoomsStore = defineStore('rooms', () => {
     }
   }
 
+  async function fetchEnterpriseUsers(): Promise<EnterpriseUser[]> {
+    const authStore = useAuthStore()
+
+    try {
+      const response = await fetch('/api/entreprise/members', {
+        headers: authStore.getAuthHeaders()
+      })
+      if (response.ok) {
+        const data = await response.json()
+        enterpriseUsers.value = data.member || data['hydra:member'] || data
+        return enterpriseUsers.value
+      }
+    } catch (e) {
+      console.error('Failed to fetch enterprise users:', e)
+    }
+    return []
+  }
+
+  async function fetchRoomMembers(roomId: number): Promise<RoomMember[]> {
+    const authStore = useAuthStore()
+
+    try {
+      const response = await fetch(`/api/rooms/${roomId}/members`, {
+        headers: authStore.getAuthHeaders()
+      })
+      if (response.ok) {
+        const data = await response.json()
+        return data.member || data['hydra:member'] || data
+      }
+    } catch (e) {
+      console.error('Failed to fetch room members:', e)
+    }
+    return []
+  }
+
+  async function manageRoomMembers(
+    roomId: number,
+    data: { addUserIds?: number[]; removeUserIds?: number[] }
+  ): Promise<RoomMember[] | null> {
+    const authStore = useAuthStore()
+
+    try {
+      const response = await fetch(`/api/rooms/${roomId}/members`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/ld+json',
+          'Accept': 'application/ld+json',
+          ...authStore.getAuthHeaders()
+        },
+        body: JSON.stringify(data)
+      })
+      if (response.ok) {
+        const result = await response.json()
+        return result.member || result['hydra:member'] || result
+      }
+    } catch (e) {
+      console.error('Failed to manage room members:', e)
+    }
+    return null
+  }
+
   async function createRoom(data: {
     name: string
     modules: string[]
     visibility?: string
     isTemporary?: boolean
+    memberIds?: number[]
   }): Promise<Room | null> {
     const authStore = useAuthStore()
     loading.value = true
@@ -87,7 +156,7 @@ export const useRoomsStore = defineStore('rooms', () => {
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to create room')
+        throw new Error(errorData.error || errorData['hydra:description'] || 'Failed to create room')
       }
 
       const room = await response.json()
@@ -99,6 +168,38 @@ export const useRoomsStore = defineStore('rooms', () => {
     } finally {
       loading.value = false
     }
+  }
+
+  async function updateRoom(
+    roomId: number,
+    data: { name?: string; visibility?: string; layoutType?: string }
+  ): Promise<Room | null> {
+    const authStore = useAuthStore()
+
+    try {
+      const response = await fetch(`/api/rooms/${roomId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/merge-patch+json',
+          'Accept': 'application/ld+json',
+          ...authStore.getAuthHeaders()
+        },
+        body: JSON.stringify(data)
+      })
+
+      if (response.ok) {
+        const updatedRoom = await response.json()
+        // Update in local state
+        const index = rooms.value.findIndex(r => r.id === roomId)
+        if (index !== -1) {
+          rooms.value[index] = updatedRoom
+        }
+        return updatedRoom
+      }
+    } catch (e) {
+      console.error('Failed to update room:', e)
+    }
+    return null
   }
 
   async function deleteRoom(id: number): Promise<boolean> {
@@ -124,12 +225,17 @@ export const useRoomsStore = defineStore('rooms', () => {
     rooms,
     modules,
     templates,
+    enterpriseUsers,
     loading,
     error,
     fetchModules,
     fetchTemplates,
     fetchRooms,
+    fetchEnterpriseUsers,
+    fetchRoomMembers,
+    manageRoomMembers,
     createRoom,
+    updateRoom,
     deleteRoom
   }
 })

@@ -40,18 +40,37 @@ class RoomProvider implements ProviderInterface
     {
         $entreprise = $user->getEntreprise();
 
+        if (!$entreprise) {
+            return [];
+        }
+
         $qb = $this->entityManager->createQueryBuilder();
-        $qb->select('r')
+        $qb->select('DISTINCT r')
             ->from(Room::class, 'r')
-            ->leftJoin('r.moduleRooms', 'mr')
-            ->leftJoin('mr.module', 'm')
-            ->where('r.creator = :user')
+            ->leftJoin('r.userPermissions', 'up')
+            ->leftJoin('r.teamPermissions', 'tp')
+            ->where('r.entreprise = :entreprise')
+            ->setParameter('entreprise', $entreprise);
+
+        // Admin sees all rooms in the enterprise
+        if ($user->getRole() === User::ROLE_ADMIN) {
+            // No additional filter needed
+        } else {
+            // Others see: enterprise rooms OR rooms they created OR rooms they have permission to
+            $qb->andWhere(
+                $qb->expr()->orX(
+                    'r.visibility = :enterprise',
+                    'r.creator = :user',
+                    'up.user = :user',
+                    $user->getTeam() ? 'tp.team = :team' : '1=0'
+                )
+            )
+            ->setParameter('enterprise', Room::VISIBILITY_ENTERPRISE)
             ->setParameter('user', $user);
 
-        if ($entreprise) {
-            $qb->orWhere('r.entreprise = :entreprise AND r.visibility = :enterprise')
-                ->setParameter('entreprise', $entreprise)
-                ->setParameter('enterprise', Room::VISIBILITY_ENTERPRISE);
+            if ($user->getTeam()) {
+                $qb->setParameter('team', $user->getTeam());
+            }
         }
 
         $rooms = $qb->orderBy('r.createdAt', 'DESC')->getQuery()->getResult();

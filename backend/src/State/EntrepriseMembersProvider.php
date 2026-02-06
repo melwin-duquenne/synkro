@@ -36,7 +36,7 @@ class EntrepriseMembersProvider implements ProviderInterface
         ]);
 
         return array_map(
-            fn(User $member) => UserSimpleOutput::fromEntity($member),
+            fn(User $member) => UserSimpleOutput::fromEntity($member, true),
             $members
         );
     }

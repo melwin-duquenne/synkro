@@ -135,9 +135,9 @@ class DashboardStatsProvider implements ProviderInterface
         // Tâches du jour (pas de filtre dueDate car le champ n'existe pas encore)
         $todayTasks = $taskRepo->createQueryBuilder('t')
             ->where('t.assignedTo = :user')
-            ->andWhere('t.status != :done')
+            ->andWhere('t.type = :active')
             ->setParameter('user', $user)
-            ->setParameter('done', 'done')
+            ->setParameter('active', Task::TYPE_ACTIVE)
             ->orderBy('t.createdAt', 'DESC')
             ->setMaxResults(10)
             ->getQuery()
@@ -148,12 +148,12 @@ class DashboardStatsProvider implements ProviderInterface
 
         // Progression par room
         $roomProgress = $taskRepo->createQueryBuilder('t')
-            ->select('IDENTITY(t.room) as roomId, r.name as roomName, COUNT(t.id) as total, SUM(CASE WHEN t.status = :done THEN 1 ELSE 0 END) as completed')
+            ->select('IDENTITY(t.room) as roomId, r.name as roomName, COUNT(t.id) as total, SUM(CASE WHEN t.type = :archived THEN 1 ELSE 0 END) as completed')
             ->leftJoin('t.room', 'r')
             ->where('t.assignedTo = :user')
             ->andWhere('t.room IS NOT NULL')
             ->setParameter('user', $user)
-            ->setParameter('done', 'done')
+            ->setParameter('archived', Task::TYPE_ARCHIVED)
             ->groupBy('t.room, r.name')
             ->getQuery()
             ->getResult();
@@ -238,10 +238,10 @@ class DashboardStatsProvider implements ProviderInterface
             ->createQueryBuilder('t')
             ->select('COUNT(t.id)')
             ->where('t.assignedTo = :user')
-            ->andWhere('t.status = :done')
+            ->andWhere('t.type = :archived')
             ->andWhere('t.createdAt >= :start')
             ->setParameter('user', $user)
-            ->setParameter('done', 'done')
+            ->setParameter('archived', Task::TYPE_ARCHIVED)
             ->setParameter('start', $startOfWeek)
             ->getQuery()
             ->getSingleScalarResult();
@@ -318,7 +318,8 @@ class DashboardStatsProvider implements ProviderInterface
             'id' => $task->getId(),
             'title' => $task->getTitle(),
             'description' => $task->getDescription(),
-            'status' => $task->getStatus(),
+            'status' => $task->getColumn() ? $task->getColumn()->getName() : 'unknown',
+            'type' => $task->getType(),
             'priority' => 'medium', // Default priority
             'dueDate' => null, // Field not available yet
             'room' => $task->getRoom() ? [
