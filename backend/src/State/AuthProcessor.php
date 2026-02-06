@@ -6,7 +6,6 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Dto\Auth\RegisterInput;
 use App\Dto\Auth\UserOutput;
-use App\Entity\Entreprise;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
@@ -41,31 +40,10 @@ class AuthProcessor implements ProcessorInterface
             throw new ConflictHttpException('Email already registered');
         }
 
-        // Extract domain from email
-        $emailParts = explode('@', $data->email);
-        $domain = $emailParts[1] ?? null;
-
-        if (!$domain) {
-            throw new BadRequestHttpException('Invalid email format');
-        }
-
-        // Find or create entreprise by domain
-        $entreprise = $this->entityManager->getRepository(Entreprise::class)
-            ->findOneBy(['domain' => $domain]);
-
-        if (!$entreprise) {
-            $entreprise = new Entreprise();
-            $entreprise->setDomain($domain);
-            $companyName = $data->companyName ?? ucfirst(explode('.', $domain)[0]);
-            $entreprise->setName($companyName);
-            $this->entityManager->persist($entreprise);
-        }
-
         $user = new User();
         $user->setEmail($data->email);
         $user->setDisplayName($data->displayName);
         $user->setRole($data->role);
-        $user->setEntreprise($entreprise);
 
         $hashedPassword = $this->passwordHasher->hashPassword($user, $data->password);
         $user->setPassword($hashedPassword);
