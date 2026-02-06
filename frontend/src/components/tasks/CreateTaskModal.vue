@@ -33,7 +33,7 @@ interface Task {
 const props = defineProps<{
   open: boolean
   roomId: number
-  columns: KanbanColumn[]
+  columns?: KanbanColumn[]
   initialColumnId?: number
 }>()
 
@@ -54,6 +54,8 @@ const error = ref<string | null>(null)
 
 const members = ref<TaskUser[]>([])
 const loadingMembers = ref(false)
+const availableColumns = ref<KanbanColumn[]>([])
+const loadingColumns = ref(false)
 
 const estimationOptions = [
   { value: null, label: 'Non estimé' },
@@ -83,6 +85,24 @@ async function fetchMembers() {
   }
 }
 
+async function fetchColumns() {
+  if (!props.roomId) return
+  loadingColumns.value = true
+  try {
+    const response = await fetch(`/api/rooms/${props.roomId}/kanban-columns`, {
+      headers: authStore.getAuthHeaders()
+    })
+    if (response.ok) {
+      const data = await response.json()
+      availableColumns.value = data['hydra:member'] || data.member || (Array.isArray(data) ? data : [])
+    }
+  } catch (e) {
+    console.error('Failed to fetch columns:', e)
+  } finally {
+    loadingColumns.value = false
+  }
+}
+
 watch(() => props.initialColumnId, (newColumnId) => {
   if (newColumnId) {
     columnId.value = newColumnId
@@ -91,10 +111,22 @@ watch(() => props.initialColumnId, (newColumnId) => {
 
 watch(() => props.open, (isOpen) => {
   if (isOpen) {
-    if (props.initialColumnId) {
-      columnId.value = props.initialColumnId
-    } else if (props.columns.length > 0 && !columnId.value) {
-      columnId.value = props.columns[0].id
+    // Charger les colonnes si elles ne sont pas fournies
+    if (!props.columns || props.columns.length === 0) {
+      fetchColumns().then(() => {
+        if (props.initialColumnId) {
+          columnId.value = props.initialColumnId
+        } else if (availableColumns.value.length > 0 && !columnId.value) {
+          columnId.value = availableColumns.value[0].id
+        }
+      })
+    } else {
+      availableColumns.value = props.columns
+      if (props.initialColumnId) {
+        columnId.value = props.initialColumnId
+      } else if (props.columns.length > 0 && !columnId.value) {
+        columnId.value = props.columns[0].id
+      }
     }
     if (members.value.length === 0) {
       fetchMembers()
@@ -146,7 +178,7 @@ async function handleSubmit() {
 function resetForm() {
   title.value = ''
   description.value = ''
-  columnId.value = props.initialColumnId || (props.columns.length > 0 ? props.columns[0].id : null)
+  columnId.value = props.initialColumnId || (availableColumns.value.length > 0 ? availableColumns.value[0].id : null)
   assignedToId.value = null
   estimation.value = null
   error.value = null
@@ -198,7 +230,7 @@ function handleClose() {
             <span class="label-text">Colonne</span>
           </label>
           <select v-model="columnId" class="select select-bordered w-full">
-            <option v-for="col in columns" :key="col.id" :value="col.id">
+            <option v-for="col in availableColumns" :key="col.id" :value="col.id">
               {{ col.name }}
             </option>
           </select>

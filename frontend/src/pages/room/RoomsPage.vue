@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { useRoomsStore } from '@/stores/rooms'
 import { useAuthStore } from '@/stores/auth'
 import CreateRoomModal from '@/components/room/CreateRoomModal.vue'
 
+const route = useRoute()
 const roomsStore = useRoomsStore()
 const authStore = useAuthStore()
 const showCreateModal = ref(false)
@@ -19,6 +21,11 @@ const validRooms = computed(() => {
 onMounted(() => {
   if (hasEntreprise.value) {
     roomsStore.fetchRooms()
+  }
+
+  // Ouvrir automatiquement le modal si on vient du dashboard
+  if (route.query.create === 'true') {
+    showCreateModal.value = true
   }
 })
 

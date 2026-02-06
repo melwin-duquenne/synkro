@@ -71,7 +71,7 @@ interface TeamMember {
 }
 
 defineProps<{
-  teamAvailability: TeamMember[]
+  teamAvailability?: TeamMember[]
 }>()
 
 const getInitials = (name: string): string => {

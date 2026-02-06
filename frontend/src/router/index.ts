@@ -70,6 +70,12 @@ const router = createRouter({
       component: () => import('@/pages/invitation/AcceptInvitationPage.vue')
     },
     {
+      path: '/invitation/create',
+      name: 'invitation-create',
+      component: () => import('@/pages/invitation/CreateInvitationPage.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/confirm-delete',
       name: 'confirm-delete',
       component: () => import('@/pages/account/ConfirmDeletePage.vue')

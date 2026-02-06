@@ -9,42 +9,75 @@
       </h2>
       
       <div v-if="!recentRooms || recentRooms.length === 0" class="text-center py-8 text-base-content/60">
-        <p>Aucune room récente disponible.</p>
+        <p v-if="error">{{ error }}</p>
+        <p v-else>Aucune room récente disponible.</p>
+        <p class="text-sm mt-2">Assurez-vous d'être connecté et d'avoir accès à des rooms.</p>
       </div>
       
-      <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div v-else class="space-y-3">
         <div 
-          v-for="room in recentRooms" 
+          v-for="room in recentRooms.slice(0, 5)" 
           :key="room.id"
-          class="p-4 rounded-lg border-2 border-base-300 hover:border-primary hover:shadow-lg transition-all cursor-pointer"
-          @click="navigateToRoom(room.id)"
+          class="p-4 rounded-lg border-2 border-base-300 hover:border-primary hover:shadow-lg transition-all"
         >
-          <div class="flex items-start justify-between mb-2">
-            <h3 class="font-semibold truncate flex-1">{{ room.name }}</h3>
-            <div 
-              class="badge badge-sm"
-              :class="{
-                'badge-success': room.visibility === 'public',
-                'badge-warning': room.visibility === 'private',
-                'badge-info': room.visibility === 'team'
-              }"
-            >
-              {{ getVisibilityLabel(room.visibility) }}
+          <div class="flex items-start justify-between mb-3">
+            <div class="flex-1 min-w-0">
+              <h3 class="font-semibold text-lg truncate mb-1">{{ room.name }}</h3>
+              <div class="flex items-center gap-2 mb-2">
+                <div 
+                  class="badge badge-sm"
+                  :class="{
+                    'badge-success': room.visibility === 'public',
+                    'badge-warning': room.visibility === 'private',
+                    'badge-info': room.visibility === 'team'
+                  }"
+                >
+                  {{ getVisibilityLabel(room.visibility) }}
+                </div>
+                <span class="text-xs text-base-content/60">
+                  {{ room.moduleCount }} modules
+                </span>
+              </div>
+              
+              <!-- Informations supplémentaires si disponibles -->
+              <div class="flex items-center gap-4 text-xs text-base-content/70 mb-3">
+                <span class="flex items-center gap-1">
+                  {{ getLayoutIcon(room.layoutType) }} {{ getLayoutLabel(room.layoutType) }}
+                </span>
+                <span v-if="room.creator?.displayName" class="flex items-center gap-1">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  {{ room.creator.displayName }}
+                </span>
+                <span v-if="room.createdAt" class="flex items-center gap-1">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {{ formatDate(room.createdAt) }}
+                </span>
+              </div>
             </div>
-          </div>
-          
-          <div class="flex items-center gap-4 text-xs text-base-content/70">
-            <span class="flex items-center gap-1">
+            
+            <!-- Bouton Entrer -->
+            <button 
+              class="btn btn-primary btn-sm ml-3"
+              @click.stop="navigateToRoom(room.id)"
+            >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
               </svg>
-              {{ room.moduleCount }} modules
-            </span>
-            <span class="flex items-center gap-1">
-              {{ getLayoutIcon(room.layoutType) }} {{ getLayoutLabel(room.layoutType) }}
-            </span>
+              Entrer
+            </button>
           </div>
         </div>
+      </div>
+      
+      <!-- Lien vers voir toutes les rooms -->
+      <div v-if="recentRooms && recentRooms.length > 5" class="mt-4 text-center">
+        <router-link to="/rooms" class="btn btn-outline btn-sm">
+          Voir toutes les rooms
+        </router-link>
       </div>
     </div>
   </div>
@@ -59,22 +92,27 @@ interface Room {
   visibility: string
   moduleCount: number
   layoutType: string
+  creator?: {
+    displayName: string
+  }
+  createdAt?: string
 }
 
 defineProps<{
   recentRooms: Room[]
+  error?: string
 }>()
 
 const router = useRouter()
 
 const navigateToRoom = (roomId: number) => {
-  router.push(`/rooms/${roomId}`)
+  router.push(`/room/${roomId}`)
 }
 
 const getVisibilityLabel = (visibility: string): string => {
   const labels: Record<string, string> = {
-    public: 'Public',
-    private: 'Privé',
+    public: 'Entreprise',
+    private: 'Privée',
     team: 'Équipe'
   }
   return labels[visibility] || visibility
@@ -104,5 +142,27 @@ const getLayoutLabel = (layout: string): string => {
     'main-sidebar': 'Main+Side'
   }
   return labels[layout] || layout
+}
+
+const formatDate = (dateString: string): string => {
+  if (!dateString) return ''
+  
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffTime = Math.abs(now.getTime() - date.getTime())
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  
+  if (diffDays === 1) {
+    return 'Aujourd\'hui'
+  } else if (diffDays === 2) {
+    return 'Hier'
+  } else if (diffDays <= 7) {
+    return `Il y a ${diffDays - 1} jours`
+  } else {
+    return date.toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'short'
+    })
+  }
 }
 </script>

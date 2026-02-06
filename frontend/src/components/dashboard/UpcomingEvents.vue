@@ -21,7 +21,8 @@
           <div 
             v-for="event in todayEvents" 
             :key="event.id"
-            class="flex items-center gap-3 p-3 rounded-lg bg-base-200 hover:bg-base-300 transition-colors"
+            class="flex items-center gap-3 p-3 rounded-lg bg-base-200 hover:bg-base-300 transition-colors cursor-pointer"
+            @click="$emit('event-click', event)"
           >
             <div v-html="getEventIcon(event.eventType)"></div>
             <div class="flex-1 min-w-0">
@@ -43,17 +44,17 @@
       <!-- Prochains événements -->
       <div>
         <h3 class="text-sm font-semibold mb-3 text-base-content/70">
-          À venir ({{ upcomingEvents.length }})
+          À venir ({{ Math.min(upcomingEvents.length, 2) }})
         </h3>
         <div v-if="upcomingEvents.length === 0" class="text-center py-8 text-base-content/50">
           Aucun événement à venir
         </div>
         <div v-else class="space-y-2">
           <div 
-            v-for="event in upcomingEvents" 
+            v-for="event in upcomingEvents.slice(0, 2)" 
             :key="event.id"
             class="flex items-start gap-3 p-3 rounded-lg hover:bg-base-200 transition-colors cursor-pointer"
-            @click="navigateToRoom(event.room?.id)"
+            @click="handleEventClick(event)"
           >
             <div v-html="getEventIcon(event.eventType)"></div>
             <div class="flex-1 min-w-0">
@@ -96,11 +97,20 @@ interface Event {
 }
 
 const props = defineProps<{
-  upcomingEvents: Event[]
-  todayEvents: Event[]
+  upcomingEvents?: Event[]
+  todayEvents?: Event[]
+}>()
+
+const emit = defineEmits<{
+  'event-click': [event: Event]
 }>()
 
 const router = useRouter()
+
+const handleEventClick = (event: Event) => {
+
+  emit('event-click', event)
+}
 
 const getEventIcon = (type: string): string => {
   const icons: Record<string, string> = {
@@ -124,12 +134,47 @@ const getEventBadgeClass = (type: string): string => {
 }
 
 const formatTime = (dateString: string): string => {
-  const date = new Date(dateString)
+  // Parser manuellement la date ISO pour éviter les conversions de timezone
+  const match = dateString.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/)
+  if (!match) {
+    const date = new Date(dateString)
+    return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  }
+  
+  const [, year, month, day, hour, minute] = match
+  const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute))
   return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 }
 
 const formatDateTime = (dateString: string): string => {
-  const date = new Date(dateString)
+  // Parser manuellement la date ISO pour éviter les conversions de timezone
+  const match = dateString.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/)
+  if (!match) {
+    const date = new Date(dateString)
+    const now = new Date()
+    const tomorrow = new Date(now)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    
+    const isToday = date.toDateString() === now.toDateString()
+    const isTomorrow = date.toDateString() === tomorrow.toDateString()
+    
+    if (isToday) {
+      return `Aujourd'hui à ${formatTime(dateString)}`
+    } else if (isTomorrow) {
+      return `Demain à ${formatTime(dateString)}`
+    } else {
+      return date.toLocaleDateString('fr-FR', { 
+        weekday: 'short', 
+        day: 'numeric', 
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    }
+  }
+  
+  const [, year, month, day, hour, minute] = match
+  const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute))
   const now = new Date()
   const tomorrow = new Date(now)
   tomorrow.setDate(tomorrow.getDate() + 1)
