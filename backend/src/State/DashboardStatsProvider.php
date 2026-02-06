@@ -4,6 +4,7 @@ namespace App\State;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
+use App\Dto\DashboardData;
 use App\Entity\CalendarEvent;
 use App\Entity\Room;
 use App\Entity\Task;
@@ -34,16 +35,16 @@ class DashboardStatsProvider implements ProviderInterface
         $startOfDay = (clone $now)->setTime(0, 0);
         $endOfDay = (clone $now)->setTime(23, 59, 59);
 
-        return [
-            'workload' => $this->getWorkloadData($user, $startOfWeek, $endOfWeek),
-            'upcomingEvents' => $this->getUpcomingEvents($user),
-            'todayEvents' => $this->getTodayEvents($user, $startOfDay, $endOfDay),
-            'tasks' => $this->getTasksData($user),
-            'recentRooms' => $this->getRecentRooms($user),
-            'teamAvailability' => $this->getTeamAvailability($user),
-            'statistics' => $this->getStatistics($user, $startOfWeek),
-            'notifications' => $this->getNotifications($user),
-        ];
+        return new DashboardData(
+            workload: $this->getWorkloadData($user, $startOfWeek, $endOfWeek),
+            upcomingEvents: $this->getUpcomingEvents($user),
+            todayEvents: $this->getTodayEvents($user, $startOfDay, $endOfDay),
+            tasks: $this->getTasksData($user),
+            recentRooms: $this->getRecentRooms($user),
+            teamAvailability: $this->getTeamAvailability($user),
+            statistics: $this->getStatistics($user, $startOfWeek),
+            notifications: $this->getNotifications($user),
+        );
     }
 
     private function getWorkloadData(User $user, \DateTime $start, \DateTime $end): array
@@ -61,11 +62,11 @@ class DashboardStatsProvider implements ProviderInterface
                 'percentage' => $workload,
                 'isOverloaded' => $workload > 100,
             ];
-            
+
             if ($workload > 100) {
                 $overloadDays++;
             }
-            
+
             $currentDate->modify('+1 day');
         }
 
@@ -79,7 +80,7 @@ class DashboardStatsProvider implements ProviderInterface
     private function getUpcomingEvents(User $user): array
     {
         $now = new \DateTime();
-        
+
         $events = $this->entityManager->getRepository(CalendarEvent::class)
             ->createQueryBuilder('e')
             ->leftJoin('e.participants', 'p')
@@ -173,20 +174,32 @@ class DashboardStatsProvider implements ProviderInterface
 
     private function getRecentRooms(User $user): array
     {
-        // Pour l'instant on retourne les rooms où l'utilisateur est membre
-        // Plus tard on pourrait tracker les dernières visites
-        $rooms = $this->entityManager->getRepository(Room::class)
+        // Récupérer l'entreprise de l'utilisateur si elle existe
+        $userEntreprise = $user->getEntreprise();
+
+        // Récupérer les rooms où l'utilisateur a accès
+        $qb = $this->entityManager->getRepository(Room::class)
             ->createQueryBuilder('r')
             ->leftJoin('r.userPermissions', 'urp')
             ->leftJoin('r.teamPermissions', 'trp')
             ->leftJoin('trp.team', 't')
             ->leftJoin('t.users', 'tm')
+            ->leftJoin('r.creator', 'c')
+            ->leftJoin('c.entreprise', 'ce')
             ->where('r.creator = :user OR urp.user = :user OR tm = :user')
-            ->setParameter('user', $user)
-            ->orderBy('r.createdAt', 'DESC')
-            ->setMaxResults(10)
-            ->getQuery()
-            ->getResult();
+            ->setParameter('user', $user);
+
+        // Si l'utilisateur a une entreprise, ajouter les rooms enterprise de cette entreprise
+        if ($userEntreprise) {
+            $qb->orWhere('r.visibility = :enterprise AND ce = :userEntreprise')
+               ->setParameter('enterprise', 'enterprise')
+               ->setParameter('userEntreprise', $userEntreprise);
+        }
+
+        $rooms = $qb->orderBy('r.createdAt', 'DESC')
+                    ->setMaxResults(10)
+                    ->getQuery()
+                    ->getResult();
 
         return array_map(fn($room) => [
             'id' => $room->getId(),
@@ -194,6 +207,10 @@ class DashboardStatsProvider implements ProviderInterface
             'visibility' => $room->getVisibility(),
             'moduleCount' => $room->getModuleRooms()->count(),
             'layoutType' => $room->getLayoutType(),
+            'creator' => $room->getCreator() ? [
+                'displayName' => $room->getCreator()->getDisplayName(),
+            ] : null,
+            'createdAt' => $room->getCreatedAt()?->format('c'),
         ], $rooms);
     }
 
@@ -217,10 +234,10 @@ class DashboardStatsProvider implements ProviderInterface
         return array_map(function($member) use ($now) {
             $result = $this->workloadCalculator->calculateDailyWorkload($member, $now);
             $workload = $result['percentage'] ?? 0;
-            
+
             return [
                 'id' => $member->getId(),
-                'name' => $member->getFirstName() . ' ' . $member->getLastName(),
+                'name' => $member->getDisplayName(),
                 'email' => $member->getEmail(),
                 'avatar' => $member->getAvatarPath(),
                 'workload' => $workload,
@@ -232,7 +249,7 @@ class DashboardStatsProvider implements ProviderInterface
     private function getStatistics(User $user, \DateTime $startOfWeek): array
     {
         $now = new \DateTime();
-        
+
         // Tâches complétées cette semaine
         $completedTasks = $this->entityManager->getRepository(Task::class)
             ->createQueryBuilder('t')
@@ -380,11 +397,11 @@ class DashboardStatsProvider implements ProviderInterface
     {
         $hours = floor($minutes / 60);
         $mins = $minutes % 60;
-        
+
         if ($hours > 0) {
             return $mins > 0 ? "{$hours}h{$mins}" : "{$hours}h";
         }
-        
+
         return "{$mins}min";
     }
 }

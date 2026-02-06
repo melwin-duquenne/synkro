@@ -87,7 +87,7 @@ interface Statistics {
 }
 
 const props = defineProps<{
-  statistics: Statistics
+  statistics?: Statistics
 }>()
 
 const getProductivityClass = (productivity: number): string => {
@@ -97,7 +97,7 @@ const getProductivityClass = (productivity: number): string => {
 }
 
 const getAverageMeetingDuration = (): string => {
-  if (props.statistics.meetingsCount === 0) return '0min'
+  if (!props.statistics || props.statistics.meetingsCount === 0) return '0min'
   
   const avgMinutes = Math.round(props.statistics.meetingsDuration / props.statistics.meetingsCount)
   const hours = Math.floor(avgMinutes / 60)

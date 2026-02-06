@@ -29,13 +29,31 @@
       <!-- Colonne gauche (2 colonnes sur large) -->
       <div class="lg:col-span-2 space-y-6">
         <!-- Charge de travail -->
-        <WorkloadOverview :workload="dashboardData?.workload" />
+        <WorkloadOverview 
+          :workload="dashboardData?.workload" 
+          :is-admin="authStore.user?.role === 'admin'"
+          :users="dashboardData?.teamAvailability"
+          :current-user-id="authStore.user?.id"
+          :current-user-name="authStore.user?.displayName || authStore.user?.email"
+          @user-change="handleWorkloadUserChange"
+        />
         
         <!-- Tâches -->
-        <TasksOverview :tasks="dashboardData?.tasks" />
+        <TasksOverview 
+          :tasks="dashboardData?.tasks"
+          :is-admin="authStore.user?.role === 'admin'"
+          :users="dashboardData?.teamAvailability"
+          :available-rooms="dashboardData?.recentRooms"
+          :current-user-id="authStore.user?.id"
+          :current-user-name="authStore.user?.displayName || authStore.user?.email"
+          @filter-change="handleTasksFilterChange"
+        />
         
         <!-- Rooms récentes -->
-        <RecentRooms :recent-rooms="dashboardData?.recentRooms" />
+        <RecentRooms 
+          :recent-rooms="dashboardData?.recentRooms || []" 
+          :error="error || (!authStore.isAuthenticated ? 'Veuillez vous connecter pour voir vos rooms' : undefined)" 
+        />
         
         <!-- Statistiques -->
         <Statistics :statistics="dashboardData?.statistics" />
@@ -45,6 +63,7 @@
       <div class="space-y-6">
         <!-- Actions rapides -->
         <QuickActions 
+          :user-role="authStore.user?.role"
           @create-room="handleCreateRoom"
           @create-event="handleCreateEvent"
           @create-task="handleCreateTask"
@@ -55,6 +74,7 @@
         <UpcomingEvents 
           :upcoming-events="dashboardData?.upcomingEvents"
           :today-events="dashboardData?.todayEvents"
+          @event-click="handleEventClick"
         />
         
         <!-- Disponibilité équipe -->
@@ -64,12 +84,30 @@
         <NotificationCenter :notifications="dashboardData?.notifications" />
       </div>
     </div>
+    
+    <!-- Modals -->
+    <SelectRoomForTaskModal 
+      :open="showSelectRoomModal" 
+      @close="showSelectRoomModal = false"
+      @select-room="handleRoomSelected"
+    />
+    <CreateTaskModal 
+      :open="showCreateTaskModal" 
+      :room-id="selectedRoomId || 0" 
+      @close="showCreateTaskModal = false; selectedRoomId = null" 
+    />
+    <EventDetailModal
+      :open="showEventDetailModal"
+      :event="selectedEvent"
+      @close="showEventDetailModal = false; selectedEvent = null"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import { useDashboard } from '@/composables/useDashboard'
 import WorkloadOverview from '@/components/dashboard/WorkloadOverview.vue'
 import UpcomingEvents from '@/components/dashboard/UpcomingEvents.vue'
@@ -79,30 +117,74 @@ import TeamAvailability from '@/components/dashboard/TeamAvailability.vue'
 import Statistics from '@/components/dashboard/Statistics.vue'
 import QuickActions from '@/components/dashboard/QuickActions.vue'
 import NotificationCenter from '@/components/dashboard/NotificationCenter.vue'
+import CreateTaskModal from '@/components/tasks/CreateTaskModal.vue'
+import SelectRoomForTaskModal from '@/components/dashboard/SelectRoomForTaskModal.vue'
+import EventDetailModal from '@/components/dashboard/EventDetailModal.vue'
 
 const router = useRouter()
+const authStore = useAuthStore()
 const { dashboardData, loading, error, fetchDashboardData } = useDashboard()
 
+// Modal states
+const showSelectRoomModal = ref(false)
+const showCreateTaskModal = ref(false)
+const selectedRoomId = ref<number | null>(null)
+const showEventDetailModal = ref(false)
+const selectedEvent = ref<any>(null)
+
 onMounted(() => {
-  fetchDashboardData()
+  if (!authStore.isAuthenticated) {
+    // Données fictives pour le développement
+    dashboardData.value = {
+      workload: { daily: [], overloadDays: 0, hasAlert: false },
+      upcomingEvents: [],
+      todayEvents: [],
+      tasks: { today: [], overdue: [], roomProgress: [] },
+      recentRooms: [
+        { id: 1, name: 'Test Room 1', visibility: 'enterprise', moduleCount: 2, layoutType: 'tabs', creator: { displayName: 'Test User' }, createdAt: new Date().toISOString() },
+        { id: 2, name: 'Test Room 2', visibility: 'private', moduleCount: 1, layoutType: 'grid-2x2', creator: { displayName: 'Test User' }, createdAt: new Date().toISOString() }
+      ],
+      teamAvailability: [],
+      statistics: { tasksCompleted: 0, tasksCreated: 0, productivity: 0, meetingsCount: 0, meetingsDuration: 0, meetingsDurationFormatted: '0h' },
+      notifications: { upcomingDeadlines: [] }
+    }
+    loading.value = false
+  } else {
+    fetchDashboardData()
+  }
 })
 
 const handleCreateRoom = () => {
-  router.push('/rooms/create')
+  router.push('/rooms?create=true')
 }
 
 const handleCreateEvent = () => {
-  // TODO: Ouvrir modal de création d'événement
-  console.log('Create event')
+  router.push('/calendar?create=true')
 }
 
 const handleCreateTask = () => {
-  // TODO: Ouvrir modal de création de tâche
-  console.log('Create task')
+  showSelectRoomModal.value = true
+}
+
+const handleRoomSelected = (room: any) => {
+  selectedRoomId.value = room.id
+  showCreateTaskModal.value = true
 }
 
 const handleInviteMembers = () => {
-  // TODO: Ouvrir modal d'invitation
-  console.log('Invite members')
+  router.push('/admin/users')
+}
+
+const handleEventClick = (event: any) => {
+  selectedEvent.value = event
+  showEventDetailModal.value = true
+}
+
+const handleWorkloadUserChange = async (userId: number | null) => {
+  await fetchDashboardData(userId)
+}
+
+const handleTasksFilterChange = async (filters: { userId?: number | null, roomId?: number | null }) => {
+  await fetchDashboardData(filters.userId)
 }
 </script>

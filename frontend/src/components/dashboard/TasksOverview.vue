@@ -1,14 +1,52 @@
 <template>
   <div class="card bg-base-100 shadow-xl">
     <div class="card-body">
-      <h2 class="card-title">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-        </svg>
-        Tâches
-      </h2>      
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="card-title">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+          </svg>
+          Tâches
+        </h2>
+      </div>
+
+      <!-- Filtres -->
+      <div class="mb-4 space-y-3">
+        <!-- Filtre Utilisateur (Admin uniquement) -->
+        <div v-if="isAdmin && users && users.length > 0" class="form-control">
+          <label class="label">
+            <span class="label-text font-semibold">Utilisateur</span>
+          </label>
+          <select 
+            v-model="selectedUserId" 
+            class="select select-bordered select-sm w-full"
+            @change="handleUserChange">
+            <option :value="currentUserId">Moi ({{ currentUserName }})</option>
+            <option v-for="user in users" :key="user.id" :value="user.id">
+              {{ user.displayName || user.email }}
+            </option>
+          </select>
+        </div>
+
+        <!-- Filtre Room -->
+        <div v-if="availableRooms && availableRooms.length > 0" class="form-control">
+          <label class="label">
+            <span class="label-text font-semibold">Room</span>
+          </label>
+          <select 
+            v-model="selectedRoomId" 
+            class="select select-bordered select-sm w-full"
+            @change="handleRoomChange">
+            <option :value="null">Toutes les rooms</option>
+            <option v-for="room in availableRooms" :key="room.id" :value="room.id">
+              {{ room.name }}
+            </option>
+          </select>
+        </div>
+      </div>
+
       <!-- État vide -->
-      <div v-if="!tasks" class="text-center py-8 text-base-content/60">
+      <div v-if="!tasks || !tasks.today || !tasks.overdue || !tasks.roomProgress" class="text-center py-8 text-base-content/60">
         <p>Aucune donnée de tâches disponible pour le moment.</p>
       </div>
       
@@ -118,6 +156,8 @@
 </template>
 
 <script setup lang="ts">
+import { ref, watch } from 'vue'
+
 interface TaskItem {
   id: number
   title: string
@@ -140,9 +180,47 @@ interface TasksData {
   }>
 }
 
-defineProps<{
-  tasks: TasksData
+interface User {
+  id: number
+  email: string
+  displayName: string | null
+}
+
+interface Room {
+  id: number
+  name: string
+}
+
+const props = defineProps<{
+  tasks?: TasksData
+  isAdmin?: boolean
+  users?: User[]
+  availableRooms?: Room[]
+  currentUserId?: number
+  currentUserName?: string
 }>()
+
+const emit = defineEmits<{
+  filterChange: [filters: { userId: number | null; roomId: number | null }]
+}>()
+
+const selectedUserId = ref<number | null>(props.currentUserId || null)
+const selectedRoomId = ref<number | null>(null)
+
+const handleUserChange = () => {
+  selectedRoomId.value = null // Reset room selection when user changes
+  emit('filterChange', {
+    userId: selectedUserId.value,
+    roomId: selectedRoomId.value
+  })
+}
+
+const handleRoomChange = () => {
+  emit('filterChange', {
+    userId: selectedUserId.value,
+    roomId: selectedRoomId.value
+  })
+}
 
 const getPriorityClass = (priority: string): string => {
   const classes: Record<string, string> = {
@@ -155,7 +233,17 @@ const getPriorityClass = (priority: string): string => {
 
 const formatDate = (dateString: string | null): string => {
   if (!dateString) return ''
-  const date = new Date(dateString)
+  
+  // Parser manuellement la date ISO pour éviter les conversions de timezone
+  const match = dateString.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/)
+  if (!match) {
+    // Fallback si le format n'est pas ISO complet
+    const date = new Date(dateString)
+    return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+  }
+  
+  const [, year, month, day, hour, minute] = match
+  const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute))
   return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
 }
 </script>

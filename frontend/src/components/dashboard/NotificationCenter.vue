@@ -77,7 +77,7 @@ interface Notifications {
 }
 
 defineProps<{
-  notifications: Notifications
+  notifications?: Notifications
 }>()
 
 const getPriorityClass = (priority: string): string => {

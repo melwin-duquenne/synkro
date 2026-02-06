@@ -6,7 +6,15 @@ export interface DashboardData {
       date: string
       dayName: string
       percentage: number
+      hoursUsed: number
+      hoursAvailable: number
       isOverloaded: boolean
+      tasks?: Array<{
+        id: number
+        title: string
+        roomName: string
+        estimatedHours: number
+      }>
     }>
     overloadDays: number
     hasAlert: boolean
@@ -43,6 +51,10 @@ export interface DashboardData {
     visibility: string
     moduleCount: number
     layoutType: string
+    creator?: {
+      displayName: string
+    }
+    createdAt?: string
   }>
   teamAvailability: Array<{
     id: number
@@ -80,22 +92,92 @@ export function useDashboard() {
   const loading = ref(false)
   const error = ref<string | null>(null)
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async (userId?: number | null) => {
     loading.value = true
     error.value = null
     try {
-      const response = await fetch('/api/dashboard', {
+      const token = localStorage.getItem('token')
+      console.log('[useDashboard] Fetching dashboard for userId:', userId)
+      
+      const url = userId ? `/api/dashboard?userId=${userId}` : '/api/dashboard'
+      console.log('[useDashboard] Request URL:', url)
+      const response = await fetch(url, {
         headers: {
           'Accept': 'application/ld+json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         }
       })
 
+      if (response.status === 401) {
+        throw new Error('Utilisateur non authentifié')
+      }
+      
       if (!response.ok) {
         throw new Error('Failed to fetch dashboard data')
       }
 
-      dashboardData.value = await response.json()
+      const data = await response.json()
+      
+      // Helper pour extraire les données d'une Collection API Platform
+      const extractData = (value: any) => {
+        if (value && typeof value === 'object' && value['@type'] === 'Collection' && Array.isArray(value.member)) {
+          return value.member
+        }
+        // Si c'est un objet avec des propriétés qui sont des Collections, extraire chacune
+        if (value && typeof value === 'object' && !Array.isArray(value)) {
+          const extracted: any = {}
+          for (const [key, val] of Object.entries(value)) {
+            if (key.startsWith('@')) continue // Ignorer les métadonnées API Platform
+            extracted[key] = extractData(val)
+          }
+          return Object.keys(extracted).length > 0 ? extracted : value
+        }
+        return value
+      }
+      
+      // API Platform retourne un objet avec chaque propriété comme Collection
+      if (data['@type'] === 'DashboardData') {
+        
+        const extractedWorkload = extractData(data.workload)
+        const extractedTasks = extractData(data.tasks)
+        
+        const workloadData = Array.isArray(extractedWorkload) 
+          ? { daily: extractedWorkload[0] || [], overloadDays: extractedWorkload[1] || 0, hasAlert: extractedWorkload[2] || false }
+          : (extractedWorkload || { daily: [], overloadDays: 0, hasAlert: false })
+        
+        console.log('Workload daily array:', workloadData.daily)
+        if (workloadData.daily.length > 0) {
+          console.log('First daily item:', workloadData.daily[0])
+        }
+        
+        dashboardData.value = {
+          workload: workloadData,
+          upcomingEvents: extractData(data.upcomingEvents) || [],
+          todayEvents: extractData(data.todayEvents) || [],
+          tasks: Array.isArray(extractedTasks)
+            ? { today: extractedTasks[0] || [], overdue: extractedTasks[1] || [], roomProgress: extractedTasks[2] || [] }
+            : (extractedTasks || { today: [], overdue: [], roomProgress: [] }),
+          recentRooms: extractData(data.recentRooms) || [],
+          teamAvailability: extractData(data.teamAvailability) || [],
+          statistics: extractData(data.statistics) || { tasksCompleted: 0, tasksCreated: 0, productivity: 0, meetingsCount: 0, meetingsDuration: 0, meetingsDurationFormatted: '0h' },
+          notifications: extractData(data.notifications) || { upcomingDeadlines: [] }
+        }
+      } else if (data['@type'] === 'Collection' && Array.isArray(data.member)) {
+        // Ancien format (tableau indexé)
+        dashboardData.value = {
+          workload: data.member[0],
+          upcomingEvents: data.member[1],
+          todayEvents: data.member[2],
+          tasks: data.member[3],
+          recentRooms: data.member[4],
+          teamAvailability: data.member[5],
+          statistics: data.member[6],
+          notifications: data.member[7]
+        }
+      } else {
+        // Format direct (si le backend change)
+        dashboardData.value = data
+      }
     } catch (err: any) {
       error.value = err.message || 'Erreur lors du chargement du dashboard'
       console.error('Error fetching dashboard:', err)

@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useCalendarStore } from '@/stores/calendar'
 import { useWorkload } from '@/composables/useWorkload'
 import type { CalendarEvent, EventType } from '@/types'
 import CalendarEventModal from '@/components/calendar/CalendarEventModal.vue'
 import WorkloadIndicator from '@/components/calendar/WorkloadIndicator.vue'
 
+const route = useRoute()
 const calendarStore = useCalendarStore()
 const { 
   workload: dailyWorkload, 
@@ -196,6 +198,11 @@ async function loadWorkload() {
 onMounted(() => {
   fetchEvents()
   loadWorkload()
+
+  // Ouvrir automatiquement le modal de création si on vient du dashboard
+  if (route.query.create === 'true') {
+    openCreateModal(new Date())
+  }
 })
 </script>
 
