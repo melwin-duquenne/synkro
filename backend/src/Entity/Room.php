@@ -9,7 +9,12 @@ use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Patch;
 use ApiPlatform\Metadata\Post;
 use App\Dto\Room\CreateRoomInput;
+use App\Dto\Room\ManageRoomMembersInput;
+use App\Dto\Room\RoomMemberOutput;
 use App\Dto\Room\RoomOutput;
+use App\Dto\Room\UpdateRoomInput;
+use App\State\RoomMembersProcessor;
+use App\State\RoomMembersProvider;
 use App\State\RoomProcessor;
 use App\State\RoomProvider;
 use Doctrine\Common\Collections\ArrayCollection;
@@ -39,6 +44,7 @@ use Symfony\Component\Serializer\Annotation\Groups;
         ),
         new Patch(
             uriTemplate: '/rooms/{id}',
+            input: UpdateRoomInput::class,
             output: RoomOutput::class,
             processor: RoomProcessor::class
         ),
@@ -50,6 +56,17 @@ use Symfony\Component\Serializer\Annotation\Groups;
         new Delete(
             uriTemplate: '/rooms/{id}',
             processor: RoomProcessor::class
+        ),
+        new GetCollection(
+            uriTemplate: '/rooms/{id}/members',
+            output: RoomMemberOutput::class,
+            provider: RoomMembersProvider::class
+        ),
+        new Post(
+            uriTemplate: '/rooms/{id}/members',
+            input: ManageRoomMembersInput::class,
+            output: RoomMemberOutput::class,
+            processor: RoomMembersProcessor::class
         )
     ]
 )]
@@ -124,6 +141,9 @@ class Room
     #[ORM\OneToMany(mappedBy: 'room', targetEntity: Task::class, cascade: ['remove'])]
     private Collection $tasks;
 
+    #[ORM\OneToMany(mappedBy: 'room', targetEntity: KanbanColumn::class, cascade: ['persist', 'remove'])]
+    private Collection $kanbanColumns;
+
     #[ORM\OneToMany(mappedBy: 'room', targetEntity: CalendarEvent::class)]
     private Collection $calendarEvents;
 
@@ -135,6 +155,7 @@ class Room
         $this->messages = new ArrayCollection();
         $this->files = new ArrayCollection();
         $this->tasks = new ArrayCollection();
+        $this->kanbanColumns = new ArrayCollection();
         $this->calendarEvents = new ArrayCollection();
         $this->createdAt = new \DateTime();
     }
@@ -319,6 +340,30 @@ class Room
     public function getTasks(): Collection
     {
         return $this->tasks;
+    }
+
+    public function getKanbanColumns(): Collection
+    {
+        return $this->kanbanColumns;
+    }
+
+    public function addKanbanColumn(KanbanColumn $kanbanColumn): self
+    {
+        if (!$this->kanbanColumns->contains($kanbanColumn)) {
+            $this->kanbanColumns->add($kanbanColumn);
+            $kanbanColumn->setRoom($this);
+        }
+        return $this;
+    }
+
+    public function removeKanbanColumn(KanbanColumn $kanbanColumn): self
+    {
+        if ($this->kanbanColumns->removeElement($kanbanColumn)) {
+            if ($kanbanColumn->getRoom() === $this) {
+                $kanbanColumn->setRoom(null);
+            }
+        }
+        return $this;
     }
 
     public function getCalendarEvents(): Collection

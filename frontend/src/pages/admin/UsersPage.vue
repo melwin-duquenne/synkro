@@ -3,10 +3,26 @@ import { ref, onMounted, computed } from 'vue'
 import { useAdminStore } from '@/stores/admin'
 import { useAuthStore } from '@/stores/auth'
 import { useInvitationStore } from '@/stores/invitation'
+import { canAssignRole, isAtLeast } from '@/utils/permissions'
+import type { UserRole } from '@/types'
 
 const adminStore = useAdminStore()
 const authStore = useAuthStore()
 const invitationStore = useInvitationStore()
+
+const roleLabels: Record<UserRole, string> = {
+  user: 'Utilisateur',
+  editor: 'Editeur',
+  owner: 'Proprietaire',
+  admin: 'Administrateur'
+}
+
+const allRoles: UserRole[] = ['user', 'editor', 'owner', 'admin']
+
+function canChangeToRole(targetRole: UserRole): boolean {
+  if (!authStore.user) return false
+  return canAssignRole(authStore.user.role, targetRole)
+}
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || ''
 
@@ -25,8 +41,11 @@ const entrepriseSuccess = ref<string | null>(null)
 const entrepriseError = ref<string | null>(null)
 
 const sortedUsers = computed(() => {
+  const roleOrder: Record<string, number> = { admin: 0, owner: 1, editor: 2, user: 3 }
   return [...adminStore.users].sort((a, b) => {
-    if (a.role !== b.role) return a.role === 'admin' ? -1 : 1
+    const roleA = roleOrder[a.role] ?? 99
+    const roleB = roleOrder[b.role] ?? 99
+    if (roleA !== roleB) return roleA - roleB
     return a.displayName.localeCompare(b.displayName)
   })
 })
@@ -283,10 +302,16 @@ function getInitials(name: string): string {
                     class="select select-bordered select-sm"
                     :value="u.role"
                     @change="handleRoleChange(u.id, ($event.target as HTMLSelectElement).value)"
-                    :disabled="u.id === authStore.user?.id"
+                    :disabled="u.id === authStore.user?.id || !isAtLeast(authStore.user?.role || 'user', 'owner')"
                   >
-                    <option value="user">Utilisateur</option>
-                    <option value="admin">Administrateur</option>
+                    <option
+                      v-for="role in allRoles"
+                      :key="role"
+                      :value="role"
+                      :disabled="!canChangeToRole(role)"
+                    >
+                      {{ roleLabels[role] }}
+                    </option>
                   </select>
                 </td>
                 <td>{{ new Date(u.createdAt).toLocaleDateString('fr-FR') }}</td>

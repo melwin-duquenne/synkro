@@ -12,14 +12,10 @@ final class CreateTaskInput
 
     public ?string $description = null;
 
-    #[Assert\Choice(choices: ['todo', 'in_progress', 'done'])]
-    public string $status = 'todo';
+    public ?int $columnId = null;
 
     public ?int $assignedToId = null;
 
     #[Assert\PositiveOrZero]
     public ?int $estimation = null;
-
-    #[Assert\NotNull]
-    public int $roomId;
 }

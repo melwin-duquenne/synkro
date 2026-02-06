@@ -12,6 +12,8 @@ import VideoModule from '@/components/video/VideoModule.vue'
 import FileModule from '@/components/files/FileModule.vue'
 import LayoutSelectorModal from '@/components/room/LayoutSelectorModal.vue'
 import ModuleOrderModal from '@/components/room/ModuleOrderModal.vue'
+import RoomSettingsModal from '@/components/room/RoomSettingsModal.vue'
+import { isAtLeast } from '@/utils/permissions'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -20,6 +22,7 @@ const loading = ref(true)
 const activeModule = ref<string | null>(null)
 const showLayoutSelector = ref(false)
 const showModuleOrder = ref(false)
+const showSettings = ref(false)
 
 const roomId = computed(() => Number(route.params.id))
 
@@ -40,6 +43,18 @@ const hasChatModule = computed(() => {
 })
 
 const layoutType = computed(() => room.value?.layoutType || 'tabs')
+
+const canEditRoom = computed(() => {
+  if (!room.value || !authStore.user) return false
+  // Creator can always edit
+  if (room.value.creator.id === authStore.user.id) return true
+  // User with editor role or higher can edit
+  return isAtLeast(authStore.user.role, 'editor')
+})
+
+function handleRoomUpdated(updatedRoom: Room) {
+  room.value = updatedRoom
+}
 
 function getModuleComponent(moduleCode: string | null) {
   if (!moduleCode) return null
@@ -139,18 +154,30 @@ onMounted(async () => {
           </p>
         </div>
         <div class="flex items-center gap-2 flex-wrap">
-          <button 
-            class="btn btn-sm btn-ghost gap-1" 
+          <button
+            v-if="canEditRoom"
+            class="btn btn-sm btn-ghost gap-1"
+            @click="showSettings = true"
+            title="Parametres de la room"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span class="hidden sm:inline">Parametres</span>
+          </button>
+          <button
+            class="btn btn-sm btn-ghost gap-1"
             @click="showModuleOrder = true"
-            title="Réorganiser les modules"
+            title="Reorganiser les modules"
           >
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16" />
             </svg>
             <span class="hidden sm:inline">Ordre</span>
           </button>
-          <button 
-            class="btn btn-sm btn-ghost gap-1" 
+          <button
+            class="btn btn-sm btn-ghost gap-1"
             @click="showLayoutSelector = true"
             title="Changer la disposition"
           >
@@ -376,11 +403,19 @@ onMounted(async () => {
     />
 
     <!-- Module Order Modal -->
-    <ModuleOrderModal 
-      v-if="showModuleOrder && room" 
+    <ModuleOrderModal
+      v-if="showModuleOrder && room"
       :module-rooms="room.moduleRooms"
       @close="showModuleOrder = false"
       @save="updateModuleOrder"
+    />
+
+    <!-- Room Settings Modal -->
+    <RoomSettingsModal
+      v-if="showSettings && room"
+      :room="room"
+      @close="showSettings = false"
+      @updated="handleRoomUpdated"
     />
 
     <!-- Chat flottant -->

@@ -1,18 +1,17 @@
 <?php
 
-namespace App\Dto\Task;
+namespace App\Dto\KanbanColumn;
 
 use Symfony\Component\Validator\Constraints as Assert;
 
-final class ReorderTasksInput
+final class ReorderKanbanColumnsInput
 {
-    #[Assert\NotBlank(message: 'Tasks array is required')]
+    #[Assert\NotBlank(message: 'Columns array is required')]
     #[Assert\All([
         new Assert\Collection([
             'id' => new Assert\NotNull(),
-            'columnId' => new Assert\NotNull(),
             'position' => new Assert\NotNull()
         ])
     ])]
-    public array $tasks = [];
+    public array $columns = [];
 }

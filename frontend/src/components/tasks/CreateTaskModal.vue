@@ -7,11 +7,23 @@ interface TaskUser {
   displayName: string
 }
 
+interface KanbanColumn {
+  id: number
+  name: string
+  color: string
+  position: number
+  roomId: number
+  taskCount: number
+}
+
 interface Task {
   id: number
   title: string
   description: string | null
-  status: 'todo' | 'in_progress' | 'done'
+  columnId: number
+  columnName: string
+  columnColor: string
+  type: 'active' | 'archived'
   position: number
   assignedTo: TaskUser | null
   estimation: number | null
@@ -21,7 +33,8 @@ interface Task {
 const props = defineProps<{
   open: boolean
   roomId: number
-  initialStatus?: 'todo' | 'in_progress' | 'done'
+  columns: KanbanColumn[]
+  initialColumnId?: number
 }>()
 
 const emit = defineEmits<{
@@ -33,7 +46,7 @@ const authStore = useAuthStore()
 
 const title = ref('')
 const description = ref('')
-const status = ref<'todo' | 'in_progress' | 'done'>('todo')
+const columnId = ref<number | null>(null)
 const assignedToId = ref<number | null>(null)
 const estimation = ref<number | null>(null)
 const loading = ref(false)
@@ -41,12 +54,6 @@ const error = ref<string | null>(null)
 
 const members = ref<TaskUser[]>([])
 const loadingMembers = ref(false)
-
-const statusOptions = [
-  { value: 'todo', label: 'À faire' },
-  { value: 'in_progress', label: 'En cours' },
-  { value: 'done', label: 'Terminé' }
-]
 
 const estimationOptions = [
   { value: null, label: 'Non estimé' },
@@ -76,16 +83,18 @@ async function fetchMembers() {
   }
 }
 
-watch(() => props.initialStatus, (newStatus) => {
-  if (newStatus) {
-    status.value = newStatus
+watch(() => props.initialColumnId, (newColumnId) => {
+  if (newColumnId) {
+    columnId.value = newColumnId
   }
 }, { immediate: true })
 
 watch(() => props.open, (isOpen) => {
   if (isOpen) {
-    if (props.initialStatus) {
-      status.value = props.initialStatus
+    if (props.initialColumnId) {
+      columnId.value = props.initialColumnId
+    } else if (props.columns.length > 0 && !columnId.value) {
+      columnId.value = props.columns[0].id
     }
     if (members.value.length === 0) {
       fetchMembers()
@@ -113,7 +122,7 @@ async function handleSubmit() {
       body: JSON.stringify({
         title: title.value,
         description: description.value || null,
-        status: status.value,
+        columnId: columnId.value,
         assignedToId: assignedToId.value,
         estimation: estimation.value
       })
@@ -137,7 +146,7 @@ async function handleSubmit() {
 function resetForm() {
   title.value = ''
   description.value = ''
-  status.value = props.initialStatus || 'todo'
+  columnId.value = props.initialColumnId || (props.columns.length > 0 ? props.columns[0].id : null)
   assignedToId.value = null
   estimation.value = null
   error.value = null
@@ -183,14 +192,14 @@ function handleClose() {
           ></textarea>
         </div>
 
-        <!-- Status -->
+        <!-- Column -->
         <div class="form-control">
           <label class="label">
-            <span class="label-text">Statut</span>
+            <span class="label-text">Colonne</span>
           </label>
-          <select v-model="status" class="select select-bordered w-full">
-            <option v-for="option in statusOptions" :key="option.value" :value="option.value">
-              {{ option.label }}
+          <select v-model="columnId" class="select select-bordered w-full">
+            <option v-for="col in columns" :key="col.id" :value="col.id">
+              {{ col.name }}
             </option>
           </select>
         </div>

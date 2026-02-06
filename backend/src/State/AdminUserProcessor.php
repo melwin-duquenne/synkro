@@ -25,14 +25,15 @@ class AdminUserProcessor implements ProcessorInterface
 
     public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): mixed
     {
-        $admin = $this->security->getUser();
+        $currentUser = $this->security->getUser();
 
-        if (!$admin instanceof User) {
+        if (!$currentUser instanceof User) {
             throw new AccessDeniedHttpException('Not authenticated');
         }
 
-        if ($admin->getRole() !== 'admin') {
-            throw new AccessDeniedHttpException('Admin access required');
+        // Only owner and admin can manage users
+        if (!$currentUser->isAtLeast(User::ROLE_OWNER)) {
+            throw new AccessDeniedHttpException('Owner or admin access required');
         }
 
         $targetUser = $this->entityManager->getRepository(User::class)->find($uriVariables['id']);
@@ -42,39 +43,49 @@ class AdminUserProcessor implements ProcessorInterface
         }
 
         // Ensure target user is in the same entreprise
-        if ($targetUser->getEntreprise()?->getId() !== $admin->getEntreprise()?->getId()) {
+        if ($targetUser->getEntreprise()?->getId() !== $currentUser->getEntreprise()?->getId()) {
             throw new AccessDeniedHttpException('Cannot manage users from another entreprise');
         }
 
         if ($operation instanceof Patch) {
-            return $this->update($data, $admin, $targetUser);
+            return $this->update($data, $currentUser, $targetUser);
         }
 
         if ($operation instanceof Delete) {
-            return $this->remove($admin, $targetUser);
+            return $this->remove($currentUser, $targetUser);
         }
 
         return null;
     }
 
-    private function update(mixed $data, User $admin, User $targetUser): AdminUserOutput
+    private function update(mixed $data, User $currentUser, User $targetUser): AdminUserOutput
     {
         if (!$data instanceof AdminUpdateUserInput) {
             throw new \InvalidArgumentException('Invalid input');
         }
 
-        // Prevent admin from demoting themselves
-        if ($targetUser->getId() === $admin->getId() && $data->role !== null && $data->role !== 'admin') {
-            throw new BadRequestHttpException('You cannot change your own admin role');
+        // Prevent user from changing their own role
+        if ($targetUser->getId() === $currentUser->getId() && $data->role !== null) {
+            throw new BadRequestHttpException('You cannot change your own role');
         }
 
         if ($data->role !== null) {
+            // Check if current user can assign this role
+            if (!$currentUser->canAssignRole($data->role)) {
+                throw new AccessDeniedHttpException('You cannot assign this role');
+            }
+
+            // Prevent demoting an admin if current user is not admin
+            if ($targetUser->getRole() === User::ROLE_ADMIN && $currentUser->getRole() !== User::ROLE_ADMIN) {
+                throw new AccessDeniedHttpException('Only admins can change admin roles');
+            }
+
             $targetUser->setRole($data->role);
         }
 
         if ($data->teamId !== null) {
             $team = $this->entityManager->getRepository(Team::class)->find($data->teamId);
-            if (!$team || $team->getEntreprise()?->getId() !== $admin->getEntreprise()?->getId()) {
+            if (!$team || $team->getEntreprise()?->getId() !== $currentUser->getEntreprise()?->getId()) {
                 throw new BadRequestHttpException('Invalid team');
             }
             $targetUser->setTeam($team);
@@ -85,10 +96,15 @@ class AdminUserProcessor implements ProcessorInterface
         return AdminUserOutput::fromEntity($targetUser);
     }
 
-    private function remove(User $admin, User $targetUser): null
+    private function remove(User $currentUser, User $targetUser): null
     {
-        if ($targetUser->getId() === $admin->getId()) {
+        if ($targetUser->getId() === $currentUser->getId()) {
             throw new BadRequestHttpException('You cannot delete your own account');
+        }
+
+        // Only admin can delete other admins
+        if ($targetUser->getRole() === User::ROLE_ADMIN && $currentUser->getRole() !== User::ROLE_ADMIN) {
+            throw new AccessDeniedHttpException('Only admins can delete other admins');
         }
 
         $this->entityManager->remove($targetUser);

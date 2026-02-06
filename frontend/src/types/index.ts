@@ -1,9 +1,11 @@
 // User types
+export type UserRole = 'user' | 'editor' | 'owner' | 'admin'
+
 export interface User {
   id: number
   email: string
   displayName: string
-  role: 'admin' | 'user'
+  role: UserRole
   avatarUrl?: string | null
   entreprise: Entreprise | null
   team: Team | null
@@ -69,13 +71,18 @@ export interface RoomTemplate {
 export interface TeamRoomPermission {
   id: number
   team: Team
-  role: 'viewer' | 'editor' | 'owner'
 }
 
 export interface UserRoomPermission {
   id: number
   user: User
-  role: 'viewer' | 'editor' | 'owner'
+}
+
+export interface RoomMember {
+  id: number
+  displayName: string
+  email?: string
+  isCreator: boolean
 }
 
 // Message types
@@ -175,7 +182,7 @@ export interface AdminUser {
   id: number
   email: string
   displayName: string
-  role: 'admin' | 'user'
+  role: UserRole
   avatarUrl?: string | null
   team: Team | null
   createdAt: string

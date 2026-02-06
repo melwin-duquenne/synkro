@@ -106,11 +106,13 @@ use App\State\ResetPasswordProcessor;
             input: AdminUpdateUserInput::class,
             output: AdminUserOutput::class,
             processor: AdminUserProcessor::class,
+            read: false,
             name: 'admin_user_update'
         ),
         new Delete(
             uriTemplate: '/account/admin/users/{id}',
             processor: AdminUserProcessor::class,
+            read: false,
             name: 'admin_user_delete'
         )
     ]

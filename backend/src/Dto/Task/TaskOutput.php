@@ -10,7 +10,10 @@ final class TaskOutput
     public int $id;
     public string $title;
     public ?string $description;
-    public string $status;
+    public int $columnId;
+    public string $columnName;
+    public string $columnColor;
+    public string $type;
     public int $position;
     public ?UserSimpleOutput $assignedTo = null;
     public ?int $estimation = null;
@@ -23,7 +26,10 @@ final class TaskOutput
         $output->id = $task->getId();
         $output->title = $task->getTitle();
         $output->description = $task->getDescription();
-        $output->status = $task->getStatus();
+        $output->columnId = $task->getColumn()->getId();
+        $output->columnName = $task->getColumn()->getName();
+        $output->columnColor = $task->getColumn()->getColor();
+        $output->type = $task->getType();
         $output->position = $task->getPosition();
         $output->createdAt = $task->getCreatedAt()->format('c');
         $output->roomId = $task->getRoom()->getId();
