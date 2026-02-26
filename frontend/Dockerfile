@@ -6,7 +6,9 @@ COPY package*.json ./
 RUN npm ci
 
 COPY . .
-RUN npm run build
+RUN node -p "require('./package.json').scripts"
+RUN cat package.json | head -n 40
+RUN npm run build:prod
 
 # ---- Runtime stage (unprivileged) ----
 FROM nginxinc/nginx-unprivileged:1.27-alpine
