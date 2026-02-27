@@ -6,8 +6,6 @@ COPY package*.json ./
 RUN npm ci
 
 COPY . .
-RUN node -p "require('./package.json').scripts"
-RUN cat package.json | head -n 40
 RUN npm run build:prod
 
 # ---- Runtime stage (unprivileged) ----
