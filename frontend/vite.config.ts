@@ -3,27 +3,31 @@ import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
 import { fileURLToPath, URL } from 'node:url'
 
+const backendTarget = process.env.VITE_BACKEND_TARGET || 'http://localhost:8000'
+
 export default defineConfig({
-  plugins: [
-    vue(),
-    tailwindcss()
-  ],
+  plugins: [vue(), tailwindcss()],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
   },
   server: {
+    host: true,
     port: 5173,
+    strictPort: true,
+    watch: {
+      usePolling: true,
+      interval: 100
+    },
+    hmr: {
+      host: 'localhost',
+      port: 5173
+    },
     proxy: {
-      '/api': {
-        target: 'http://localhost:8000',
-        changeOrigin: true
-      },
-      '/uploads': {
-        target: 'http://localhost:8000',
-        changeOrigin: true
-      }
+      '/api': { target: backendTarget, changeOrigin: true },
+      '/uploads': { target: backendTarget, changeOrigin: true },
+      '/auth': { target: backendTarget, changeOrigin: true }
     }
   }
 })
