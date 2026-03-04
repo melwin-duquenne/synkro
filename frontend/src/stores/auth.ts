@@ -42,19 +42,6 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function loginWithGoogle(): Promise<void> {
-    loading.value = true
-    error.value = null
-
-    try {
-      // Rediriger vers l'endpoint OAuth du backend
-      window.location.href = `${API_URL.replace('/api', '')}/auth/google`
-    } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Google login failed'
-      loading.value = false
-    }
-  }
-
   async function register(data: RegisterData): Promise<boolean> {
     loading.value = true
     error.value = null
