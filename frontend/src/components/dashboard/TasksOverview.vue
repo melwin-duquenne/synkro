@@ -10,33 +10,15 @@
         </h2>
       </div>
 
-      <!-- Filtres -->
-      <div class="mb-4 space-y-3">
-        <!-- Filtre Utilisateur (Admin uniquement) -->
-        <div v-if="isAdmin && users && users.length > 0" class="form-control">
-          <label class="label">
-            <span class="label-text font-semibold">Utilisateur</span>
-          </label>
-          <select 
-            v-model="selectedUserId" 
-            class="select select-bordered select-sm w-full"
-            @change="handleUserChange">
-            <option :value="currentUserId">Moi ({{ currentUserName }})</option>
-            <option v-for="user in users" :key="user.id" :value="user.id">
-              {{ user.displayName || user.email }}
-            </option>
-          </select>
-        </div>
-
-        <!-- Filtre Room -->
-        <div v-if="availableRooms && availableRooms.length > 0" class="form-control">
+      <!-- Filtre Room -->
+      <div v-if="availableRooms && availableRooms.length > 0" class="mb-4">
+        <div class="form-control">
           <label class="label">
             <span class="label-text font-semibold">Room</span>
           </label>
-          <select 
-            v-model="selectedRoomId" 
-            class="select select-bordered select-sm w-full"
-            @change="handleRoomChange">
+          <select
+            v-model="selectedRoomId"
+            class="select select-bordered select-sm w-full">
             <option :value="null">Toutes les rooms</option>
             <option v-for="room in availableRooms" :key="room.id" :value="room.id">
               {{ room.name }}
@@ -156,7 +138,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 
 interface TaskItem {
   id: number
@@ -180,12 +162,6 @@ interface TasksData {
   }>
 }
 
-interface User {
-  id: number
-  email: string
-  displayName: string | null
-}
-
 interface Room {
   id: number
   name: string
@@ -193,34 +169,10 @@ interface Room {
 
 const props = defineProps<{
   tasks?: TasksData
-  isAdmin?: boolean
-  users?: User[]
   availableRooms?: Room[]
-  currentUserId?: number
-  currentUserName?: string
 }>()
 
-const emit = defineEmits<{
-  filterChange: [filters: { userId: number | null; roomId: number | null }]
-}>()
-
-const selectedUserId = ref<number | null>(props.currentUserId || null)
 const selectedRoomId = ref<number | null>(null)
-
-const handleUserChange = () => {
-  selectedRoomId.value = null // Reset room selection when user changes
-  emit('filterChange', {
-    userId: selectedUserId.value,
-    roomId: selectedRoomId.value
-  })
-}
-
-const handleRoomChange = () => {
-  emit('filterChange', {
-    userId: selectedUserId.value,
-    roomId: selectedRoomId.value
-  })
-}
 
 const getPriorityClass = (priority: string): string => {
   const classes: Record<string, string> = {

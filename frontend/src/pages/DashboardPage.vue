@@ -2,13 +2,38 @@
   <div class="min-h-screen bg-base-200 p-4 sm:p-6">
     <!-- Header -->
     <div class="mb-6">
-      <h1 class="text-3xl font-bold mb-2 flex items-center gap-3">
-        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 13a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1v-7z" />
-        </svg>
-        Dashboard
-      </h1>
-      <p class="text-base-content/70">Vue d'ensemble de votre activité</p>
+      <div class="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h1 class="text-3xl font-bold mb-2 flex items-center gap-3">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 13a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1v-7z" />
+            </svg>
+            Dashboard
+          </h1>
+          <p class="text-base-content/70">
+            <template v-if="selectedUserId && selectedUserId !== authStore.user?.id">
+              Vue d'ensemble de {{ selectedUserName }}
+            </template>
+            <template v-else>
+              Vue d'ensemble de votre activité
+            </template>
+          </p>
+        </div>
+
+        <!-- Sélecteur utilisateur global (admin/owner uniquement) -->
+        <div v-if="isAdminOrOwner && teamUsers.length > 0" class="form-control w-full sm:w-72">
+          <select
+            v-model="selectedUserId"
+            class="select select-bordered"
+            @change="handleUserChange">
+            <option :value="authStore.user?.id">Moi ({{ authStore.user?.displayName || authStore.user?.email }})</option>
+            <option disabled>──────────</option>
+            <option v-for="user in teamUsers" :key="user.id" :value="user.id">
+              {{ user.name || user.email }}
+            </option>
+          </select>
+        </div>
+      </div>
     </div>
 
     <!-- Loading State -->
@@ -29,24 +54,14 @@
       <!-- Colonne gauche (2 colonnes sur large) -->
       <div class="lg:col-span-2 space-y-6">
         <!-- Charge de travail -->
-        <WorkloadOverview 
-          :workload="dashboardData?.workload" 
-          :is-admin="authStore.user?.role === 'admin'"
-          :users="dashboardData?.teamAvailability"
-          :current-user-id="authStore.user?.id"
-          :current-user-name="authStore.user?.displayName || authStore.user?.email"
-          @user-change="handleWorkloadUserChange"
+        <WorkloadOverview
+          :workload="dashboardData?.workload"
         />
-        
+
         <!-- Tâches -->
-        <TasksOverview 
+        <TasksOverview
           :tasks="dashboardData?.tasks"
-          :is-admin="authStore.user?.role === 'admin'"
-          :users="dashboardData?.teamAvailability"
           :available-rooms="dashboardData?.recentRooms"
-          :current-user-id="authStore.user?.id"
-          :current-user-name="authStore.user?.displayName || authStore.user?.email"
-          @filter-change="handleTasksFilterChange"
         />
         
         <!-- Rooms récentes -->
@@ -105,10 +120,11 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useDashboard } from '@/composables/useDashboard'
+import { isAtLeast } from '@/utils/permissions'
 import WorkloadOverview from '@/components/dashboard/WorkloadOverview.vue'
 import UpcomingEvents from '@/components/dashboard/UpcomingEvents.vue'
 import TasksOverview from '@/components/dashboard/TasksOverview.vue'
@@ -124,6 +140,16 @@ import EventDetailModal from '@/components/dashboard/EventDetailModal.vue'
 const router = useRouter()
 const authStore = useAuthStore()
 const { dashboardData, loading, error, fetchDashboardData } = useDashboard()
+
+// User selection
+const selectedUserId = ref<number | null>(authStore.user?.id || null)
+const isAdminOrOwner = computed(() => isAtLeast(authStore.user?.role || 'user', 'owner'))
+const teamUsers = computed(() => dashboardData.value?.teamAvailability || [])
+const selectedUserName = computed(() => {
+  if (!selectedUserId.value) return ''
+  const user = teamUsers.value.find((u: any) => u.id === selectedUserId.value)
+  return user?.name || user?.email || ''
+})
 
 // Modal states
 const showSelectRoomModal = ref(false)
@@ -180,11 +206,7 @@ const handleEventClick = (event: any) => {
   showEventDetailModal.value = true
 }
 
-const handleWorkloadUserChange = async (userId: number | null) => {
-  await fetchDashboardData(userId)
-}
-
-const handleTasksFilterChange = async (filters: { userId?: number | null, roomId?: number | null }) => {
-  await fetchDashboardData(filters.userId)
+const handleUserChange = async () => {
+  await fetchDashboardData(selectedUserId.value)
 }
 </script>

@@ -10,23 +10,6 @@
         </h2>
       </div>
 
-      <!-- Filtre Utilisateur (Admin uniquement) -->
-      <div v-if="isAdmin" class="form-control mb-4">
-        <label class="label">
-          <span class="label-text font-semibold">Voir la charge de travail de :</span>
-        </label>
-        <select 
-          v-model="selectedUserId" 
-          class="select select-bordered w-full"
-          @change="handleUserChange">
-          <option :value="currentUserId">Moi ({{ currentUserName }})</option>
-          <option v-if="users && users.length > 0" disabled>──────────</option>
-          <option v-for="user in users" :key="user.id" :value="user.id">
-            {{ user.displayName || user.email }}
-          </option>
-        </select>
-      </div>
-
       <!-- État vide -->
       <div v-if="!workload || !workload.daily || workload.daily.length === 0" class="text-center py-8 text-base-content/60">
         <p>Aucune donnée de charge de travail disponible pour le moment.</p>
@@ -250,7 +233,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 
 interface WorkloadData {
   daily: Array<{
@@ -271,34 +254,12 @@ interface WorkloadData {
   hasAlert: boolean
 }
 
-interface User {
-  id: number
-  email: string
-  displayName: string | null
-}
-
 const props = defineProps<{
   workload?: WorkloadData
-  isAdmin?: boolean
-  users?: User[]
-  currentUserId?: number
-  currentUserName?: string
 }>()
 
-const emit = defineEmits<{
-  userChange: [userId: number | null]
-}>()
-
-const selectedUserId = ref<number | null>(props.currentUserId || null)
 const showTodayDetails = ref(false)
 const selectedDay = ref<any>(null)
-
-// Synchroniser selectedUserId avec currentUserId quand il change
-watch(() => props.currentUserId, (newId) => {
-  if (newId && selectedUserId.value !== newId) {
-    selectedUserId.value = newId
-  }
-}, { immediate: true })
 
 // Calculer la charge d'aujourd'hui
 const todayWorkload = computed(() => {
@@ -355,13 +316,6 @@ const weekWorkload = computed(() => {
     percentage
   }
 })
-
-const handleUserChange = () => {
-  console.log('[WorkloadOverview] User changed to:', selectedUserId.value)
-  console.log('[WorkloadOverview] Current user ID:', props.currentUserId)
-  console.log('[WorkloadOverview] Available users:', props.users?.map(u => ({ id: u.id, name: u.displayName || u.email })))
-  emit('userChange', selectedUserId.value)
-}
 
 const openDayDetails = (day: any) => {
   selectedDay.value = day
