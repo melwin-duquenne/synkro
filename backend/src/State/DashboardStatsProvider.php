@@ -12,22 +12,50 @@ use App\Entity\User;
 use App\Service\WorkloadCalculator;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class DashboardStatsProvider implements ProviderInterface
 {
     public function __construct(
         private EntityManagerInterface $entityManager,
         private Security $security,
-        private WorkloadCalculator $workloadCalculator
+        private WorkloadCalculator $workloadCalculator,
+        private RequestStack $requestStack
     ) {}
 
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): object|array|null
     {
-        $user = $this->security->getUser();
-        if (!$user instanceof User) {
+        $currentUser = $this->security->getUser();
+        if (!$currentUser instanceof User) {
             throw new AccessDeniedHttpException('Not authenticated');
         }
+
+        $targetUser = $currentUser;
+
+        // If a userId query param is provided, load that user's data instead (admin/owner only)
+        $request = $this->requestStack->getCurrentRequest();
+        $requestedUserId = $request?->query->get('userId');
+
+        if ($requestedUserId && (int)$requestedUserId !== $currentUser->getId()) {
+            if (!$currentUser->isAtLeast(User::ROLE_OWNER)) {
+                throw new AccessDeniedHttpException('Owner or admin access required to view other users');
+            }
+
+            $targetUser = $this->entityManager->getRepository(User::class)->find((int)$requestedUserId);
+
+            if (!$targetUser) {
+                throw new NotFoundHttpException('User not found');
+            }
+
+            // Ensure target user belongs to the same entreprise
+            if ($targetUser->getEntreprise()?->getId() !== $currentUser->getEntreprise()?->getId()) {
+                throw new AccessDeniedHttpException('Cannot view users from another entreprise');
+            }
+        }
+
+        $user = $targetUser;
 
         $now = new \DateTime();
         $startOfWeek = (clone $now)->modify('monday this week')->setTime(0, 0);
@@ -40,8 +68,8 @@ class DashboardStatsProvider implements ProviderInterface
             upcomingEvents: $this->getUpcomingEvents($user),
             todayEvents: $this->getTodayEvents($user, $startOfDay, $endOfDay),
             tasks: $this->getTasksData($user),
-            recentRooms: $this->getRecentRooms($user),
-            teamAvailability: $this->getTeamAvailability($user),
+            recentRooms: $this->getRecentRooms($currentUser),
+            teamAvailability: $this->getTeamAvailability($currentUser),
             statistics: $this->getStatistics($user, $startOfWeek),
             notifications: $this->getNotifications($user),
         );

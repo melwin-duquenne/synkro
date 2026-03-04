@@ -1,6 +1,9 @@
-node_modules
-dist
-.git
-.vscode
+node_modules/
+dist/
 .env
+.env.*
+!.env.example
+.vscode/
+.git/
 *.log
+*.tsbuildinfo

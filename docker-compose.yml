@@ -30,6 +30,26 @@ services:
     networks:
       - synkronet-synkro
 
+  frontend-synkro:
+    build:
+      context: ./frontend
+      target: dev
+    container_name: frontend_app
+    restart: unless-stopped
+    ports:
+      - ${PORT_FRONTEND}
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - VITE_BACKEND_TARGET=http://backend-synkro:8000
+    depends_on:
+      - backend-synkro
+      - websocket-synkro
+    networks:
+      - synkronet-synkro
+
   mailpit-synkro:
     image: axllent/mailpit
     container_name: mailpit
