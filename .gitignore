@@ -91,3 +91,11 @@ docs/superpowers
 sauvegarde.md
 
 k8s/secrets.yaml
+
+# --- Ansible & Deploy ---
+# On ignore les fichiers de variables sensibles s'ils ne sont pas cryptés
+ansible/*.env
+ansible/vars/secrets_clear.yml
+
+# On ignore les éventuels fichiers de retry d'Ansible
+*.retry

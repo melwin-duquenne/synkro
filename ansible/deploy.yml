@@ -1,0 +1,60 @@
+---
+- name: Configuration VPS et Déploiement Synkro
+  hosts: vps
+  become: yes
+  tasks:
+    - name: Mise à jour du système (apt)
+      apt: update_cache=yes upgrade=dist
+
+    - name: Installation des dépendances Docker
+      apt:
+        name: [apt-transport-https, ca-certificates, curl, software-properties-common, python3-pip]
+        state: present
+
+    - name: Ajout de la clé GPG officielle Docker
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Installation de Docker (Version Officielle)
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin  # C'est la version recommandée maintenant
+        state: present
+        update_cache: yes
+
+    - name: Désactiver l'authentification par mot de passe SSH (Sécurité)
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PasswordAuthentication'
+        line: 'PasswordAuthentication no'
+      notify: Redémarrer SSH
+
+    - name: Créer le répertoire de l'application
+      file:
+        path: /opt/synkro
+        state: directory
+        mode: '0755'
+
+    - name: Copier le fichier docker-compose.prod.yml
+      copy:
+        src: ../docker-compose.prod.yml
+        dest: /opt/synkro/docker-compose.yml
+
+    - name: Copier le fichier .env (Indispensable pour tes variables)
+      copy:
+        src: ../.env
+        dest: /opt/synkro/.env
+
+    - name: Pull des images et lancement des conteneurs
+      shell: docker compose -f /opt/synkro/docker-compose.yml up -d
+
+  handlers:
+    - name: Redémarrer SSH
+      service:
+        name: sshd
+        state: restarted
