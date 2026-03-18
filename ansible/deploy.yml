@@ -8,7 +8,7 @@
 
     - name: Installation des dépendances Docker
       apt:
-        name: [apt-transport-https, ca-certificates, curl, software-properties-common, python3-pip]
+        name: [apt-transport-https, ca-certificates, curl, software-properties-common, python3-pip, openssl, python3-cryptography, nginx, certbot, python3-certbot-nginx, lsof]
         state: present
 
     - name: Ajout de la clé GPG officielle Docker
@@ -49,6 +49,194 @@
       copy:
         src: ../.env
         dest: /opt/synkro/.env
+
+    - name: Créer le répertoire des clés JWT
+      file:
+        path: /opt/synkro/backend/config/jwt
+        state: directory
+        mode: '0755'
+
+    - name: Générer la clé privée JWT (RSA 4096)
+      openssl_privatekey:
+        path: /opt/synkro/backend/config/jwt/private.pem
+        type: RSA
+        size: 4096
+        force: no  # Ne régénère pas si elle existe déjà
+
+    - name: Générer la clé publique JWT
+      openssl_publickey:
+        path: /opt/synkro/backend/config/jwt/public.pem
+        privatekey_path: /opt/synkro/backend/config/jwt/private.pem
+        format: PEM
+        force: no
+
+    - name: Définir les permissions correctes pour les clés JWT
+      file:
+        path: "{{ item }}"
+        mode: '0600'
+        owner: root
+        group: root
+      loop:
+        - /opt/synkro/backend/config/jwt/private.pem
+        - /opt/synkro/backend/config/jwt/public.pem
+
+    - name: Arrêter et supprimer les conteneurs existants
+      shell: docker compose -f /opt/synkro/docker-compose.yml down || true
+
+    - name: Nettoyer les ressources Docker (dangling images, volumes orphelines)
+      shell: docker system prune -f --volumes
+
+    - name: Arrêter les services web courants (nginx, apache2)
+      systemd:
+        name: "{{ item }}"
+        state: stopped
+        enabled: no
+      loop:
+        - nginx
+        - apache2
+      ignore_errors: yes  # Ne pas échouer si le service n'existe pas
+
+    - name: Tuer les processus utilisant le port 80
+      shell: lsof -ti:80 | xargs kill -9 2>/dev/null || true
+
+    - name: Créer le répertoire pour Certbot
+      file:
+        path: /var/www/certbot
+        state: directory
+        mode: '0755'
+
+    - name: Créer la config Nginx pour Synkro avec Certbot
+      copy:
+        content: |
+          upstream frontend {
+              server 127.0.0.1:8080;
+          }
+          
+          upstream backend {
+              server 127.0.0.1:8000;
+          }
+          
+          upstream websocket {
+              server 127.0.0.1:3001;
+          }
+          
+          server {
+              listen 80;
+              server_name synkro.ovh www.synkro.ovh;
+          
+              # Pour Certbot : autoriser les requêtes ACME
+              location /.well-known/acme-challenge/ {
+                  root /var/www/certbot;
+              }
+          
+              # Proxy vers le frontend pour Certbot
+              location / {
+                  proxy_pass http://frontend;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto http;
+              }
+          }
+        dest: /etc/nginx/sites-available/synkro
+        backup: yes
+
+    - name: Activer le site Nginx Synkro
+      file:
+        src: /etc/nginx/sites-available/synkro
+        dest: /etc/nginx/sites-enabled/synkro
+        state: link
+
+    - name: Supprimer les anciens vhosts Synkro en conflit
+      shell: |
+        set -eu
+        for f in /etc/nginx/sites-enabled/*synkro* /etc/nginx/sites-available/*synkro*; do
+          [ -e "$f" ] || continue
+          if [ "$f" != "/etc/nginx/sites-enabled/synkro" ] && [ "$f" != "/etc/nginx/sites-available/synkro" ]; then
+            rm -f "$f"
+          fi
+        done
+
+    - name: Supprimer la config Nginx par défaut
+      file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+
+    - name: Supprimer le vhost système app.conf (conflit avec synkro.ovh)
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/nginx/sites-enabled/app.conf
+        - /etc/nginx/sites-available/app.conf
+
+    - name: Tester et démarrer la config Nginx
+      systemd:
+        name: nginx
+        state: started
+        enabled: yes
+        daemon_reload: yes
+
+    - name: Générer le certificat SSL avec Certbot (Let's Encrypt)
+      shell: |
+        certbot certonly --webroot -w /var/www/certbot \
+          -d synkro.ovh -d www.synkro.ovh \
+          --email admin@synkro.ovh \
+          --agree-tos \
+          --non-interactive \
+          --preferred-challenges http \
+          || true
+
+    - name: Mettre à jour la config Nginx avec HTTPS
+      copy:
+        content: |
+          upstream frontend {
+              server 127.0.0.1:8080;
+          }
+          
+          upstream backend {
+              server 127.0.0.1:8000;
+          }
+          
+          upstream websocket {
+              server 127.0.0.1:3001;
+          }
+          
+          server {
+              listen 80;
+              server_name synkro.ovh www.synkro.ovh;
+              return 301 https://$host$request_uri;
+          }
+          
+          server {
+              listen 443 ssl http2;
+              server_name synkro.ovh www.synkro.ovh;
+          
+              ssl_certificate /etc/letsencrypt/live/synkro.ovh/fullchain.pem;
+              ssl_certificate_key /etc/letsencrypt/live/synkro.ovh/privkey.pem;
+              ssl_protocols TLSv1.2 TLSv1.3;
+              ssl_ciphers HIGH:!aNULL:!MD5;
+              ssl_prefer_server_ciphers on;
+              ssl_session_cache shared:SSL:10m;
+              ssl_session_timeout 10m;
+          
+              location / {
+                  proxy_pass http://frontend;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto https;
+              }
+          }
+        dest: /etc/nginx/sites-available/synkro
+
+    - name: Valider la configuration Nginx finale
+      shell: nginx -t
+
+    - name: Recharger Nginx avec la config HTTPS
+      systemd:
+        name: nginx
+        state: restarted
 
     - name: Pull des images et lancement des conteneurs
       shell: docker compose -f /opt/synkro/docker-compose.yml up -d

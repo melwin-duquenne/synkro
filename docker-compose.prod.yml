@@ -3,21 +3,28 @@ services:
     image: ${DOCKERHUB_USERNAME}/synkro-backend:latest
     container_name: symfony_app
     restart: unless-stopped
+    volumes:
+      - ./.env:/var/www/.env
+    ports:
+      - ${PORT_BACKEND}
     environment:
-      APP_ENV: prod
-      APP_SECRET: ${APP_SECRET}
-      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-synkro:5432/${POSTGRES_DB}?serverVersion=16&charset=utf8
-      JWT_SECRET_KEY: "%kernel.project_dir%/config/jwt/private.pem"
-      JWT_PUBLIC_KEY: "%kernel.project_dir%/config/jwt/public.pem"
-      JWT_PASSPHRASE: ${JWT_PASSPHRASE}
-      CORS_ALLOW_ORIGIN: ${CORS_ALLOW_ORIGIN}
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-synkro:${PORT_POSTGRES_2}/${POSTGRES_DB}?serverVersion=16&charset=utf8
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      JWT_PASSPHRASE: ${JWT_PASSPHRASE}
       MAILER_DSN: ${MAILER_DSN}
       APP_FRONTEND_URL: ${APP_FRONTEND_URL}
+      CORS_ALLOW_ORIGIN: ${CORS_ALLOW_ORIGIN}
+      DEFAULT_URI: ${DEFAULT_URI}
     depends_on:
-      - postgres-synkro
+      postgres-synkro:
+        condition: service_healthy
+    command: >
+      sh -c "php bin/console doctrine:migrations:migrate --no-interaction &&
+             php bin/console cache:clear &&
+             exec php-fpm"
     networks:
       - synkronet-synkro
 
@@ -25,9 +32,13 @@ services:
     image: ${DOCKERHUB_USERNAME}/synkro-websocket:latest
     container_name: websocket_server
     restart: unless-stopped
+    ports:
+      - ${PORT_WEBSOCKET}
     environment:
       - NODE_ENV=${NODE_ENV}
       - PORT=${PORT}
+    depends_on:
+      - backend-synkro
     networks:
       - synkronet-synkro
 
@@ -36,7 +47,13 @@ services:
     container_name: frontend_app
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "127.0.0.1:8080:80"  # Exposer sur localhost:8080 seulement pour Nginx
+    environment:
+      - VITE_BACKEND_TARGET=${VITE_BACKEND_TARGET}
+      - VITE_API_URL=${VITE_API_URL}
+      - VITE_WS_URL=${VITE_WS_URL}
+      - VITE_BACKEND_URL=${VITE_BACKEND_URL}
+      - BASE_URL=${BASE_URL}
     depends_on:
       - backend-synkro
       - websocket-synkro
@@ -47,6 +64,9 @@ services:
     image: axllent/mailpit
     container_name: mailpit
     restart: unless-stopped
+    ports:
+      - "8025:8025"
+      - "1025:1025"
     networks:
       - synkronet-synkro
 
@@ -54,12 +74,20 @@ services:
     image: postgres:16
     container_name: postgres_db
     restart: always
+    ports:
+      - ${PORT_POSTGRES}
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     networks:
       - synkronet-synkro
 
