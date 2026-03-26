@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { User, LoginCredentials, RegisterData, UpdateProfileData } from '@/types'
+import { extractApiError } from '@/utils/apiError'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 
@@ -25,7 +26,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data.message || 'Connexion échouée. Vérifiez vos identifiants')
+        throw new Error(extractApiError(data, 'Connexion échouée. Vérifiez vos identifiants'))
       }
 
       const data = await response.json()
@@ -145,7 +146,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       if (!response.ok) {
         const responseData = await response.json()
-        throw new Error(responseData['hydra:description'] || responseData.detail || 'Impossible de mettre à jour le profil')
+        throw new Error(extractApiError(responseData, 'Impossible de mettre à jour le profil'))
       }
 
       const updatedProfile = await response.json()
@@ -181,7 +182,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       if (!response.ok) {
         const responseData = await response.json()
-        throw new Error(responseData['hydra:description'] || responseData.detail || 'Impossible de mettre à jour la photo de profil')
+        throw new Error(extractApiError(responseData, 'Impossible de mettre à jour la photo de profil'))
       }
 
       const updatedProfile = await response.json()
@@ -239,7 +240,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       if (!response.ok) {
         const responseData = await response.json()
-        throw new Error(responseData['hydra:description'] || responseData.detail || 'Impossible d\'envoyer l\'email de réinitialisation')
+        throw new Error(extractApiError(responseData, 'Impossible d\'envoyer l\'email de réinitialisation'))
       }
 
       return true
@@ -264,7 +265,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       if (!response.ok) {
         const responseData = await response.json()
-        throw new Error(responseData['hydra:description'] || responseData.detail || 'Impossible de réinitialiser le mot de passe')
+        throw new Error(extractApiError(responseData, 'Impossible de réinitialiser le mot de passe'))
       }
 
       return true
@@ -292,7 +293,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       if (!response.ok) {
         const responseData = await response.json()
-        throw new Error(responseData['hydra:description'] || responseData.detail || 'Impossible de demander la suppression du compte')
+        throw new Error(extractApiError(responseData, 'Impossible de demander la suppression du compte'))
       }
 
       return true
@@ -317,7 +318,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       if (!response.ok) {
         const responseData = await response.json()
-        throw new Error(responseData['hydra:description'] || responseData.detail || 'Impossible de supprimer le compte')
+        throw new Error(extractApiError(responseData, 'Impossible de supprimer le compte'))
       }
 
       logout()

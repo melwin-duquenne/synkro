@@ -64,7 +64,7 @@ class AdminUserProcessorTest extends TestCase
         $processor = $this->buildProcessor($currentUser, $targetUser);
 
         $this->expectException(AccessDeniedHttpException::class);
-        $this->expectExceptionMessage('Seuls les administrateurs peuvent modifier les rôles administrateur');
+        $this->expectExceptionMessage('Seuls les administrateurs peuvent attribuer le rôle administrateur');
 
         $processor->process($data, new Patch(), ['id' => 2]);
     }

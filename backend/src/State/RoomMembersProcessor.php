@@ -9,6 +9,7 @@ use App\Dto\Room\RoomMemberOutput;
 use App\Entity\Room;
 use App\Entity\User;
 use App\Entity\UserRoomPermission;
+use App\Exception\ErrorMessage;
 use App\Security\RoomAccessChecker;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -28,25 +29,25 @@ class RoomMembersProcessor implements ProcessorInterface
     {
         $user = $this->security->getUser();
         if (!$user instanceof User) {
-            throw new AccessDeniedHttpException('Vous devez être connecté pour effectuer cette action');
+            throw new AccessDeniedHttpException(ErrorMessage::AUTH_REQUIRED);
         }
 
         $roomId = $uriVariables['id'] ?? null;
         if (!$roomId) {
-            throw new NotFoundHttpException('Identifiant du salon requis');
+            throw new NotFoundHttpException(ErrorMessage::ROOM_ID_REQUIRED);
         }
 
         $room = $this->entityManager->getRepository(Room::class)->find($roomId);
         if (!$room) {
-            throw new NotFoundHttpException('Salon introuvable');
+            throw new NotFoundHttpException(ErrorMessage::ROOM_NOT_FOUND);
         }
 
         if (!$this->accessChecker->canManageMembers($user, $room)) {
-            throw new AccessDeniedHttpException('Vous n\'avez pas la permission de gérer les membres de cette room');
+            throw new AccessDeniedHttpException(ErrorMessage::ROOM_MANAGE_MEMBERS_DENIED);
         }
 
         if ($room->getVisibility() !== Room::VISIBILITY_PRIVATE) {
-            throw new BadRequestHttpException('Les membres ne peuvent être gérés que pour les rooms privées');
+            throw new BadRequestHttpException(ErrorMessage::ROOM_PRIVATE_MEMBERS_ONLY);
         }
 
         $creatorId = $room->getCreator()->getId();

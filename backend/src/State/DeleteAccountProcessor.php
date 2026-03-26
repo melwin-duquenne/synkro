@@ -7,6 +7,7 @@ use ApiPlatform\State\ProcessorInterface;
 use App\Dto\Account\ConfirmDeleteAccountInput;
 use App\Entity\User;
 use App\Service\MailerService;
+use App\Exception\ErrorMessage;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
@@ -40,7 +41,7 @@ class DeleteAccountProcessor implements ProcessorInterface
         $user = $this->security->getUser();
 
         if (!$user instanceof User) {
-            throw new AccessDeniedHttpException('Vous devez être connecté pour effectuer cette action');
+            throw new AccessDeniedHttpException(ErrorMessage::AUTH_REQUIRED);
         }
 
         $token = bin2hex(random_bytes(32));
@@ -61,14 +62,14 @@ class DeleteAccountProcessor implements ProcessorInterface
             ->findOneBy(['deleteAccountToken' => $data->token]);
 
         if (!$user) {
-            throw new BadRequestHttpException('Lien invalide ou expiré');
+            throw new BadRequestHttpException(ErrorMessage::TOKEN_INVALID);
         }
 
         if ($user->getDeleteAccountExpiresAt() < new \DateTime()) {
             $user->setDeleteAccountToken(null);
             $user->setDeleteAccountExpiresAt(null);
             $this->entityManager->flush();
-            throw new BadRequestHttpException('Ce lien a expiré, veuillez en demander un nouveau');
+            throw new BadRequestHttpException(ErrorMessage::TOKEN_EXPIRED);
         }
 
         $this->entityManager->remove($user);

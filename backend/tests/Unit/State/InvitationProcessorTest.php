@@ -10,6 +10,9 @@ use App\Entity\Invitation;
 use App\Entity\User;
 use App\Service\MailerService;
 use App\State\InvitationProcessor;
+use App\UseCase\Invitation\AcceptInvitationUseCase;
+use App\UseCase\Invitation\CancelInvitationUseCase;
+use App\UseCase\Invitation\SendInvitationUseCase;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\EntityRepository;
 use PHPUnit\Framework\TestCase;
@@ -55,19 +58,27 @@ class InvitationProcessorTest extends TestCase
         return $op;
     }
 
+    private function makeProcessor(): InvitationProcessor
+    {
+        return new InvitationProcessor(
+            $this->security,
+            new SendInvitationUseCase($this->em, $this->mailer),
+            new CancelInvitationUseCase($this->em),
+            new AcceptInvitationUseCase($this->em, $this->security)
+        );
+    }
+
     public function testSendThrowsConflictExceptionWhenUserAlreadyInEntreprise(): void
     {
         $admin = $this->makeAdminUser();
         $this->security->method('getUser')->willReturn($admin);
         $this->userRepo->method('findOneBy')->willReturn(new User());
 
-        $processor = new InvitationProcessor($this->security, $this->em, $this->mailer);
-
         $input = new SendInvitationInput();
         $input->email = 'existing@test.com';
 
         $this->expectException(ConflictHttpException::class);
-        $processor->process($input, $this->makeSendOperation());
+        $this->makeProcessor()->process($input, $this->makeSendOperation());
     }
 
     public function testSendThrowsConflictExceptionWhenPendingInvitationAlreadyExists(): void
@@ -77,13 +88,11 @@ class InvitationProcessorTest extends TestCase
         $this->userRepo->method('findOneBy')->willReturn(null);
         $this->invitationRepo->method('findOneBy')->willReturn(new Invitation());
 
-        $processor = new InvitationProcessor($this->security, $this->em, $this->mailer);
-
         $input = new SendInvitationInput();
         $input->email = 'pending@test.com';
 
         $this->expectException(ConflictHttpException::class);
-        $processor->process($input, $this->makeSendOperation());
+        $this->makeProcessor()->process($input, $this->makeSendOperation());
     }
 
     public function testAcceptThrowsBadRequestExceptionWhenInvitationIsExpired(): void
@@ -91,7 +100,6 @@ class InvitationProcessorTest extends TestCase
         $invitation = new Invitation();
         $invitation->setToken('mytoken');
         $invitation->setExpiresAt(new \DateTime('-1 day'));
-        // status defaults to 'pending' via entity property initializer
 
         $this->invitationRepo->method('findOneBy')
             ->with(['token' => 'mytoken'])
@@ -100,14 +108,12 @@ class InvitationProcessorTest extends TestCase
         $op = $this->createStub(Operation::class);
         $op->method('getName')->willReturn('invitation_accept');
 
-        $processor = new InvitationProcessor($this->security, $this->em, $this->mailer);
-
         $this->expectException(BadRequestHttpException::class);
         $this->expectExceptionMessage('Cette invitation a expiré');
 
         $input = new AcceptInvitationInput();
         $input->token = 'mytoken';
 
-        $processor->process($input, $op);
+        $this->makeProcessor()->process($input, $op);
     }
 }

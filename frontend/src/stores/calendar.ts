@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useAuthStore } from './auth'
 import type { CalendarEvent, CreateCalendarEventData, EventType } from '@/types'
+import { extractApiError } from '@/utils/apiError'
 
 export interface CalendarFilters {
   roomId?: number | null
@@ -95,7 +96,7 @@ export const useCalendarStore = defineStore('calendar', () => {
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.detail || 'Impossible de créer l\'événement')
+        throw new Error(extractApiError(errorData, 'Impossible de créer l\'événement'))
       }
 
       const event = await response.json()
@@ -127,7 +128,7 @@ export const useCalendarStore = defineStore('calendar', () => {
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.detail || 'Impossible de mettre à jour l\'événement')
+        throw new Error(extractApiError(errorData, 'Impossible de mettre à jour l\'événement'))
       }
 
       const updatedEvent = await response.json()

@@ -8,6 +8,7 @@ use ApiPlatform\Metadata\Post;
 use ApiPlatform\State\ProcessorInterface;
 use App\Dto\Account\ProfileOutput;
 use App\Entity\User;
+use App\Exception\ErrorMessage;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -37,7 +38,7 @@ class AvatarProcessor implements ProcessorInterface
         $user = $this->security->getUser();
 
         if (!$user instanceof User) {
-            throw new AccessDeniedHttpException('Vous devez être connecté pour effectuer cette action');
+            throw new AccessDeniedHttpException(ErrorMessage::AUTH_REQUIRED);
         }
 
         if ($operation instanceof Post) {
@@ -57,7 +58,7 @@ class AvatarProcessor implements ProcessorInterface
         $file = $request?->files->get('avatar');
 
         if (!$file) {
-            throw new BadRequestHttpException('No file uploaded. Use "avatar" as the field name.');
+            throw new BadRequestHttpException(ErrorMessage::AVATAR_NO_FILE);
         }
 
         if (!$file->isValid()) {
@@ -65,12 +66,12 @@ class AvatarProcessor implements ProcessorInterface
         }
 
         if ($file->getSize() > self::MAX_FILE_SIZE) {
-            throw new BadRequestHttpException('Fichier trop volumineux. Taille maximale : 2 Mo');
+            throw new BadRequestHttpException(ErrorMessage::AVATAR_TOO_LARGE);
         }
 
         $mimeType = $file->getMimeType();
         if (!in_array($mimeType, self::ALLOWED_MIME_TYPES, true)) {
-            throw new BadRequestHttpException('Type de fichier non autorisé. Types acceptés : JPEG, PNG, WebP, GIF');
+            throw new BadRequestHttpException(ErrorMessage::AVATAR_INVALID_TYPE);
         }
 
         // Delete old avatar if exists

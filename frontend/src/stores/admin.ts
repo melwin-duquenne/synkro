@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useAuthStore } from './auth'
 import type { AdminUser } from '@/types'
+import { extractApiError } from '@/utils/apiError'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 
@@ -54,7 +55,7 @@ export const useAdminStore = defineStore('admin', () => {
 
       if (!response.ok) {
         const responseData = await response.json()
-        throw new Error(responseData['hydra:description'] || responseData.detail || 'Impossible de mettre à jour l\'utilisateur')
+        throw new Error(extractApiError(responseData, 'Impossible de mettre à jour l\'utilisateur'))
       }
 
       const updatedUser: AdminUser = await response.json()
@@ -84,7 +85,7 @@ export const useAdminStore = defineStore('admin', () => {
 
       if (!response.ok) {
         const responseData = await response.json()
-        throw new Error(responseData['hydra:description'] || responseData.detail || 'Impossible de supprimer l\'utilisateur')
+        throw new Error(extractApiError(responseData, 'Impossible de supprimer l\'utilisateur'))
       }
 
       users.value = users.value.filter(u => u.id !== userId)

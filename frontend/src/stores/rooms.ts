@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useAuthStore } from './auth'
 import type { Room, Module, RoomMember, User } from '@/types'
+import { extractApiError } from '@/utils/apiError'
 
 export interface TemplateItem {
   id: number
@@ -156,7 +157,7 @@ export const useRoomsStore = defineStore('rooms', () => {
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.error || errorData['hydra:description'] || 'Impossible de créer le salon')
+        throw new Error(extractApiError(errorData, 'Impossible de créer le salon'))
       }
 
       const room = await response.json()

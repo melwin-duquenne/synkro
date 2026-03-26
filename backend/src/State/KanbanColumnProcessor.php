@@ -15,6 +15,7 @@ use App\Entity\KanbanColumn;
 use App\Entity\Room;
 use App\Entity\Task;
 use App\Entity\User;
+use App\Exception\ErrorMessage;
 use App\Security\RoomAccessChecker;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -34,7 +35,7 @@ class KanbanColumnProcessor implements ProcessorInterface
     {
         $user = $this->security->getUser();
         if (!$user instanceof User) {
-            throw new AccessDeniedHttpException('Vous devez être connecté pour effectuer cette action');
+            throw new AccessDeniedHttpException(ErrorMessage::AUTH_REQUIRED);
         }
 
         $roomId = $uriVariables['roomId'] ?? null;
@@ -62,11 +63,11 @@ class KanbanColumnProcessor implements ProcessorInterface
         $room = $this->entityManager->getRepository(Room::class)->find($roomId);
 
         if (!$room) {
-            throw new NotFoundHttpException('Salon introuvable');
+            throw new NotFoundHttpException(ErrorMessage::ROOM_NOT_FOUND);
         }
 
         if (!$this->accessChecker->canAccess($user, $room)) {
-            throw new AccessDeniedHttpException('Accès refusé');
+            throw new AccessDeniedHttpException(ErrorMessage::ACCESS_DENIED);
         }
 
         $maxPosition = $this->entityManager->createQueryBuilder()
@@ -94,17 +95,17 @@ class KanbanColumnProcessor implements ProcessorInterface
         $room = $this->entityManager->getRepository(Room::class)->find($roomId);
 
         if (!$room) {
-            throw new NotFoundHttpException('Salon introuvable');
+            throw new NotFoundHttpException(ErrorMessage::ROOM_NOT_FOUND);
         }
 
         if (!$this->accessChecker->canAccess($user, $room)) {
-            throw new AccessDeniedHttpException('Accès refusé');
+            throw new AccessDeniedHttpException(ErrorMessage::ACCESS_DENIED);
         }
 
         $column = $this->entityManager->getRepository(KanbanColumn::class)->find($columnId);
 
         if (!$column || $column->getRoom()->getId() !== $roomId) {
-            throw new NotFoundHttpException('Colonne Kanban introuvable');
+            throw new NotFoundHttpException(ErrorMessage::KANBAN_COLUMN_NOT_FOUND);
         }
 
         if ($data->name !== null) {
@@ -124,17 +125,17 @@ class KanbanColumnProcessor implements ProcessorInterface
         $room = $this->entityManager->getRepository(Room::class)->find($roomId);
 
         if (!$room) {
-            throw new NotFoundHttpException('Salon introuvable');
+            throw new NotFoundHttpException(ErrorMessage::ROOM_NOT_FOUND);
         }
 
         if (!$this->accessChecker->canAccess($user, $room)) {
-            throw new AccessDeniedHttpException('Accès refusé');
+            throw new AccessDeniedHttpException(ErrorMessage::ACCESS_DENIED);
         }
 
         $column = $this->entityManager->getRepository(KanbanColumn::class)->find($columnId);
 
         if (!$column || $column->getRoom()->getId() !== $roomId) {
-            throw new NotFoundHttpException('Colonne Kanban introuvable');
+            throw new NotFoundHttpException(ErrorMessage::KANBAN_COLUMN_NOT_FOUND);
         }
 
         // Refuse deletion if active tasks are present
@@ -149,7 +150,7 @@ class KanbanColumnProcessor implements ProcessorInterface
             ->getSingleScalarResult();
 
         if ($activeTaskCount > 0) {
-            throw new BadRequestHttpException('Impossible de supprimer cette colonne : elle contient des tâches actives. Déplacez ou archivez-les d\'abord');
+            throw new BadRequestHttpException(ErrorMessage::KANBAN_COLUMN_HAS_TASKS);
         }
 
         $this->entityManager->remove($column);
@@ -163,11 +164,11 @@ class KanbanColumnProcessor implements ProcessorInterface
         $room = $this->entityManager->getRepository(Room::class)->find($roomId);
 
         if (!$room) {
-            throw new NotFoundHttpException('Salon introuvable');
+            throw new NotFoundHttpException(ErrorMessage::ROOM_NOT_FOUND);
         }
 
         if (!$this->accessChecker->canAccess($user, $room)) {
-            throw new AccessDeniedHttpException('Accès refusé');
+            throw new AccessDeniedHttpException(ErrorMessage::ACCESS_DENIED);
         }
 
         foreach ($data->columns as $columnData) {

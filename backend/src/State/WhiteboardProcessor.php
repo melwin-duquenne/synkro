@@ -11,6 +11,7 @@ use App\Dto\Whiteboard\UpdateWhiteboardInput;
 use App\Entity\Whiteboard;
 use App\Entity\Room;
 use App\Entity\User;
+use App\Exception\ErrorMessage;
 use App\Security\RoomAccessChecker;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -29,23 +30,23 @@ class WhiteboardProcessor implements ProcessorInterface
     {
         $user = $this->security->getUser();
         if (!$user instanceof User) {
-            throw new AccessDeniedHttpException('Vous devez être connecté pour effectuer cette action');
+            throw new AccessDeniedHttpException(ErrorMessage::AUTH_REQUIRED);
         }
 
         $roomId = $uriVariables['roomId'] ?? null;
 
         if (!$roomId) {
-            throw new NotFoundHttpException('Identifiant du salon requis');
+            throw new NotFoundHttpException(ErrorMessage::ROOM_ID_REQUIRED);
         }
 
         $room = $this->entityManager->getRepository(Room::class)->find($roomId);
 
         if (!$room) {
-            throw new NotFoundHttpException('Salon introuvable');
+            throw new NotFoundHttpException(ErrorMessage::ROOM_NOT_FOUND);
         }
 
         if (!$this->accessChecker->canAccess($user, $room)) {
-            throw new AccessDeniedHttpException('Accès refusé');
+            throw new AccessDeniedHttpException(ErrorMessage::ACCESS_DENIED);
         }
 
         if ($operation instanceof Put || $operation instanceof Patch) {

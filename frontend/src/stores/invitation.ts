@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { Invitation } from '@/types'
 import { useAuthStore } from './auth'
+import { extractApiError } from '@/utils/apiError'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 
@@ -50,7 +51,7 @@ export const useInvitationStore = defineStore('invitation', () => {
 
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data['hydra:description'] || data.detail || 'Impossible d\'envoyer l\'invitation')
+        throw new Error(extractApiError(data, 'Impossible d\'envoyer l\'invitation'))
       }
 
       await fetchInvitations()
@@ -109,7 +110,7 @@ export const useInvitationStore = defineStore('invitation', () => {
 
       if (!response.ok) {
         const responseData = await response.json()
-        throw new Error(responseData['hydra:description'] || responseData.detail || 'Impossible d\'accepter l\'invitation')
+        throw new Error(extractApiError(responseData, 'Impossible d\'accepter l\'invitation'))
       }
 
       const data = await response.json()
