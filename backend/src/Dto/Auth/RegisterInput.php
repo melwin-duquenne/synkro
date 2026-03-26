@@ -6,15 +6,15 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 final class RegisterInput
 {
-    #[Assert\NotBlank(message: 'Email is required')]
+    #[Assert\NotBlank(message: 'L\'email est requis')]
     #[Assert\Email]
     public string $email;
 
-    #[Assert\NotBlank(message: 'Password is required')]
-    #[Assert\Length(min: 6, minMessage: 'Password must be at least 6 characters')]
+    #[Assert\NotBlank(message: 'Le mot de passe est requis')]
+    #[Assert\Length(min: 6, minMessage: 'Le mot de passe doit contenir au moins 6 caractères')]
     public string $password;
 
-    #[Assert\NotBlank(message: 'Display name is required')]
+    #[Assert\NotBlank(message: 'Le nom d\'affichage est requis')]
     #[Assert\Length(max: 255)]
     public string $displayName;
 

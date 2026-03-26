@@ -23,7 +23,7 @@ class SetupEntrepriseProcessor implements ProcessorInterface
         $user = $this->security->getUser();
 
         if (!$user instanceof User) {
-            throw new AccessDeniedHttpException('Not authenticated');
+            throw new AccessDeniedHttpException('Vous devez être connecté pour effectuer cette action');
         }
 
         // If user already has an entreprise, return it

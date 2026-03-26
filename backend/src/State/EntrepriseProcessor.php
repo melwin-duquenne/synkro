@@ -24,20 +24,20 @@ class EntrepriseProcessor implements ProcessorInterface
         $user = $this->security->getUser();
 
         if (!$user instanceof User) {
-            throw new AccessDeniedHttpException('Not authenticated');
+            throw new AccessDeniedHttpException('Vous devez être connecté pour effectuer cette action');
         }
 
         if ($user->getRole() !== 'admin') {
-            throw new AccessDeniedHttpException('Admin access required');
+            throw new AccessDeniedHttpException('Droits administrateur requis');
         }
 
         $entreprise = $user->getEntreprise();
         if (!$entreprise) {
-            throw new BadRequestHttpException('You do not belong to any entreprise');
+            throw new BadRequestHttpException('Vous n\'appartenez à aucune entreprise');
         }
 
         if (!$data instanceof UpdateEntrepriseInput) {
-            throw new \InvalidArgumentException('Invalid input');
+            throw new \InvalidArgumentException('Données invalides');
         }
 
         $entreprise->setName($data->name);

@@ -37,7 +37,7 @@ class AvatarProcessor implements ProcessorInterface
         $user = $this->security->getUser();
 
         if (!$user instanceof User) {
-            throw new AccessDeniedHttpException('Not authenticated');
+            throw new AccessDeniedHttpException('Vous devez être connecté pour effectuer cette action');
         }
 
         if ($operation instanceof Post) {
@@ -65,12 +65,12 @@ class AvatarProcessor implements ProcessorInterface
         }
 
         if ($file->getSize() > self::MAX_FILE_SIZE) {
-            throw new BadRequestHttpException('File too large. Maximum size is 2 MB.');
+            throw new BadRequestHttpException('Fichier trop volumineux. Taille maximale : 2 Mo');
         }
 
         $mimeType = $file->getMimeType();
         if (!in_array($mimeType, self::ALLOWED_MIME_TYPES, true)) {
-            throw new BadRequestHttpException('Invalid file type. Allowed: JPEG, PNG, WebP, GIF.');
+            throw new BadRequestHttpException('Type de fichier non autorisé. Types acceptés : JPEG, PNG, WebP, GIF');
         }
 
         // Delete old avatar if exists

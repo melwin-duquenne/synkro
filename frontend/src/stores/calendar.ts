@@ -64,14 +64,14 @@ export const useCalendarStore = defineStore('calendar', () => {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to fetch events')
+        throw new Error('Impossible de charger les événements')
       }
 
       const data = await response.json()
       // Handle API Platform format
       events.value = Array.isArray(data) ? data : (data['hydra:member'] || data.member || [])
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to fetch events'
+      error.value = e instanceof Error ? e.message : 'Impossible de charger les événements'
     } finally {
       loading.value = false
     }
@@ -95,14 +95,14 @@ export const useCalendarStore = defineStore('calendar', () => {
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.detail || 'Failed to create event')
+        throw new Error(errorData.detail || 'Impossible de créer l\'événement')
       }
 
       const event = await response.json()
       events.value.push(event)
       return event
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to create event'
+      error.value = e instanceof Error ? e.message : 'Impossible de créer l\'événement'
       return null
     } finally {
       loading.value = false
@@ -127,7 +127,7 @@ export const useCalendarStore = defineStore('calendar', () => {
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.detail || 'Failed to update event')
+        throw new Error(errorData.detail || 'Impossible de mettre à jour l\'événement')
       }
 
       const updatedEvent = await response.json()
@@ -137,7 +137,7 @@ export const useCalendarStore = defineStore('calendar', () => {
       }
       return updatedEvent
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to update event'
+      error.value = e instanceof Error ? e.message : 'Impossible de mettre à jour l\'événement'
       return null
     } finally {
       loading.value = false

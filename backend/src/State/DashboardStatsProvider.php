@@ -29,7 +29,7 @@ class DashboardStatsProvider implements ProviderInterface
     {
         $currentUser = $this->security->getUser();
         if (!$currentUser instanceof User) {
-            throw new AccessDeniedHttpException('Not authenticated');
+            throw new AccessDeniedHttpException('Vous devez être connecté pour effectuer cette action');
         }
 
         $targetUser = $currentUser;
@@ -40,18 +40,18 @@ class DashboardStatsProvider implements ProviderInterface
 
         if ($requestedUserId && (int)$requestedUserId !== $currentUser->getId()) {
             if (!$currentUser->isAtLeast(User::ROLE_OWNER)) {
-                throw new AccessDeniedHttpException('Owner or admin access required to view other users');
+                throw new AccessDeniedHttpException('Droits propriétaire ou administrateur requis');
             }
 
             $targetUser = $this->entityManager->getRepository(User::class)->find((int)$requestedUserId);
 
             if (!$targetUser) {
-                throw new NotFoundHttpException('User not found');
+                throw new NotFoundHttpException('Utilisateur introuvable');
             }
 
             // Ensure target user belongs to the same entreprise
             if ($targetUser->getEntreprise()?->getId() !== $currentUser->getEntreprise()?->getId()) {
-                throw new AccessDeniedHttpException('Cannot view users from another entreprise');
+                throw new AccessDeniedHttpException('Impossible de consulter les utilisateurs d\'une autre entreprise');
             }
         }
 

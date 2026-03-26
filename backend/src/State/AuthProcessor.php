@@ -37,7 +37,7 @@ class AuthProcessor implements ProcessorInterface
             ->findOneBy(['email' => $data->email]);
 
         if ($existingUser) {
-            throw new ConflictHttpException('Email already registered');
+            throw new ConflictHttpException('Cet email est déjà utilisé');
         }
 
         $user = new User();

@@ -21,13 +21,13 @@ export const useInvitationStore = defineStore('invitation', () => {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to fetch invitations')
+        throw new Error('Impossible de charger les invitations')
       }
 
       const data = await response.json()
       invitations.value = Array.isArray(data) ? data : (data['hydra:member'] ?? data['member'] ?? [])
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to fetch invitations'
+      error.value = e instanceof Error ? e.message : 'Impossible de charger les invitations'
     } finally {
       loading.value = false
     }
@@ -50,13 +50,13 @@ export const useInvitationStore = defineStore('invitation', () => {
 
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data['hydra:description'] || data.detail || 'Failed to send invitation')
+        throw new Error(data['hydra:description'] || data.detail || 'Impossible d\'envoyer l\'invitation')
       }
 
       await fetchInvitations()
       return true
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to send invitation'
+      error.value = e instanceof Error ? e.message : 'Impossible d\'envoyer l\'invitation'
       return false
     } finally {
       loading.value = false
@@ -75,13 +75,13 @@ export const useInvitationStore = defineStore('invitation', () => {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to cancel invitation')
+        throw new Error('Impossible d\'annuler l\'invitation')
       }
 
       invitations.value = invitations.value.filter(i => i.id !== id)
       return true
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to cancel invitation'
+      error.value = e instanceof Error ? e.message : 'Impossible d\'annuler l\'invitation'
       return false
     } finally {
       loading.value = false
@@ -109,7 +109,7 @@ export const useInvitationStore = defineStore('invitation', () => {
 
       if (!response.ok) {
         const responseData = await response.json()
-        throw new Error(responseData['hydra:description'] || responseData.detail || 'Failed to accept invitation')
+        throw new Error(responseData['hydra:description'] || responseData.detail || 'Impossible d\'accepter l\'invitation')
       }
 
       const data = await response.json()
@@ -120,7 +120,7 @@ export const useInvitationStore = defineStore('invitation', () => {
 
       return { success: true, data }
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to accept invitation'
+      error.value = e instanceof Error ? e.message : 'Impossible d\'accepter l\'invitation'
       return { success: false }
     } finally {
       loading.value = false

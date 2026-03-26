@@ -28,7 +28,7 @@ class KanbanColumnProvider implements ProviderInterface
     {
         $user = $this->security->getUser();
         if (!$user instanceof User) {
-            throw new AccessDeniedHttpException('Not authenticated');
+            throw new AccessDeniedHttpException('Vous devez être connecté pour effectuer cette action');
         }
 
         if ($operation instanceof CollectionOperationInterface) {
@@ -50,11 +50,11 @@ class KanbanColumnProvider implements ProviderInterface
         $room = $this->entityManager->getRepository(Room::class)->find($roomId);
 
         if (!$room) {
-            throw new NotFoundHttpException('Room not found');
+            throw new NotFoundHttpException('Salon introuvable');
         }
 
         if (!$this->accessChecker->canAccess($user, $room)) {
-            throw new AccessDeniedHttpException('Access denied');
+            throw new AccessDeniedHttpException('Accès refusé');
         }
 
         $columns = $this->entityManager->getRepository(KanbanColumn::class)->findBy(
@@ -70,17 +70,17 @@ class KanbanColumnProvider implements ProviderInterface
         $room = $this->entityManager->getRepository(Room::class)->find($roomId);
 
         if (!$room) {
-            throw new NotFoundHttpException('Room not found');
+            throw new NotFoundHttpException('Salon introuvable');
         }
 
         if (!$this->accessChecker->canAccess($user, $room)) {
-            throw new AccessDeniedHttpException('Access denied');
+            throw new AccessDeniedHttpException('Accès refusé');
         }
 
         $column = $this->entityManager->getRepository(KanbanColumn::class)->find($columnId);
 
         if (!$column || $column->getRoom()->getId() !== $roomId) {
-            throw new NotFoundHttpException('Kanban column not found');
+            throw new NotFoundHttpException('Colonne Kanban introuvable');
         }
 
         return KanbanColumnOutput::fromEntity($column);

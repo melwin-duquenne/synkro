@@ -38,10 +38,10 @@ class InvitationProcessor implements ProcessorInterface
         // All other operations require admin
         $user = $this->security->getUser();
         if (!$user instanceof User) {
-            throw new AccessDeniedHttpException('Not authenticated');
+            throw new AccessDeniedHttpException('Vous devez être connecté pour effectuer cette action');
         }
         if ($user->getRole() !== 'admin') {
-            throw new AccessDeniedHttpException('Admin access required');
+            throw new AccessDeniedHttpException('Droits administrateur requis');
         }
 
         if ($data instanceof SendInvitationInput) {
@@ -59,21 +59,21 @@ class InvitationProcessor implements ProcessorInterface
     {
         $entreprise = $admin->getEntreprise();
         if (!$entreprise) {
-            throw new BadRequestHttpException('You must belong to an entreprise to send invitations');
+            throw new BadRequestHttpException('Vous devez appartenir à une entreprise pour envoyer des invitations');
         }
 
         // Check if email is already in the entreprise
         $existingUser = $this->entityManager->getRepository(User::class)
             ->findOneBy(['email' => $data->email, 'entreprise' => $entreprise]);
         if ($existingUser) {
-            throw new ConflictHttpException('This user is already in your entreprise');
+            throw new ConflictHttpException('Cet utilisateur est déjà membre de votre entreprise');
         }
 
         // Check for existing pending invitation
         $existingInvitation = $this->entityManager->getRepository(Invitation::class)
             ->findOneBy(['email' => $data->email, 'entreprise' => $entreprise, 'status' => 'pending']);
         if ($existingInvitation) {
-            throw new ConflictHttpException('An invitation is already pending for this email');
+            throw new ConflictHttpException('Une invitation est déjà en attente pour cet email');
         }
 
         $invitation = new Invitation();
@@ -95,11 +95,11 @@ class InvitationProcessor implements ProcessorInterface
     {
         $invitation = $this->entityManager->getRepository(Invitation::class)->find($id);
         if (!$invitation) {
-            throw new NotFoundHttpException('Invitation not found');
+            throw new NotFoundHttpException('Invitation introuvable');
         }
 
         if ($invitation->getEntreprise()->getId() !== $admin->getEntreprise()?->getId()) {
-            throw new AccessDeniedHttpException('Cannot manage invitations from another entreprise');
+            throw new AccessDeniedHttpException('Impossible de gérer les invitations d\'une autre entreprise');
         }
 
         $this->entityManager->remove($invitation);
@@ -111,24 +111,24 @@ class InvitationProcessor implements ProcessorInterface
     private function accept(mixed $data): object
     {
         if (!$data instanceof AcceptInvitationInput) {
-            throw new BadRequestHttpException('Invalid input');
+            throw new BadRequestHttpException('Données invalides');
         }
 
         $invitation = $this->entityManager->getRepository(Invitation::class)
             ->findOneBy(['token' => $data->token]);
 
         if (!$invitation) {
-            throw new BadRequestHttpException('Invalid or expired invitation token');
+            throw new BadRequestHttpException('Lien d\'invitation invalide ou expiré');
         }
 
         if ($invitation->getStatus() !== 'pending') {
-            throw new BadRequestHttpException('This invitation has already been used');
+            throw new BadRequestHttpException('Cette invitation a déjà été utilisée');
         }
 
         if ($invitation->isExpired()) {
             $invitation->setStatus('expired');
             $this->entityManager->flush();
-            throw new BadRequestHttpException('This invitation has expired');
+            throw new BadRequestHttpException('Cette invitation a expiré');
         }
 
         // Check if the current user is authenticated

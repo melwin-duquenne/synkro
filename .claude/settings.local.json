@@ -4,7 +4,9 @@
       "Bash(ls:*)",
       "Bash(php:*)",
       "Bash(docker exec:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(grep:*)",
+      "Bash(wc:*)"
     ]
   }
 }

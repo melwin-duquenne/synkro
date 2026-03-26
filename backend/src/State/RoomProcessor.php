@@ -34,7 +34,7 @@ class RoomProcessor implements ProcessorInterface
     {
         $user = $this->security->getUser();
         if (!$user instanceof User) {
-            throw new AccessDeniedHttpException('Not authenticated');
+            throw new AccessDeniedHttpException('Vous devez être connecté pour effectuer cette action');
         }
 
         // Handle custom operations via context FIRST before checking operation type
@@ -192,11 +192,11 @@ class RoomProcessor implements ProcessorInterface
         $room = $this->entityManager->getRepository(Room::class)->find($id);
 
         if (!$room) {
-            throw new NotFoundHttpException('Room not found');
+            throw new NotFoundHttpException('Salon introuvable');
         }
 
         if (!$this->accessChecker->canDelete($user, $room)) {
-            throw new AccessDeniedHttpException('Access denied');
+            throw new AccessDeniedHttpException('Accès refusé');
         }
 
         $this->entityManager->remove($room);

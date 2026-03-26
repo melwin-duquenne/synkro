@@ -139,13 +139,13 @@ async function saveChanges() {
       })
     })
 
-    if (!response.ok) throw new Error('Failed to update task')
+    if (!response.ok) throw new Error('Impossible de mettre à jour la tâche')
 
     const updatedTask = await response.json()
     emit('updated', updatedTask)
     isEditing.value = false
   } catch (e) {
-    console.error('Failed to update task:', e)
+    console.error('Impossible de mettre à jour la tâche :', e)
   } finally {
     loading.value = false
   }
@@ -167,12 +167,12 @@ async function toggleArchive() {
       })
     })
 
-    if (!response.ok) throw new Error('Failed to update task')
+    if (!response.ok) throw new Error('Impossible de mettre à jour la tâche')
 
     const updatedTask = await response.json()
     emit('updated', updatedTask)
   } catch (e) {
-    console.error('Failed to toggle archive:', e)
+    console.error('Impossible de modifier l\'archivage de la tâche :', e)
   } finally {
     loading.value = false
   }
@@ -187,11 +187,11 @@ async function deleteTask() {
       headers: authStore.getAuthHeaders()
     })
 
-    if (!response.ok) throw new Error('Failed to delete task')
+    if (!response.ok) throw new Error('Impossible de supprimer la tâche')
 
     emit('deleted', props.task.id)
   } catch (e) {
-    console.error('Failed to delete task:', e)
+    console.error('Impossible de supprimer la tâche :', e)
   } finally {
     loading.value = false
     deleteConfirm.value = false

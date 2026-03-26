@@ -28,17 +28,17 @@ class RoomMembersProcessor implements ProcessorInterface
     {
         $user = $this->security->getUser();
         if (!$user instanceof User) {
-            throw new AccessDeniedHttpException('Not authenticated');
+            throw new AccessDeniedHttpException('Vous devez être connecté pour effectuer cette action');
         }
 
         $roomId = $uriVariables['id'] ?? null;
         if (!$roomId) {
-            throw new NotFoundHttpException('Room ID required');
+            throw new NotFoundHttpException('Identifiant du salon requis');
         }
 
         $room = $this->entityManager->getRepository(Room::class)->find($roomId);
         if (!$room) {
-            throw new NotFoundHttpException('Room not found');
+            throw new NotFoundHttpException('Salon introuvable');
         }
 
         if (!$this->accessChecker->canManageMembers($user, $room)) {

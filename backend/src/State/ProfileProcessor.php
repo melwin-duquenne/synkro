@@ -24,11 +24,11 @@ class ProfileProcessor implements ProcessorInterface
         $user = $this->security->getUser();
 
         if (!$user instanceof User) {
-            throw new AccessDeniedHttpException('Not authenticated');
+            throw new AccessDeniedHttpException('Vous devez être connecté pour effectuer cette action');
         }
 
         if (!$data instanceof UpdateProfileInput) {
-            throw new \InvalidArgumentException('Invalid input');
+            throw new \InvalidArgumentException('Données invalides');
         }
 
         if ($data->displayName !== null) {
@@ -40,7 +40,7 @@ class ProfileProcessor implements ProcessorInterface
                 ->findOneBy(['email' => $data->email]);
 
             if ($existing) {
-                throw new ConflictHttpException('Email already in use');
+                throw new ConflictHttpException('Cet email est déjà utilisé');
             }
 
             $user->setEmail($data->email);

@@ -35,7 +35,7 @@ class TaskProcessor implements ProcessorInterface
     {
         $user = $this->security->getUser();
         if (!$user instanceof User) {
-            throw new AccessDeniedHttpException('Not authenticated');
+            throw new AccessDeniedHttpException('Vous devez être connecté pour effectuer cette action');
         }
 
         $roomId = $uriVariables['roomId'] ?? null;
@@ -64,11 +64,11 @@ class TaskProcessor implements ProcessorInterface
         $room = $this->entityManager->getRepository(Room::class)->find($roomId);
 
         if (!$room) {
-            throw new NotFoundHttpException('Room not found');
+            throw new NotFoundHttpException('Salon introuvable');
         }
 
         if (!$this->accessChecker->canAccess($user, $room)) {
-            throw new AccessDeniedHttpException('Access denied');
+            throw new AccessDeniedHttpException('Accès refusé');
         }
 
         // Resolve column
@@ -129,17 +129,17 @@ class TaskProcessor implements ProcessorInterface
         $room = $this->entityManager->getRepository(Room::class)->find($roomId);
 
         if (!$room) {
-            throw new NotFoundHttpException('Room not found');
+            throw new NotFoundHttpException('Salon introuvable');
         }
 
         if (!$this->accessChecker->canAccess($user, $room)) {
-            throw new AccessDeniedHttpException('Access denied');
+            throw new AccessDeniedHttpException('Accès refusé');
         }
 
         $task = $this->entityManager->getRepository(Task::class)->find($taskId);
 
         if (!$task || $task->getRoom()->getId() !== $roomId) {
-            throw new NotFoundHttpException('Task not found');
+            throw new NotFoundHttpException('Tâche introuvable');
         }
 
         if ($data->title !== null) {
@@ -179,17 +179,17 @@ class TaskProcessor implements ProcessorInterface
         $room = $this->entityManager->getRepository(Room::class)->find($roomId);
 
         if (!$room) {
-            throw new NotFoundHttpException('Room not found');
+            throw new NotFoundHttpException('Salon introuvable');
         }
 
         if (!$this->accessChecker->canAccess($user, $room)) {
-            throw new AccessDeniedHttpException('Access denied');
+            throw new AccessDeniedHttpException('Accès refusé');
         }
 
         $task = $this->entityManager->getRepository(Task::class)->find($taskId);
 
         if (!$task || $task->getRoom()->getId() !== $roomId) {
-            throw new NotFoundHttpException('Task not found');
+            throw new NotFoundHttpException('Tâche introuvable');
         }
 
         $this->entityManager->remove($task);
@@ -203,11 +203,11 @@ class TaskProcessor implements ProcessorInterface
         $room = $this->entityManager->getRepository(Room::class)->find($roomId);
 
         if (!$room) {
-            throw new NotFoundHttpException('Room not found');
+            throw new NotFoundHttpException('Salon introuvable');
         }
 
         if (!$this->accessChecker->canAccess($user, $room)) {
-            throw new AccessDeniedHttpException('Access denied');
+            throw new AccessDeniedHttpException('Accès refusé');
         }
 
         foreach ($data->tasks as $taskData) {

@@ -72,7 +72,7 @@ class FileResourceProcessor implements ProcessorInterface
     {
         $user = $this->security->getUser();
         if (!$user instanceof User) {
-            throw new AccessDeniedHttpException('Not authenticated');
+            throw new AccessDeniedHttpException('Vous devez être connecté pour effectuer cette action');
         }
 
         $roomId = $uriVariables['roomId'] ?? null;
@@ -111,17 +111,17 @@ class FileResourceProcessor implements ProcessorInterface
         }
 
         if ($file->getSize() > self::MAX_FILE_SIZE) {
-            throw new BadRequestHttpException('File too large. Maximum size is 100 MB.');
+            throw new BadRequestHttpException('Fichier trop volumineux. Taille maximale : 100 Mo');
         }
 
         $mimeType = $file->getMimeType();
         if (!in_array($mimeType, self::ALLOWED_MIME_TYPES, true)) {
-            throw new BadRequestHttpException('File type not allowed: ' . $mimeType);
+            throw new BadRequestHttpException('Type de fichier non autorisé : ' . $mimeType);
         }
 
         $extension = strtolower($file->getClientOriginalExtension());
         if (!in_array($extension, self::ALLOWED_EXTENSIONS, true)) {
-            throw new BadRequestHttpException('File extension not allowed: ' . $extension);
+            throw new BadRequestHttpException('Extension de fichier non autorisée : ' . $extension);
         }
 
         // Check for parent folder
@@ -130,7 +130,7 @@ class FileResourceProcessor implements ProcessorInterface
         if ($parentId) {
             $parent = $this->entityManager->getRepository(FileResource::class)->find($parentId);
             if (!$parent || !$parent->isFolder() || $parent->getRoom()->getId() !== $roomId) {
-                throw new BadRequestHttpException('Invalid parent folder');
+                throw new BadRequestHttpException('Dossier parent invalide');
             }
         }
 
@@ -175,7 +175,7 @@ class FileResourceProcessor implements ProcessorInterface
         if ($data->parentId) {
             $parent = $this->entityManager->getRepository(FileResource::class)->find($data->parentId);
             if (!$parent || !$parent->isFolder() || $parent->getRoom()->getId() !== $roomId) {
-                throw new BadRequestHttpException('Invalid parent folder');
+                throw new BadRequestHttpException('Dossier parent invalide');
             }
         }
 
@@ -204,7 +204,7 @@ class FileResourceProcessor implements ProcessorInterface
 
         $file = $this->entityManager->getRepository(FileResource::class)->find($fileId);
         if (!$file || $file->getRoom()->getId() !== $roomId) {
-            throw new NotFoundHttpException('File not found');
+            throw new NotFoundHttpException('Fichier introuvable');
         }
 
         $newName = $data->fileName ?? $file->getFileName();
@@ -218,7 +218,7 @@ class FileResourceProcessor implements ProcessorInterface
                 throw new BadRequestHttpException('Invalid parent folder');
             }
             if ($file->isFolder() && $this->isDescendant($newParent, $file)) {
-                throw new BadRequestHttpException('Cannot move a folder into itself or its descendants');
+                throw new BadRequestHttpException('Impossible de déplacer un dossier dans lui-même ou dans l\'un de ses sous-dossiers');
             }
         }
 
@@ -241,7 +241,7 @@ class FileResourceProcessor implements ProcessorInterface
 
         $file = $this->entityManager->getRepository(FileResource::class)->find($fileId);
         if (!$file || $file->getRoom()->getId() !== $roomId) {
-            throw new NotFoundHttpException('File not found');
+            throw new NotFoundHttpException('Fichier introuvable');
         }
 
         // Delete physical files recursively before removing entities
@@ -315,11 +315,11 @@ class FileResourceProcessor implements ProcessorInterface
     {
         $room = $this->entityManager->getRepository(Room::class)->find($roomId);
         if (!$room) {
-            throw new NotFoundHttpException('Room not found');
+            throw new NotFoundHttpException('Salon introuvable');
         }
 
         if (!$this->accessChecker->canAccess($user, $room)) {
-            throw new AccessDeniedHttpException('Access denied');
+            throw new AccessDeniedHttpException('Accès refusé');
         }
 
         return $room;

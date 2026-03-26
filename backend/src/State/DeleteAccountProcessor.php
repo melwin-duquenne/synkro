@@ -40,7 +40,7 @@ class DeleteAccountProcessor implements ProcessorInterface
         $user = $this->security->getUser();
 
         if (!$user instanceof User) {
-            throw new AccessDeniedHttpException('Not authenticated');
+            throw new AccessDeniedHttpException('Vous devez être connecté pour effectuer cette action');
         }
 
         $token = bin2hex(random_bytes(32));
@@ -61,14 +61,14 @@ class DeleteAccountProcessor implements ProcessorInterface
             ->findOneBy(['deleteAccountToken' => $data->token]);
 
         if (!$user) {
-            throw new BadRequestHttpException('Invalid or expired token');
+            throw new BadRequestHttpException('Lien invalide ou expiré');
         }
 
         if ($user->getDeleteAccountExpiresAt() < new \DateTime()) {
             $user->setDeleteAccountToken(null);
             $user->setDeleteAccountExpiresAt(null);
             $this->entityManager->flush();
-            throw new BadRequestHttpException('Token has expired');
+            throw new BadRequestHttpException('Ce lien a expiré, veuillez en demander un nouveau');
         }
 
         $this->entityManager->remove($user);

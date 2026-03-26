@@ -65,7 +65,7 @@ export const useRoomsStore = defineStore('rooms', () => {
         rooms.value = data.member || data['hydra:member'] || data
       }
     } catch (e) {
-      error.value = 'Failed to fetch rooms'
+      error.value = 'Impossible de charger les salons'
     } finally {
       loading.value = false
     }
@@ -156,14 +156,14 @@ export const useRoomsStore = defineStore('rooms', () => {
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.error || errorData['hydra:description'] || 'Failed to create room')
+        throw new Error(errorData.error || errorData['hydra:description'] || 'Impossible de créer le salon')
       }
 
       const room = await response.json()
       rooms.value.unshift(room)
       return room
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to create room'
+      error.value = e instanceof Error ? e.message : 'Impossible de créer le salon'
       return null
     } finally {
       loading.value = false

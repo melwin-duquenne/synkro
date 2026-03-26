@@ -59,14 +59,14 @@ class ResetPasswordProcessor implements ProcessorInterface
             ->findOneBy(['resetPasswordToken' => $data->token]);
 
         if (!$user) {
-            throw new BadRequestHttpException('Invalid or expired token');
+            throw new BadRequestHttpException('Lien invalide ou expiré');
         }
 
         if ($user->getResetPasswordExpiresAt() < new \DateTime()) {
             $user->setResetPasswordToken(null);
             $user->setResetPasswordExpiresAt(null);
             $this->entityManager->flush();
-            throw new BadRequestHttpException('Token has expired');
+            throw new BadRequestHttpException('Ce lien a expiré, veuillez en demander un nouveau');
         }
 
         $hashedPassword = $this->passwordHasher->hashPassword($user, $data->password);

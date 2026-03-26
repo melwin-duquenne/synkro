@@ -6,6 +6,6 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 final class ConfirmDeleteAccountInput
 {
-    #[Assert\NotBlank(message: 'Token is required')]
+    #[Assert\NotBlank(message: 'Le token est requis')]
     public string $token;
 }

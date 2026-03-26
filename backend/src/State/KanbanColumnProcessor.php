@@ -34,7 +34,7 @@ class KanbanColumnProcessor implements ProcessorInterface
     {
         $user = $this->security->getUser();
         if (!$user instanceof User) {
-            throw new AccessDeniedHttpException('Not authenticated');
+            throw new AccessDeniedHttpException('Vous devez être connecté pour effectuer cette action');
         }
 
         $roomId = $uriVariables['roomId'] ?? null;
@@ -62,11 +62,11 @@ class KanbanColumnProcessor implements ProcessorInterface
         $room = $this->entityManager->getRepository(Room::class)->find($roomId);
 
         if (!$room) {
-            throw new NotFoundHttpException('Room not found');
+            throw new NotFoundHttpException('Salon introuvable');
         }
 
         if (!$this->accessChecker->canAccess($user, $room)) {
-            throw new AccessDeniedHttpException('Access denied');
+            throw new AccessDeniedHttpException('Accès refusé');
         }
 
         $maxPosition = $this->entityManager->createQueryBuilder()
@@ -94,17 +94,17 @@ class KanbanColumnProcessor implements ProcessorInterface
         $room = $this->entityManager->getRepository(Room::class)->find($roomId);
 
         if (!$room) {
-            throw new NotFoundHttpException('Room not found');
+            throw new NotFoundHttpException('Salon introuvable');
         }
 
         if (!$this->accessChecker->canAccess($user, $room)) {
-            throw new AccessDeniedHttpException('Access denied');
+            throw new AccessDeniedHttpException('Accès refusé');
         }
 
         $column = $this->entityManager->getRepository(KanbanColumn::class)->find($columnId);
 
         if (!$column || $column->getRoom()->getId() !== $roomId) {
-            throw new NotFoundHttpException('Kanban column not found');
+            throw new NotFoundHttpException('Colonne Kanban introuvable');
         }
 
         if ($data->name !== null) {
@@ -124,17 +124,17 @@ class KanbanColumnProcessor implements ProcessorInterface
         $room = $this->entityManager->getRepository(Room::class)->find($roomId);
 
         if (!$room) {
-            throw new NotFoundHttpException('Room not found');
+            throw new NotFoundHttpException('Salon introuvable');
         }
 
         if (!$this->accessChecker->canAccess($user, $room)) {
-            throw new AccessDeniedHttpException('Access denied');
+            throw new AccessDeniedHttpException('Accès refusé');
         }
 
         $column = $this->entityManager->getRepository(KanbanColumn::class)->find($columnId);
 
         if (!$column || $column->getRoom()->getId() !== $roomId) {
-            throw new NotFoundHttpException('Kanban column not found');
+            throw new NotFoundHttpException('Colonne Kanban introuvable');
         }
 
         // Refuse deletion if active tasks are present
@@ -149,7 +149,7 @@ class KanbanColumnProcessor implements ProcessorInterface
             ->getSingleScalarResult();
 
         if ($activeTaskCount > 0) {
-            throw new BadRequestHttpException('Cannot delete column with active tasks. Move or archive tasks first.');
+            throw new BadRequestHttpException('Impossible de supprimer cette colonne : elle contient des tâches actives. Déplacez ou archivez-les d\'abord');
         }
 
         $this->entityManager->remove($column);
@@ -163,11 +163,11 @@ class KanbanColumnProcessor implements ProcessorInterface
         $room = $this->entityManager->getRepository(Room::class)->find($roomId);
 
         if (!$room) {
-            throw new NotFoundHttpException('Room not found');
+            throw new NotFoundHttpException('Salon introuvable');
         }
 
         if (!$this->accessChecker->canAccess($user, $room)) {
-            throw new AccessDeniedHttpException('Access denied');
+            throw new AccessDeniedHttpException('Accès refusé');
         }
 
         foreach ($data->columns as $columnData) {

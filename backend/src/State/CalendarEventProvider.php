@@ -29,7 +29,7 @@ class CalendarEventProvider implements ProviderInterface
     {
         $user = $this->security->getUser();
         if (!$user instanceof User) {
-            throw new AccessDeniedHttpException('Not authenticated');
+            throw new AccessDeniedHttpException('Vous devez être connecté pour effectuer cette action');
         }
 
         if ($operation instanceof CollectionOperationInterface) {
@@ -54,10 +54,10 @@ class CalendarEventProvider implements ProviderInterface
         if ($roomId !== null) {
             $room = $this->entityManager->getRepository(Room::class)->find($roomId);
             if (!$room) {
-                throw new NotFoundHttpException('Room not found');
+                throw new NotFoundHttpException('Salon introuvable');
             }
             if (!$this->accessChecker->canAccess($user, $room)) {
-                throw new AccessDeniedHttpException('Access denied to this room');
+                throw new AccessDeniedHttpException('Accès refusé');
             }
             // Room calendar: show all public enterprise events (not just room-specific ones)
             // Privacy filter below handles hiding private events from other users
@@ -115,22 +115,22 @@ class CalendarEventProvider implements ProviderInterface
         $event = $this->entityManager->getRepository(CalendarEvent::class)->find($id);
 
         if (!$event) {
-            throw new NotFoundHttpException('Event not found');
+            throw new NotFoundHttpException('Ressource introuvable');
         }
 
         // Check access
         if ($event->getEntreprise()->getId() !== $user->getEntreprise()?->getId()) {
-            throw new AccessDeniedHttpException('Access denied');
+            throw new AccessDeniedHttpException('Accès refusé');
         }
 
         // Check room access if event is linked to a room
         if ($event->getRoom() && !$this->accessChecker->canAccess($user, $event->getRoom())) {
-            throw new AccessDeniedHttpException('Access denied to this room');
+            throw new AccessDeniedHttpException('Accès refusé');
         }
 
         // Check private event access
         if ($event->isPrivate() && $event->getUser()->getId() !== $user->getId()) {
-            throw new AccessDeniedHttpException('This event is private');
+            throw new AccessDeniedHttpException('Cet événement est privé');
         }
 
         return CalendarEventOutput::fromEntity($event);
