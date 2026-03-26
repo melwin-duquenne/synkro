@@ -43,7 +43,7 @@ class AdminUserProcessorTest extends TestCase
         $processor = $this->buildProcessor($currentUser, $targetUser);
 
         $this->expectException(BadRequestHttpException::class);
-        $this->expectExceptionMessage('You cannot change your own role');
+        $this->expectExceptionMessage('Vous ne pouvez pas modifier votre propre rôle');
 
         $processor->process($data, new Patch(), ['id' => 1]);
     }
@@ -64,7 +64,7 @@ class AdminUserProcessorTest extends TestCase
         $processor = $this->buildProcessor($currentUser, $targetUser);
 
         $this->expectException(AccessDeniedHttpException::class);
-        $this->expectExceptionMessage('Only admins can change admin roles');
+        $this->expectExceptionMessage('Seuls les administrateurs peuvent modifier les rôles administrateur');
 
         $processor->process($data, new Patch(), ['id' => 2]);
     }
@@ -79,7 +79,7 @@ class AdminUserProcessorTest extends TestCase
         $processor = $this->buildProcessor($currentUser, $targetUser);
 
         $this->expectException(BadRequestHttpException::class);
-        $this->expectExceptionMessage('You cannot delete your own account');
+        $this->expectExceptionMessage('Vous ne pouvez pas supprimer votre propre compte depuis cette interface');
 
         $processor->process(null, new Delete(), ['id' => 1]);
     }

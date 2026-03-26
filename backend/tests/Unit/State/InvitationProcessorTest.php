@@ -103,7 +103,7 @@ class InvitationProcessorTest extends TestCase
         $processor = new InvitationProcessor($this->security, $this->em, $this->mailer);
 
         $this->expectException(BadRequestHttpException::class);
-        $this->expectExceptionMessage('This invitation has expired');
+        $this->expectExceptionMessage('Cette invitation a expiré');
 
         $input = new AcceptInvitationInput();
         $input->token = 'mytoken';
