@@ -22,12 +22,12 @@ class AdminUsersProvider implements ProviderInterface
         $user = $this->security->getUser();
 
         if (!$user instanceof User) {
-            throw new AccessDeniedHttpException('Not authenticated');
+            throw new AccessDeniedHttpException('Vous devez être connecté pour effectuer cette action');
         }
 
         // Only owner and admin can see user list
         if (!$user->isAtLeast(User::ROLE_OWNER)) {
-            throw new AccessDeniedHttpException('Owner or admin access required');
+            throw new AccessDeniedHttpException('Droits propriétaire ou administrateur requis');
         }
 
         $entreprise = $user->getEntreprise();

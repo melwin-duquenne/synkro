@@ -61,6 +61,7 @@ const filterAssignedTo = ref<number | null>(null)
 const filterEstimation = ref<number | null>(null)
 
 // Column management
+const deleteColumnError = ref('')
 const showAddColumn = ref(false)
 const newColumnName = ref('')
 const newColumnColor = ref('bg-slate-500')
@@ -145,12 +146,12 @@ async function fetchColumns() {
       headers: authStore.getAuthHeaders()
     })
 
-    if (!response.ok) throw new Error('Failed to fetch columns')
+    if (!response.ok) throw new Error('Impossible de charger les colonnes')
 
     const data = await response.json()
     columns.value = data['hydra:member'] || data.member || (Array.isArray(data) ? data : [])
   } catch (e) {
-    console.error('Failed to fetch columns:', e)
+    console.error('Impossible de charger les colonnes :', e)
   }
 }
 
@@ -163,12 +164,12 @@ async function fetchTasks() {
       headers: authStore.getAuthHeaders()
     })
 
-    if (!response.ok) throw new Error('Failed to fetch tasks')
+    if (!response.ok) throw new Error('Impossible de charger les tâches')
 
     const data = await response.json()
     tasks.value = data['hydra:member'] || data.member || (Array.isArray(data) ? data : [])
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Failed to fetch tasks'
+    error.value = e instanceof Error ? e.message : 'Impossible de charger les tâches'
   } finally {
     loading.value = false
   }
@@ -248,10 +249,10 @@ async function onDrop(e: DragEvent, newColumnId: number) {
       task.columnId = oldColumnId
       task.columnName = oldColumn?.name || ''
       task.columnColor = oldColumn?.color || ''
-      throw new Error('Failed to update task')
+      throw new Error('Impossible de mettre à jour la tâche')
     }
   } catch (e) {
-    console.error('Failed to move task:', e)
+    console.error('Impossible de déplacer la tâche :', e)
   }
   draggedTask.value = null
 }
@@ -331,7 +332,7 @@ async function addColumn() {
       })
     })
 
-    if (!response.ok) throw new Error('Failed to create column')
+    if (!response.ok) throw new Error('Impossible de créer la colonne')
 
     const column = await response.json()
     columns.value.push(column)
@@ -339,7 +340,7 @@ async function addColumn() {
     newColumnColor.value = 'bg-slate-500'
     showAddColumn.value = false
   } catch (e) {
-    console.error('Failed to create column:', e)
+    console.error('Impossible de créer la colonne :', e)
   }
 }
 
@@ -363,7 +364,7 @@ async function saveColumnEdit(col: KanbanColumn) {
       })
     })
 
-    if (!response.ok) throw new Error('Failed to update column')
+    if (!response.ok) throw new Error('Impossible de mettre à jour la colonne')
 
     const updated = await response.json()
     const index = columns.value.findIndex(c => c.id === col.id)
@@ -381,12 +382,14 @@ async function saveColumnEdit(col: KanbanColumn) {
 
     editingColumnId.value = null
   } catch (e) {
-    console.error('Failed to update column:', e)
+    console.error('Impossible de mettre à jour la colonne :', e)
   }
 }
 
 async function deleteColumn(col: KanbanColumn) {
   if (!confirm(`Supprimer la colonne "${col.name}" ? Les tâches actives doivent être déplacées d'abord.`)) return
+
+  deleteColumnError.value = ''
 
   try {
     const response = await fetch(`/api/rooms/${props.roomId}/kanban-columns/${col.id}`, {
@@ -396,13 +399,14 @@ async function deleteColumn(col: KanbanColumn) {
 
     if (!response.ok) {
       const data = await response.json()
-      alert(data.detail || data.message || 'Impossible de supprimer cette colonne')
+      deleteColumnError.value = data.detail || data.message || 'Impossible de supprimer cette colonne'
       return
     }
 
     columns.value = columns.value.filter(c => c.id !== col.id)
   } catch (e) {
-    console.error('Failed to delete column:', e)
+    console.error('Impossible de supprimer la colonne :', e)
+    deleteColumnError.value = 'Impossible de supprimer la colonne'
   }
 }
 
@@ -435,6 +439,12 @@ onMounted(async () => {
           + Nouvelle tâche
         </button>
       </div>
+    </div>
+
+    <!-- Column delete error -->
+    <div v-if="deleteColumnError" class="alert alert-error mb-2">
+      <span>{{ deleteColumnError }}</span>
+      <button class="btn btn-sm btn-ghost" @click="deleteColumnError = ''">✕</button>
     </div>
 
     <!-- Filters bar -->

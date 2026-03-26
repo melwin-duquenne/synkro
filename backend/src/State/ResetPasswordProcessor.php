@@ -8,6 +8,7 @@ use App\Dto\Account\RequestResetPasswordInput;
 use App\Dto\Account\ResetPasswordInput;
 use App\Entity\User;
 use App\Service\MailerService;
+use App\Exception\ErrorMessage;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
@@ -59,14 +60,14 @@ class ResetPasswordProcessor implements ProcessorInterface
             ->findOneBy(['resetPasswordToken' => $data->token]);
 
         if (!$user) {
-            throw new BadRequestHttpException('Invalid or expired token');
+            throw new BadRequestHttpException(ErrorMessage::TOKEN_INVALID);
         }
 
         if ($user->getResetPasswordExpiresAt() < new \DateTime()) {
             $user->setResetPasswordToken(null);
             $user->setResetPasswordExpiresAt(null);
             $this->entityManager->flush();
-            throw new BadRequestHttpException('Token has expired');
+            throw new BadRequestHttpException(ErrorMessage::TOKEN_EXPIRED);
         }
 
         $hashedPassword = $this->passwordHasher->hashPassword($user, $data->password);

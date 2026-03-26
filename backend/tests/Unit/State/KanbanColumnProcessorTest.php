@@ -91,7 +91,7 @@ class KanbanColumnProcessorTest extends TestCase
         $processor = new KanbanColumnProcessor($this->em, $this->security, $this->accessChecker);
 
         $this->expectException(BadRequestHttpException::class);
-        $this->expectExceptionMessageMatches('/Cannot delete column with active tasks/');
+        $this->expectExceptionMessageMatches('/Impossible de supprimer cette colonne/');
 
         $processor->process(null, new Delete(), ['roomId' => 1, 'id' => 42]);
     }

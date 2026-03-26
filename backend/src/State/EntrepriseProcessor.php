@@ -7,6 +7,7 @@ use ApiPlatform\State\ProcessorInterface;
 use App\Dto\Entreprise\EntrepriseOutput;
 use App\Dto\Entreprise\UpdateEntrepriseInput;
 use App\Entity\User;
+use App\Exception\ErrorMessage;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
@@ -24,20 +25,20 @@ class EntrepriseProcessor implements ProcessorInterface
         $user = $this->security->getUser();
 
         if (!$user instanceof User) {
-            throw new AccessDeniedHttpException('Not authenticated');
+            throw new AccessDeniedHttpException(ErrorMessage::AUTH_REQUIRED);
         }
 
         if ($user->getRole() !== 'admin') {
-            throw new AccessDeniedHttpException('Admin access required');
+            throw new AccessDeniedHttpException(ErrorMessage::ADMIN_REQUIRED);
         }
 
         $entreprise = $user->getEntreprise();
         if (!$entreprise) {
-            throw new BadRequestHttpException('You do not belong to any entreprise');
+            throw new BadRequestHttpException(ErrorMessage::ENTREPRISE_REQUIRED);
         }
 
         if (!$data instanceof UpdateEntrepriseInput) {
-            throw new \InvalidArgumentException('Invalid input');
+            throw new \InvalidArgumentException(ErrorMessage::INVALID_DATA);
         }
 
         $entreprise->setName($data->name);

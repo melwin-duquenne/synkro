@@ -3,13 +3,16 @@
 namespace App\Controller;
 
 use App\Entity\Room;
+use App\Exception\ErrorMessage;
 use App\Security\RoomAccessChecker;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpKernel\Exception\HttpException;
-use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\Routing\Attribute\Route;
 
 class RoomModuleOrderController extends AbstractController
 {
@@ -23,23 +26,23 @@ class RoomModuleOrderController extends AbstractController
     {
         $user = $this->getUser();
         if (!$user) {
-            throw new HttpException(401, 'Vous devez être connecté');
+            throw new AccessDeniedHttpException(ErrorMessage::AUTH_REQUIRED);
         }
 
         $room = $this->entityManager->getRepository(Room::class)->find($id);
         if (!$room) {
-            throw new HttpException(404, 'La room n\'a pas été trouvée');
+            throw new NotFoundHttpException(ErrorMessage::ROOM_NOT_FOUND);
         }
 
         if (!$this->accessChecker->canEdit($user, $room)) {
-            throw new HttpException(403, 'Vous n\'avez pas la permission de modifier cette room');
+            throw new AccessDeniedHttpException(ErrorMessage::ROOM_EDIT_DENIED);
         }
 
         $data = json_decode($request->getContent(), true);
         $moduleOrder = $data['moduleOrder'] ?? [];
 
         if (empty($moduleOrder)) {
-            throw new HttpException(400, 'L\'ordre des modules est requis');
+            throw new BadRequestHttpException(ErrorMessage::INVALID_DATA);
         }
 
         // Update displayOrder for each module

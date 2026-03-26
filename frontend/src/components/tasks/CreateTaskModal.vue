@@ -162,14 +162,14 @@ async function handleSubmit() {
 
     if (!response.ok) {
       const data = await response.json()
-      throw new Error(data.error || 'Failed to create task')
+      throw new Error(data.error || 'Impossible de créer la tâche')
     }
 
     const task = await response.json()
     emit('created', task)
     resetForm()
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Failed to create task'
+    error.value = e instanceof Error ? e.message : 'Impossible de créer la tâche'
   } finally {
     loading.value = false
   }

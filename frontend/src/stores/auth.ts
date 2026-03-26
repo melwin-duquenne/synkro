@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { User, LoginCredentials, RegisterData, UpdateProfileData } from '@/types'
+import { extractApiError } from '@/utils/apiError'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 
@@ -25,7 +26,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data.message || 'Login failed')
+        throw new Error(extractApiError(data, 'Connexion échouée. Vérifiez vos identifiants'))
       }
 
       const data = await response.json()
@@ -35,7 +36,7 @@ export const useAuthStore = defineStore('auth', () => {
       await fetchUser()
       return true
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Login failed'
+      error.value = e instanceof Error ? e.message : 'Connexion échouée. Vérifiez vos identifiants'
       return false
     } finally {
       loading.value = false
@@ -55,13 +56,13 @@ export const useAuthStore = defineStore('auth', () => {
 
       if (!response.ok) {
         const responseData = await response.json()
-        throw new Error(responseData.error || 'Registration failed')
+        throw new Error(responseData.error || 'Inscription échouée. Vérifiez les informations saisies')
       }
 
       // Auto login after registration
       return await login({ email: data.email, password: data.password })
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Registration failed'
+      error.value = e instanceof Error ? e.message : 'Inscription échouée. Vérifiez les informations saisies'
       return false
     } finally {
       loading.value = false
@@ -116,14 +117,14 @@ export const useAuthStore = defineStore('auth', () => {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to setup entreprise')
+        throw new Error('Impossible de configurer l\'entreprise')
       }
 
       // Refresh user data
       await fetchUser()
       return true
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to setup entreprise'
+      error.value = e instanceof Error ? e.message : 'Impossible de configurer l\'entreprise'
       return false
     }
   }
@@ -145,7 +146,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       if (!response.ok) {
         const responseData = await response.json()
-        throw new Error(responseData['hydra:description'] || responseData.detail || 'Failed to update profile')
+        throw new Error(extractApiError(responseData, 'Impossible de mettre à jour le profil'))
       }
 
       const updatedProfile = await response.json()
@@ -155,7 +156,7 @@ export const useAuthStore = defineStore('auth', () => {
       }
       return true
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to update profile'
+      error.value = e instanceof Error ? e.message : 'Impossible de mettre à jour le profil'
       return false
     } finally {
       loading.value = false
@@ -181,7 +182,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       if (!response.ok) {
         const responseData = await response.json()
-        throw new Error(responseData['hydra:description'] || responseData.detail || 'Failed to upload avatar')
+        throw new Error(extractApiError(responseData, 'Impossible de mettre à jour la photo de profil'))
       }
 
       const updatedProfile = await response.json()
@@ -190,7 +191,7 @@ export const useAuthStore = defineStore('auth', () => {
       }
       return true
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to upload avatar'
+      error.value = e instanceof Error ? e.message : 'Impossible de mettre à jour la photo de profil'
       return false
     } finally {
       loading.value = false
@@ -211,7 +212,7 @@ export const useAuthStore = defineStore('auth', () => {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to delete avatar')
+        throw new Error('Impossible de supprimer la photo de profil')
       }
 
       if (user.value) {
@@ -219,7 +220,7 @@ export const useAuthStore = defineStore('auth', () => {
       }
       return true
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to delete avatar'
+      error.value = e instanceof Error ? e.message : 'Impossible de supprimer la photo de profil'
       return false
     } finally {
       loading.value = false
@@ -239,12 +240,12 @@ export const useAuthStore = defineStore('auth', () => {
 
       if (!response.ok) {
         const responseData = await response.json()
-        throw new Error(responseData['hydra:description'] || responseData.detail || 'Failed to send reset email')
+        throw new Error(extractApiError(responseData, 'Impossible d\'envoyer l\'email de réinitialisation'))
       }
 
       return true
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to send reset email'
+      error.value = e instanceof Error ? e.message : 'Impossible d\'envoyer l\'email de réinitialisation'
       return false
     } finally {
       loading.value = false
@@ -264,12 +265,12 @@ export const useAuthStore = defineStore('auth', () => {
 
       if (!response.ok) {
         const responseData = await response.json()
-        throw new Error(responseData['hydra:description'] || responseData.detail || 'Failed to reset password')
+        throw new Error(extractApiError(responseData, 'Impossible de réinitialiser le mot de passe'))
       }
 
       return true
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to reset password'
+      error.value = e instanceof Error ? e.message : 'Impossible de réinitialiser le mot de passe'
       return false
     } finally {
       loading.value = false
@@ -292,12 +293,12 @@ export const useAuthStore = defineStore('auth', () => {
 
       if (!response.ok) {
         const responseData = await response.json()
-        throw new Error(responseData['hydra:description'] || responseData.detail || 'Failed to request account deletion')
+        throw new Error(extractApiError(responseData, 'Impossible de demander la suppression du compte'))
       }
 
       return true
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to request account deletion'
+      error.value = e instanceof Error ? e.message : 'Impossible de demander la suppression du compte'
       return false
     } finally {
       loading.value = false
@@ -317,13 +318,13 @@ export const useAuthStore = defineStore('auth', () => {
 
       if (!response.ok) {
         const responseData = await response.json()
-        throw new Error(responseData['hydra:description'] || responseData.detail || 'Failed to delete account')
+        throw new Error(extractApiError(responseData, 'Impossible de supprimer le compte'))
       }
 
       logout()
       return true
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to delete account'
+      error.value = e instanceof Error ? e.message : 'Impossible de supprimer le compte'
       return false
     } finally {
       loading.value = false

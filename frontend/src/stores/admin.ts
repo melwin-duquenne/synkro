@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useAuthStore } from './auth'
 import type { AdminUser } from '@/types'
+import { extractApiError } from '@/utils/apiError'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 
@@ -29,13 +30,13 @@ export const useAdminStore = defineStore('admin', () => {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to fetch users')
+        throw new Error('Impossible de charger les utilisateurs')
       }
 
       const data = await response.json()
       users.value = Array.isArray(data) ? data : (data['hydra:member'] ?? data['member'] ?? [])
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to fetch users'
+      error.value = e instanceof Error ? e.message : 'Impossible de charger les utilisateurs'
     } finally {
       loading.value = false
     }
@@ -54,7 +55,7 @@ export const useAdminStore = defineStore('admin', () => {
 
       if (!response.ok) {
         const responseData = await response.json()
-        throw new Error(responseData['hydra:description'] || responseData.detail || 'Failed to update user')
+        throw new Error(extractApiError(responseData, 'Impossible de mettre à jour l\'utilisateur'))
       }
 
       const updatedUser: AdminUser = await response.json()
@@ -64,7 +65,7 @@ export const useAdminStore = defineStore('admin', () => {
       }
       return true
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to update user'
+      error.value = e instanceof Error ? e.message : 'Impossible de mettre à jour l\'utilisateur'
       return false
     } finally {
       loading.value = false
@@ -84,13 +85,13 @@ export const useAdminStore = defineStore('admin', () => {
 
       if (!response.ok) {
         const responseData = await response.json()
-        throw new Error(responseData['hydra:description'] || responseData.detail || 'Failed to delete user')
+        throw new Error(extractApiError(responseData, 'Impossible de supprimer l\'utilisateur'))
       }
 
       users.value = users.value.filter(u => u.id !== userId)
       return true
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to delete user'
+      error.value = e instanceof Error ? e.message : 'Impossible de supprimer l\'utilisateur'
       return false
     } finally {
       loading.value = false
