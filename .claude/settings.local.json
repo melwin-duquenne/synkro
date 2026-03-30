@@ -1,7 +1,14 @@
 {
   "permissions": {
     "allow": [
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(php:*)",
+      "Bash(docker exec:*)",
+      "Bash(curl:*)",
+      "Bash(grep:*)",
+      "Bash(wc:*)",
+      "Bash(find:*)",
+      "Bash(cd:*)"
     ]
   }
 }

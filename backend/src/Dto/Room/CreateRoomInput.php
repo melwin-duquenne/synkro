@@ -6,12 +6,12 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 final class CreateRoomInput
 {
-    #[Assert\NotBlank(message: 'Name is required')]
+    #[Assert\NotBlank(message: 'Le nom est requis')]
     #[Assert\Length(max: 255)]
     public string $name;
 
-    #[Assert\NotBlank(message: 'At least one module is required')]
-    #[Assert\Count(min: 1, minMessage: 'At least one module is required')]
+    #[Assert\NotBlank(message: 'Au moins un module est requis')]
+    #[Assert\Count(min: 1, minMessage: 'Au moins un module est requis')]
     public array $modules = [];
 
     #[Assert\Choice(choices: ['enterprise', 'private'])]

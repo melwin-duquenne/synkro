@@ -7,6 +7,7 @@ use ApiPlatform\State\ProcessorInterface;
 use App\Dto\Auth\SetupEntrepriseInput;
 use App\Entity\Entreprise;
 use App\Entity\User;
+use App\Exception\ErrorMessage;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
@@ -23,7 +24,7 @@ class SetupEntrepriseProcessor implements ProcessorInterface
         $user = $this->security->getUser();
 
         if (!$user instanceof User) {
-            throw new AccessDeniedHttpException('Not authenticated');
+            throw new AccessDeniedHttpException(ErrorMessage::AUTH_REQUIRED);
         }
 
         // If user already has an entreprise, return it

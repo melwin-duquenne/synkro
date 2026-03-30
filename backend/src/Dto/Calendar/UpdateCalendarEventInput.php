@@ -22,7 +22,7 @@ final class UpdateCalendarEventInput
 
     public ?string $recurrence = null;
 
-    #[Assert\Regex(pattern: '/^#[0-9A-Fa-f]{6}$/', message: 'Invalid color format')]
+    #[Assert\Regex(pattern: '/^#[0-9A-Fa-f]{6}$/', message: 'Format de couleur invalide (ex: #FF0000)')]
     public ?string $color = null;
 
     #[Assert\Length(max: 255)]

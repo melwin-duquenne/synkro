@@ -113,7 +113,7 @@ export function useDashboard() {
       }
       
       if (!response.ok) {
-        throw new Error('Failed to fetch dashboard data')
+        throw new Error('Impossible de charger les données du tableau de bord')
       }
 
       const data = await response.json()

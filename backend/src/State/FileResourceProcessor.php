@@ -13,6 +13,7 @@ use App\Dto\File\UpdateFileInput;
 use App\Entity\FileResource;
 use App\Entity\Room;
 use App\Entity\User;
+use App\Exception\ErrorMessage;
 use App\Security\RoomAccessChecker;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -72,7 +73,7 @@ class FileResourceProcessor implements ProcessorInterface
     {
         $user = $this->security->getUser();
         if (!$user instanceof User) {
-            throw new AccessDeniedHttpException('Not authenticated');
+            throw new AccessDeniedHttpException(ErrorMessage::AUTH_REQUIRED);
         }
 
         $roomId = $uriVariables['roomId'] ?? null;
@@ -103,7 +104,7 @@ class FileResourceProcessor implements ProcessorInterface
         $file = $request?->files->get('file');
 
         if (!$file) {
-            throw new BadRequestHttpException('No file uploaded. Use "file" as the field name.');
+            throw new BadRequestHttpException(ErrorMessage::FILE_NO_FILE_UPLOADED);
         }
 
         if (!$file->isValid()) {
@@ -111,17 +112,17 @@ class FileResourceProcessor implements ProcessorInterface
         }
 
         if ($file->getSize() > self::MAX_FILE_SIZE) {
-            throw new BadRequestHttpException('File too large. Maximum size is 100 MB.');
+            throw new BadRequestHttpException(ErrorMessage::FILE_TOO_LARGE);
         }
 
         $mimeType = $file->getMimeType();
         if (!in_array($mimeType, self::ALLOWED_MIME_TYPES, true)) {
-            throw new BadRequestHttpException('File type not allowed: ' . $mimeType);
+            throw new BadRequestHttpException(ErrorMessage::FILE_INVALID_TYPE);
         }
 
         $extension = strtolower($file->getClientOriginalExtension());
         if (!in_array($extension, self::ALLOWED_EXTENSIONS, true)) {
-            throw new BadRequestHttpException('File extension not allowed: ' . $extension);
+            throw new BadRequestHttpException(ErrorMessage::FILE_INVALID_TYPE);
         }
 
         // Check for parent folder
@@ -130,7 +131,7 @@ class FileResourceProcessor implements ProcessorInterface
         if ($parentId) {
             $parent = $this->entityManager->getRepository(FileResource::class)->find($parentId);
             if (!$parent || !$parent->isFolder() || $parent->getRoom()->getId() !== $roomId) {
-                throw new BadRequestHttpException('Invalid parent folder');
+                throw new BadRequestHttpException(ErrorMessage::FILE_INVALID_PARENT);
             }
         }
 
@@ -175,7 +176,7 @@ class FileResourceProcessor implements ProcessorInterface
         if ($data->parentId) {
             $parent = $this->entityManager->getRepository(FileResource::class)->find($data->parentId);
             if (!$parent || !$parent->isFolder() || $parent->getRoom()->getId() !== $roomId) {
-                throw new BadRequestHttpException('Invalid parent folder');
+                throw new BadRequestHttpException(ErrorMessage::FILE_INVALID_PARENT);
             }
         }
 
@@ -204,7 +205,7 @@ class FileResourceProcessor implements ProcessorInterface
 
         $file = $this->entityManager->getRepository(FileResource::class)->find($fileId);
         if (!$file || $file->getRoom()->getId() !== $roomId) {
-            throw new NotFoundHttpException('File not found');
+            throw new NotFoundHttpException(ErrorMessage::FILE_NOT_FOUND);
         }
 
         $newName = $data->fileName ?? $file->getFileName();
@@ -215,10 +216,10 @@ class FileResourceProcessor implements ProcessorInterface
         } elseif ($data->parentId !== null) {
             $newParent = $this->entityManager->getRepository(FileResource::class)->find($data->parentId);
             if (!$newParent || !$newParent->isFolder() || $newParent->getRoom()->getId() !== $roomId) {
-                throw new BadRequestHttpException('Invalid parent folder');
+                throw new BadRequestHttpException(ErrorMessage::FILE_INVALID_PARENT);
             }
             if ($file->isFolder() && $this->isDescendant($newParent, $file)) {
-                throw new BadRequestHttpException('Cannot move a folder into itself or its descendants');
+                throw new BadRequestHttpException(ErrorMessage::FILE_CIRCULAR_MOVE);
             }
         }
 
@@ -241,7 +242,7 @@ class FileResourceProcessor implements ProcessorInterface
 
         $file = $this->entityManager->getRepository(FileResource::class)->find($fileId);
         if (!$file || $file->getRoom()->getId() !== $roomId) {
-            throw new NotFoundHttpException('File not found');
+            throw new NotFoundHttpException(ErrorMessage::FILE_NOT_FOUND);
         }
 
         // Delete physical files recursively before removing entities
@@ -307,7 +308,7 @@ class FileResourceProcessor implements ProcessorInterface
         $count = (int) $qb->getQuery()->getSingleScalarResult();
 
         if ($count > 0) {
-            throw new BadRequestHttpException('Un fichier ou dossier avec le nom "' . $fileName . '" existe deja a cet emplacement.');
+            throw new BadRequestHttpException(ErrorMessage::FILE_NAME_CONFLICT);
         }
     }
 
@@ -315,11 +316,11 @@ class FileResourceProcessor implements ProcessorInterface
     {
         $room = $this->entityManager->getRepository(Room::class)->find($roomId);
         if (!$room) {
-            throw new NotFoundHttpException('Room not found');
+            throw new NotFoundHttpException(ErrorMessage::ROOM_NOT_FOUND);
         }
 
         if (!$this->accessChecker->canAccess($user, $room)) {
-            throw new AccessDeniedHttpException('Access denied');
+            throw new AccessDeniedHttpException(ErrorMessage::ACCESS_DENIED);
         }
 
         return $room;

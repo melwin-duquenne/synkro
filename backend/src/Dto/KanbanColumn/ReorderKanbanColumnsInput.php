@@ -6,7 +6,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 final class ReorderKanbanColumnsInput
 {
-    #[Assert\NotBlank(message: 'Columns array is required')]
+    #[Assert\NotBlank(message: 'La liste des colonnes est requise')]
     #[Assert\All([
         new Assert\Collection([
             'id' => new Assert\NotNull(),

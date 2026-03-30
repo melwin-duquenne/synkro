@@ -26,7 +26,7 @@ class RoomProvider implements ProviderInterface
     {
         $user = $this->security->getUser();
         if (!$user instanceof User) {
-            throw new AccessDeniedHttpException('Not authenticated');
+            throw new AccessDeniedHttpException('Vous devez être connecté pour effectuer cette action');
         }
 
         if ($operation instanceof CollectionOperationInterface) {
@@ -83,11 +83,11 @@ class RoomProvider implements ProviderInterface
         $room = $this->entityManager->getRepository(Room::class)->find($id);
 
         if (!$room) {
-            throw new NotFoundHttpException('Room not found');
+            throw new NotFoundHttpException('Salon introuvable');
         }
 
         if (!$this->accessChecker->canAccess($user, $room)) {
-            throw new AccessDeniedHttpException('Access denied');
+            throw new AccessDeniedHttpException('Accès refusé');
         }
 
         return RoomOutput::fromEntity($room, true);

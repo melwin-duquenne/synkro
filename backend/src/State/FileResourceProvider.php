@@ -34,21 +34,21 @@ class FileResourceProvider implements ProviderInterface
     {
         $user = $this->security->getUser();
         if (!$user instanceof User) {
-            throw new AccessDeniedHttpException('Not authenticated');
+            throw new AccessDeniedHttpException('Vous devez être connecté pour effectuer cette action');
         }
 
         $roomId = $uriVariables['roomId'] ?? null;
         if (!$roomId) {
-            throw new BadRequestHttpException('roomId is required');
+            throw new BadRequestHttpException('roomId requis');
         }
 
         $room = $this->entityManager->getRepository(Room::class)->find($roomId);
         if (!$room) {
-            throw new NotFoundHttpException('Room not found');
+            throw new NotFoundHttpException('Salon introuvable');
         }
 
         if (!$this->accessChecker->canAccess($user, $room)) {
-            throw new AccessDeniedHttpException('Access denied');
+            throw new AccessDeniedHttpException('Accès refusé');
         }
 
         // Post operations: provider is only used for URI resolution, processor handles the work
@@ -164,7 +164,7 @@ class FileResourceProvider implements ProviderInterface
         $file = $this->entityManager->getRepository(FileResource::class)->find($fileId);
 
         if (!$file || $file->getRoom()->getId() !== $room->getId()) {
-            throw new NotFoundHttpException('File not found');
+            throw new NotFoundHttpException('Fichier introuvable');
         }
 
         return FileOutput::fromEntity($file);
@@ -175,17 +175,17 @@ class FileResourceProvider implements ProviderInterface
         $file = $this->entityManager->getRepository(FileResource::class)->find($fileId);
 
         if (!$file || $file->getRoom()->getId() !== $room->getId()) {
-            throw new NotFoundHttpException('File not found');
+            throw new NotFoundHttpException('Fichier introuvable');
         }
 
         if ($file->isFolder()) {
-            throw new BadRequestHttpException('Cannot download a folder');
+            throw new BadRequestHttpException('Impossible de télécharger un dossier');
         }
 
         $fullPath = $this->projectDir . '/public' . $file->getFilePath();
 
         if (!file_exists($fullPath)) {
-            throw new NotFoundHttpException('File not found on disk');
+            throw new NotFoundHttpException('Fichier introuvable sur le disque');
         }
 
         $response = new BinaryFileResponse($fullPath);

@@ -7,16 +7,21 @@ use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use KnpU\OAuth2ClientBundle\Client\ClientRegistry;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Routing\Attribute\Route;
 
 class GoogleAuthController extends AbstractController
 {
     public function __construct(
         private JWTTokenManagerInterface $jwtManager,
         private EntityManagerInterface $entityManager,
-        private UserRepository $userRepository
+        private UserRepository $userRepository,
+        private LoggerInterface $logger,
+        #[Autowire('%env(APP_FRONTEND_URL)%')]
+        private string $frontendUrl = 'http://localhost:5173',
     ) {}
 
     #[Route('/auth/google', name: 'auth_google')]
@@ -61,13 +66,12 @@ class GoogleAuthController extends AbstractController
             $token = $this->jwtManager->create($user);
 
             // Rediriger vers le frontend avec le token
-            $frontendUrl = 'http://localhost:5173';
-            return $this->redirect($frontendUrl . '/auth/callback?token=' . $token);
+            return $this->redirect($this->frontendUrl . '/auth/callback?token=' . $token);
 
         } catch (\Exception $e) {
             // Log l'erreur pour debug
-            error_log('OAuth error: ' . $e->getMessage());
-            return $this->redirect('http://localhost:5173/login?error=oauth_failed&message=' . urlencode($e->getMessage()));
+            $this->logger->error('OAuth error: ' . $e->getMessage());
+            return $this->redirect($this->frontendUrl . '/login?error=oauth_failed&message=' . urlencode($e->getMessage()));
         }
     }
 
@@ -82,11 +86,7 @@ class GoogleAuthController extends AbstractController
         $token = $this->jwtManager->create($user);
 
         // Rediriger vers le frontend avec le token
-        $frontendUrl = $request->getSchemeAndHttpHost() === 'http://localhost:8000'
-            ? 'http://localhost:5173'
-            : $request->getSchemeAndHttpHost();
-
-        return $this->redirect($frontendUrl . '/auth/callback?token=' . $token);
+        return $this->redirect($this->frontendUrl . '/auth/callback?token=' . $token);
     }
 
     #[Route('/auth/google/failure', name: 'auth_google_failure')]
