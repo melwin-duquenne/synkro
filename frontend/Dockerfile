@@ -17,6 +17,16 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+
+# Variables Vite injectées au build (overridées par docker-compose.prod.yml)
+ARG VITE_API_URL=/api
+ARG VITE_WS_URL
+ARG VITE_BACKEND_URL
+
+ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_WS_URL=$VITE_WS_URL
+ENV VITE_BACKEND_URL=$VITE_BACKEND_URL
+
 RUN npm run build
 
 # ─── Stage: prod (Nginx) ──────────────────────────────────────────────────────
