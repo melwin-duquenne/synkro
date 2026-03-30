@@ -1,8 +1,8 @@
-# 🚀 Synkro — Collaborative Platform  
+# 🐙 Synkro — Collaborative Platform  
 _by Melwin & Kyllian_  
 
 Synkro est une plateforme **collaborative temps réel** qui combine **édition de texte, whiteboard, chat, visioconférence et gestion fine des permissions**.  
-Construit en **4 jours**, ce projet met l'accent sur la **fluidité**, la **simplicité d'usage** et une **expérience moderne**.  
+Construit en **4 jours**, ce projet met l'accent sur la **fluidité**, la **simplicité d'usage** et une **expérience moderne**.
 
 ---
 
