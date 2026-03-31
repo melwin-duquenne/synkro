@@ -20,7 +20,7 @@ FROM php:8.3-fpm-alpine AS prod
 
 WORKDIR /var/www
 
-RUN apk add --no-cache icu-dev libpq-dev libzip-dev zip git unzip \
+RUN apk add --no-cache icu-dev libpq-dev libzip-dev zip git unzip openssl \
     && docker-php-ext-install pdo pdo_pgsql intl zip opcache
 
 # Opcache optimisé pour la production
@@ -55,6 +55,11 @@ ENV APP_ENV=prod \
 
 # Symfony exige un fichier .env physique même si les variables sont dans l'environnement
 RUN touch .env
+
+# Générer des clés JWT placeholder pour le cache:warmup (les vraies clés sont montées au runtime)
+RUN mkdir -p config/jwt \
+    && openssl genpkey -algorithm RSA -out config/jwt/private.pem -pkeyopt rsa_keygen_bits:4096 -pass pass:placeholder \
+    && openssl pkey -in config/jwt/private.pem -out config/jwt/public.pem -pubout -passin pass:placeholder
 
 # Finaliser l'autoloader et warmup du cache
 RUN composer dump-autoload --optimize --classmap-authoritative \
