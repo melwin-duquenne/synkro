@@ -55,8 +55,7 @@ ENV APP_ENV=prod \
 
 # Écraser le .env du repo (contient des ${} shell non interprétables par Symfony)
 # Les vraies valeurs sont dans les ENV ci-dessus et seront overridées au runtime
-RUN echo 'APP_ENV=prod' > .env
-
+RUN rm -f .env
 # Créer les répertoires requis
 RUN mkdir -p var/share
 
@@ -66,11 +65,12 @@ RUN mkdir -p config/jwt \
     && openssl pkey -in config/jwt/private.pem -out config/jwt/public.pem -pubout -passin pass:placeholder
 
 # Finaliser l'autoloader et warmup du cache
-RUN composer dump-autoload --optimize --classmap-authoritative \
-    && php bin/console cache:warmup --env=prod -vvv
-
+RUN composer dump-autoload --optimize --classmap-authoritative
 # Permissions correctes
 RUN chown -R www-data:www-data var/
 
 EXPOSE 9000
-CMD ["php-fpm"]
+CMD ["sh", "-c", "\
+    php bin/console cache:warmup --env=prod && \
+    php-fpm \
+"]
