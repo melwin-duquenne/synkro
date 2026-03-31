@@ -8,7 +8,9 @@
       "Bash(grep:*)",
       "Bash(wc:*)",
       "Bash(find:*)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(npx eslint:*)",
+      "Bash(npx vue-tsc:*)"
     ]
   }
 }

@@ -82,7 +82,7 @@ export const useAuthStore = defineStore('auth', () => {
       }
 
       user.value = await response.json()
-    } catch (e) {
+    } catch {
       logout()
     }
   }

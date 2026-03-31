@@ -44,7 +44,7 @@
 
         <!-- Inviter des membres / Gestion des utilisateurs (admin seulement) -->
         <button 
-          v-if="userRole === 'admin'"
+          v-if="canManageUsers"
           class="btn btn-outline justify-start gap-3"
           @click="$emit('invite-members')"
         >
@@ -59,9 +59,15 @@
 </template>
 
 <script setup lang="ts">
-defineProps<{
-  userRole?: 'admin' | 'user'
+import { computed } from 'vue'
+import type { UserRole } from '@/types'
+import { isAtLeast } from '@/utils/permissions'
+
+const props = defineProps<{
+  userRole?: UserRole
 }>()
+
+const canManageUsers = computed(() => props.userRole ? isAtLeast(props.userRole, 'editor') : false)
 
 defineEmits<{
   'create-room': []

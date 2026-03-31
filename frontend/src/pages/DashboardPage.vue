@@ -147,7 +147,7 @@ const isAdminOrOwner = computed(() => isAtLeast(authStore.user?.role || 'user', 
 const teamUsers = computed(() => dashboardData.value?.teamAvailability || [])
 const selectedUserName = computed(() => {
   if (!selectedUserId.value) return ''
-  const user = teamUsers.value.find((u: any) => u.id === selectedUserId.value)
+  const user = teamUsers.value.find((u: { id: number; name?: string; email?: string }) => u.id === selectedUserId.value)
   return user?.name || user?.email || ''
 })
 
@@ -156,7 +156,7 @@ const showSelectRoomModal = ref(false)
 const showCreateTaskModal = ref(false)
 const selectedRoomId = ref<number | null>(null)
 const showEventDetailModal = ref(false)
-const selectedEvent = ref<any>(null)
+const selectedEvent = ref<Record<string, unknown> | null>(null)
 
 onMounted(() => {
   if (!authStore.isAuthenticated) {
@@ -192,7 +192,7 @@ const handleCreateTask = () => {
   showSelectRoomModal.value = true
 }
 
-const handleRoomSelected = (room: any) => {
+const handleRoomSelected = (room: { id: number }) => {
   selectedRoomId.value = room.id
   showCreateTaskModal.value = true
 }
@@ -201,7 +201,7 @@ const handleInviteMembers = () => {
   router.push('/admin/users')
 }
 
-const handleEventClick = (event: any) => {
+const handleEventClick = (event: Record<string, unknown>) => {
   selectedEvent.value = event
   showEventDetailModal.value = true
 }

@@ -39,6 +39,20 @@ RUN composer install --no-dev --optimize-autoloader --no-scripts
 # Copier le code source
 COPY . .
 
+# Variables d'env minimales pour le cache:warmup (les vraies valeurs sont injectées au runtime)
+ENV APP_ENV=prod \
+    APP_SECRET=build-placeholder \
+    DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder \
+    JWT_SECRET_KEY=%kernel.project_dir%/config/jwt/private.pem \
+    JWT_PUBLIC_KEY=%kernel.project_dir%/config/jwt/public.pem \
+    JWT_PASSPHRASE=placeholder \
+    CORS_ALLOW_ORIGIN='^https?://localhost$' \
+    MAILER_DSN=null://null \
+    APP_FRONTEND_URL=http://localhost \
+    GOOGLE_CLIENT_ID=placeholder \
+    GOOGLE_CLIENT_SECRET=placeholder \
+    GOOGLE_REDIRECT_URI=http://localhost
+
 # Finaliser l'autoloader et warmup du cache
 RUN composer dump-autoload --optimize --classmap-authoritative \
     && php bin/console cache:warmup --env=prod

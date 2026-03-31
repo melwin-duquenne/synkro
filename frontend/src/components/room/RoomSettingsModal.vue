@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRoomsStore, type EnterpriseUser } from '@/stores/rooms'
+import { useRoomsStore } from '@/stores/rooms'
 import { useAuthStore } from '@/stores/auth'
 import type { Room, RoomMember } from '@/types'
 import { isAtLeast, canManageRoomMembers } from '@/utils/permissions'

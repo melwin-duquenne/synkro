@@ -259,7 +259,7 @@ const props = defineProps<{
 }>()
 
 const showTodayDetails = ref(false)
-const selectedDay = ref<any>(null)
+const selectedDay = ref<{ date: string; tasks: number; events: number; total: number } | null>(null)
 
 // Calculer la charge d'aujourd'hui
 const todayWorkload = computed(() => {
@@ -317,7 +317,7 @@ const weekWorkload = computed(() => {
   }
 })
 
-const openDayDetails = (day: any) => {
+const openDayDetails = (day: { date: string; tasks: number; events: number; total: number }) => {
   selectedDay.value = day
 }
 </script>
