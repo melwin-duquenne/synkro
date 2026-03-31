@@ -15,7 +15,7 @@
 
       <template v-else>
       <!-- Timeline du jour -->
-      <div v-if="todayEvents.length > 0" class="mb-6">
+      <div v-if="(todayEvents?.length ?? 0) > 0" class="mb-6">
         <h3 class="text-sm font-semibold mb-3 text-base-content/70">Aujourd'hui</h3>
         <div class="space-y-2">
           <div 
@@ -44,14 +44,14 @@
       <!-- Prochains événements -->
       <div>
         <h3 class="text-sm font-semibold mb-3 text-base-content/70">
-          À venir ({{ Math.min(upcomingEvents.length, 2) }})
+          À venir ({{ Math.min((upcomingEvents?.length ?? 0), 2) }})
         </h3>
-        <div v-if="upcomingEvents.length === 0" class="text-center py-8 text-base-content/50">
+        <div v-if="(upcomingEvents?.length ?? 0) === 0" class="text-center py-8 text-base-content/50">
           Aucun événement à venir
         </div>
         <div v-else class="space-y-2">
           <div 
-            v-for="event in upcomingEvents.slice(0, 2)" 
+            v-for="event in (upcomingEvents ?? []).slice(0, 2)" 
             :key="event.id"
             class="flex items-start gap-3 p-3 rounded-lg hover:bg-base-200 transition-colors cursor-pointer"
             @click="handleEventClick(event)"
@@ -118,7 +118,7 @@ const getEventIcon = (type: string): string => {
     deadline: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`,
     other: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>`
   }
-  return icons[type] || icons.other
+  return icons[type] ?? icons.other ?? ''
 }
 
 const getEventBadgeClass = (type: string): string => {
@@ -139,7 +139,7 @@ const formatTime = (dateString: string): string => {
     return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
   }
   
-  const [, year, month, day, hour, minute] = match
+  const [, year = "0", month = "1", day = "1", hour = "0", minute = "0"] = match ?? [];
   const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute))
   return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 }
@@ -171,7 +171,7 @@ const formatDateTime = (dateString: string): string => {
     }
   }
   
-  const [, year, month, day, hour, minute] = match
+  const [, year = "0", month = "1", day = "1", hour = "0", minute = "0"] = match ?? [];
   const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute))
   const now = new Date()
   const tomorrow = new Date(now)
