@@ -109,6 +109,10 @@ async function addMember(userId: number) {
   showMemberDropdown.value = false
 }
 
+function hideMemberDropdown() {
+  setTimeout(() => showMemberDropdown.value = false, 200)
+}
+
 async function removeMember(userId: number) {
   const member = members.value.find(m => m.id === userId)
   if (!member || member.isCreator) return
@@ -288,7 +292,7 @@ onMounted(() => {
                 placeholder="Rechercher un membre a ajouter..."
                 class="input input-bordered w-full"
                 @focus="showMemberDropdown = true"
-                @blur="setTimeout(() => showMemberDropdown = false, 200)"
+                @blur="hideMemberDropdown"
               />
 
               <!-- Dropdown -->

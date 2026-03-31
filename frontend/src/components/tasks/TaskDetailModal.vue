@@ -362,7 +362,7 @@ function handleClose() {
           v-model="editEstimation"
           class="select select-bordered w-full max-w-xs"
         >
-          <option v-for="option in estimationOptions" :key="option.value" :value="option.value">
+          <option v-for="option in estimationOptions" :key="option.value ?? 'none'" :value="option.value">
             {{ option.label }}
           </option>
         </select>

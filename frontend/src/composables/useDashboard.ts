@@ -33,6 +33,7 @@ export interface DashboardData {
     startDate: string
     endDate: string
     eventType: string
+    room: { id: number; name: string } | null
   }>
   tasks: {
     today: Array<TaskItem>
