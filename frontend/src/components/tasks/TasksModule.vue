@@ -277,6 +277,7 @@ function onColumnDrop(e: DragEvent, index: number) {
   }
   // Move column in array
   const moved = columns.value.splice(fromIndex, 1)[0]
+  if (!moved) return
   columns.value.splice(index, 0, moved)
   // Re-index positions
   columns.value.forEach((col, idx) => {
@@ -435,7 +436,7 @@ onMounted(async () => {
         >
           {{ showArchived ? 'Voir actives' : 'Voir archivées' }}
         </button>
-        <button class="btn btn-primary btn-sm" @click="openCreateModal(columns[0]?.id)">
+        <button class="btn btn-primary btn-sm" @click="columns[0] && openCreateModal(columns[0].id)">
           + Nouvelle tâche
         </button>
       </div>

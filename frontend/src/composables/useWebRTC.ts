@@ -89,7 +89,7 @@ export function useWebRTC(roomId: number) {
   async function startScreenShare(): Promise<void> {
     try {
       const screenStream = await navigator.mediaDevices.getDisplayMedia({
-        video: { cursor: 'always' },
+        video: true,
         audio: false,
       })
 
@@ -98,6 +98,7 @@ export function useWebRTC(roomId: number) {
 
       // Replace video track in all peer connections
       const screenTrack = screenStream.getVideoTracks()[0]
+      if (!screenTrack) return
 
       screenTrack.onended = () => {
         stopScreenShare()
