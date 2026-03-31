@@ -238,6 +238,7 @@ export const useFilesStore = defineStore('files', () => {
 
   function navigateToBreadcrumb(roomId: number, index: number) {
     const item = breadcrumbs.value[index]
+    if (!item) return
     currentFolderId.value = item.id
     breadcrumbs.value = breadcrumbs.value.slice(0, index + 1)
     searchQuery.value = ''

@@ -26,10 +26,6 @@ const showSettings = ref(false)
 
 const roomId = computed(() => Number(route.params.id))
 
-const availableModules = computed(() => {
-  return room.value?.moduleRooms?.map(mr => mr.module.code) || []
-})
-
 const sortedModuleRooms = computed(() => {
   if (!room.value?.moduleRooms) return []
   // Filtrer le chat pour ne pas l'afficher dans les layouts (il sera en mode flottant)
