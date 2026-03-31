@@ -163,7 +163,7 @@ interface DashboardEvent {
   endDate: string
   eventType: string
   description?: string
-  room?: { id: number; name: string } | null
+  room: { id: number; name: string } | null
 }
 
 const selectedEvent = ref<DashboardEvent | null>(null)

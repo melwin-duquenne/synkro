@@ -53,8 +53,12 @@ ENV APP_ENV=prod \
     GOOGLE_CLIENT_SECRET=placeholder \
     GOOGLE_REDIRECT_URI=http://localhost
 
-# Symfony exige un fichier .env physique même si les variables sont dans l'environnement
-RUN touch .env
+# Écraser le .env du repo (contient des ${} shell non interprétables par Symfony)
+# Les vraies valeurs sont dans les ENV ci-dessus et seront overridées au runtime
+RUN echo 'APP_ENV=prod' > .env
+
+# Créer les répertoires requis
+RUN mkdir -p var/share
 
 # Générer des clés JWT placeholder pour le cache:warmup (les vraies clés sont montées au runtime)
 RUN mkdir -p config/jwt \
@@ -63,7 +67,7 @@ RUN mkdir -p config/jwt \
 
 # Finaliser l'autoloader et warmup du cache
 RUN composer dump-autoload --optimize --classmap-authoritative \
-    && php bin/console cache:warmup --env=prod
+    && php bin/console cache:warmup --env=prod -vvv
 
 # Permissions correctes
 RUN chown -R www-data:www-data var/

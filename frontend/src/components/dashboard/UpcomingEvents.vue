@@ -92,7 +92,7 @@ interface Event {
   startDate: string
   endDate: string
   eventType: string
-  room?: { id: number; name: string } | null
+  room: { id: number; name: string } | null
 }
 
 defineProps<{
