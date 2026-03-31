@@ -194,7 +194,7 @@ const formatDate = (dateString: string | null): string => {
     return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
   }
   
-  const [, year, month, day, hour, minute] = match
+  const [, year = "0", month = "1", day = "1", hour = "0", minute = "0"] = match ?? [];
   const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute))
   return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
 }
