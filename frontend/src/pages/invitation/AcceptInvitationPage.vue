@@ -2,12 +2,10 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useInvitationStore } from '@/stores/invitation'
-import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
 const router = useRouter()
 const invitationStore = useInvitationStore()
-const authStore = useAuthStore()
 
 const status = ref<'loading' | 'success' | 'login_required' | 'error'>('loading')
 const message = ref('')

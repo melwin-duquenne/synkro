@@ -129,6 +129,36 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function updateEntrepriseName(name: string): Promise<boolean> {
+    if (!token.value) return false
+    loading.value = true
+    error.value = null
+
+    try {
+      const response = await fetch(`${API_URL}/account/entreprise`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/merge-patch+json',
+          'Authorization': `Bearer ${token.value}`
+        },
+        body: JSON.stringify({ name })
+      })
+
+      if (!response.ok) {
+        const responseData = await response.json()
+        throw new Error(extractApiError(responseData, 'Impossible de mettre à jour le nom de l\'entreprise'))
+      }
+
+      await fetchUser()
+      return true
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Impossible de mettre à jour le nom de l\'entreprise'
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function updateProfile(data: UpdateProfileData): Promise<boolean> {
     if (!token.value) return false
     loading.value = true
@@ -349,6 +379,7 @@ export const useAuthStore = defineStore('auth', () => {
     logout,
     getAuthHeaders,
     setupEntreprise,
+    updateEntrepriseName,
     updateProfile,
     uploadAvatar,
     deleteAvatar,

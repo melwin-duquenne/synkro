@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useAuthStore } from './auth'
-import type { Room, Module, RoomMember, User } from '@/types'
+import type { Room, Module, RoomMember } from '@/types'
 import { extractApiError } from '@/utils/apiError'
 
 export interface TemplateItem {
