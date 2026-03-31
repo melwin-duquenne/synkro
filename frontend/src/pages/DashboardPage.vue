@@ -156,7 +156,17 @@ const showSelectRoomModal = ref(false)
 const showCreateTaskModal = ref(false)
 const selectedRoomId = ref<number | null>(null)
 const showEventDetailModal = ref(false)
-const selectedEvent = ref<Record<string, unknown> | null>(null)
+interface DashboardEvent {
+  id: number
+  title: string
+  startDate: string
+  endDate: string
+  eventType: string
+  description?: string
+  room: { id: number; name: string } | null
+}
+
+const selectedEvent = ref<DashboardEvent | null>(null)
 
 onMounted(() => {
   if (!authStore.isAuthenticated) {
@@ -201,7 +211,7 @@ const handleInviteMembers = () => {
   router.push('/admin/users')
 }
 
-const handleEventClick = (event: Record<string, unknown>) => {
+const handleEventClick = (event: DashboardEvent) => {
   selectedEvent.value = event
   showEventDetailModal.value = true
 }
