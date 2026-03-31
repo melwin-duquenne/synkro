@@ -126,14 +126,14 @@ const tasksByColumn = computed(() => {
       return true
     })
     .forEach(task => {
-      if (grouped[task.columnId]) {
-        grouped[task.columnId].push(task)
+      if (grouped[task.columnId] !== undefined) {
+        grouped[task.columnId]!.push(task)
       }
     })
 
   // Sort by position
   Object.keys(grouped).forEach(colId => {
-    grouped[Number(colId)].sort((a, b) => a.position - b.position)
+    grouped[Number(colId)]?.sort((a, b) => a.position - b.position)
   })
 
   return grouped
@@ -257,8 +257,7 @@ async function onDrop(e: DragEvent, newColumnId: number) {
 }
 
 // Drag and Drop for Columns
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function onColumnDragStart(column: KanbanColumn, index: number) {
+function onColumnDragStart(column: KanbanColumn) {
   draggedColumn.value = column
   dragOverColumnIndex.value = null
 }
@@ -507,7 +506,7 @@ onMounted(async () => {
         :key="column.id"
         class="kanban-column flex-1 min-w-[280px] max-w-[350px] flex flex-col"
         :draggable="!showArchived"
-        @dragstart="!showArchived ? onColumnDragStart(column, colIdx) : undefined"
+        @dragstart="!showArchived ? onColumnDragStart(column) : undefined"
         @dragover="!showArchived ? onColumnDragOver($event, colIdx) : undefined"
         @drop="!showArchived ? onColumnDrop($event, colIdx) : undefined"
         @dragend="!showArchived ? onColumnDragEnd() : undefined"
