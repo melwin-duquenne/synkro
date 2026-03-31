@@ -165,10 +165,10 @@ export const useCalendarStore = defineStore('calendar', () => {
   }
 
   function getEventsByDate(date: Date): CalendarEvent[] {
-    const dateStr = date.toISOString().split('T')[0]
+    const dateStr = date.toISOString().split('T')[0] ?? ''
     return events.value.filter(event => {
-      const start = event.startDate.split('T')[0]
-      const end = event.endDate.split('T')[0]
+      const start = event.startDate?.split('T')[0] ?? ''
+      const end = event.endDate?.split('T')[0] ?? ''
       return dateStr >= start && dateStr <= end
     })
   }

@@ -13,6 +13,14 @@ const success = ref<string | null>(null)
 const avatarInput = ref<HTMLInputElement | null>(null)
 const deleteRequested = ref(false)
 
+function openDeleteModal() {
+  ;(document.getElementById('delete-account-modal') as HTMLDialogElement)?.showModal()
+}
+
+function closeDeleteModal() {
+  ;(document.getElementById('delete-account-modal') as HTMLDialogElement)?.close()
+}
+
 const avatarUrl = computed(() => {
   if (authStore.user?.avatarUrl) {
     return `${API_BASE}${authStore.user.avatarUrl}`
@@ -239,7 +247,7 @@ async function handleDeleteAvatar() {
 
           <button
             class="btn btn-error btn-outline"
-            @click="(document.getElementById('delete-account-modal') as HTMLDialogElement)?.showModal()"
+            @click="openDeleteModal()"
           >
             Supprimer mon compte
           </button>
@@ -263,7 +271,7 @@ async function handleDeleteAvatar() {
             class="btn btn-error"
             :class="{ 'loading': authStore.loading }"
             :disabled="authStore.loading"
-            @click="handleRequestDelete(); (document.getElementById('delete-account-modal') as HTMLDialogElement)?.close()"
+            @click="handleRequestDelete(); closeDeleteModal()"
           >
             Envoyer l'email de confirmation
           </button>
