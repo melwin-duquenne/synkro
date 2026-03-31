@@ -53,6 +53,9 @@ ENV APP_ENV=prod \
     GOOGLE_CLIENT_SECRET=placeholder \
     GOOGLE_REDIRECT_URI=http://localhost
 
+# Symfony exige un fichier .env physique même si les variables sont dans l'environnement
+RUN touch .env
+
 # Finaliser l'autoloader et warmup du cache
 RUN composer dump-autoload --optimize --classmap-authoritative \
     && php bin/console cache:warmup --env=prod
