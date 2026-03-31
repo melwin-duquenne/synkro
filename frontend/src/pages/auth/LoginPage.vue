@@ -63,9 +63,9 @@ async function handleSubmit() {
         <button
           type="submit"
           class="btn btn-primary w-full"
-          :class="{ 'loading': authStore.loading }"
           :disabled="authStore.loading"
         >
+          <span v-if="authStore.loading" class="loading loading-spinner loading-sm"></span>
           {{ authStore.loading ? 'Connexion...' : 'Se connecter' }}
         </button>
       </form>

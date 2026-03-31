@@ -220,9 +220,9 @@ async function handleDeleteAvatar() {
             <button
               type="submit"
               class="btn btn-primary"
-              :class="{ 'loading': authStore.loading }"
               :disabled="authStore.loading"
             >
+              <span v-if="authStore.loading" class="loading loading-spinner loading-sm"></span>
               Sauvegarder
             </button>
           </div>
@@ -269,10 +269,10 @@ async function handleDeleteAvatar() {
           </form>
           <button
             class="btn btn-error"
-            :class="{ 'loading': authStore.loading }"
             :disabled="authStore.loading"
             @click="handleRequestDelete(); closeDeleteModal()"
           >
+            <span v-if="authStore.loading" class="loading loading-spinner loading-sm"></span>
             Envoyer l'email de confirmation
           </button>
         </div>

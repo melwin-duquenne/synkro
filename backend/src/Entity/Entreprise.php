@@ -26,7 +26,7 @@ class Entreprise
     #[Groups(['entreprise:read', 'entreprise:write', 'user:read', 'team:read'])]
     private ?string $name = null;
 
-    #[ORM\Column(type: 'string', length: 255, unique: true)]
+    #[ORM\Column(type: 'string', length: 255)]
     #[Groups(['entreprise:read', 'entreprise:write'])]
     private ?string $domain = null;
 

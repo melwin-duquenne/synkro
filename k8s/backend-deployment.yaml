@@ -1,0 +1,191 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-synkro
+  namespace: synkro
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend-synkro
+  template:
+    metadata:
+      labels:
+        app: backend-synkro
+    spec:
+      initContainers:
+        - name: generate-jwt-keys
+          image: alpine/openssl:latest
+          command:
+            - sh
+            - -c
+            - |
+              if [ -f /jwt/private.pem ] && [ -f /jwt/public.pem ]; then
+                echo "JWT keys already exist, skipping generation"
+              else
+                openssl genpkey -algorithm RSA -out /jwt/private.pem \
+                  -pkeyopt rsa_keygen_bits:4096 -pass pass:${JWT_PASSPHRASE} &&
+                openssl pkey -in /jwt/private.pem -out /jwt/public.pem \
+                  -pubout -passin pass:${JWT_PASSPHRASE} &&
+                chmod 644 /jwt/*.pem &&
+                echo "JWT keys generated successfully"
+              fi
+          env:
+            - name: JWT_PASSPHRASE
+              valueFrom:
+                secretKeyRef:
+                  name: synkro-secrets
+                  key: JWT_PASSPHRASE
+          volumeMounts:
+            - name: jwt-keys
+              mountPath: /jwt
+
+        - name: copy-public
+          image: moignon/synkro-backend:latest
+          command: ["sh", "-c", "cp -a /var/www/public/. /srv/public/"]
+          volumeMounts:
+            - name: backend-public
+              mountPath: /srv/public
+
+        - name: migrations
+          image: moignon/synkro-backend:latest
+          command: ["php", "bin/console", "doctrine:migrations:migrate", "--no-interaction"]
+          volumeMounts:
+            - name: dotenv
+              mountPath: /var/www/.env
+              subPath: dotenv
+            - name: jwt-keys
+              mountPath: /var/www/config/jwt
+          env: &backend-env
+            - name: APP_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: synkro-config
+                  key: APP_ENV
+            - name: APP_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: synkro-secrets
+                  key: APP_SECRET
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: synkro-secrets
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: synkro-secrets
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: synkro-secrets
+                  key: POSTGRES_DB
+            - name: DATABASE_URL
+              value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres-synkro:5432/$(POSTGRES_DB)?serverVersion=16&charset=utf8"
+            - name: JWT_SECRET_KEY
+              value: "%kernel.project_dir%/config/jwt/private.pem"
+            - name: JWT_PUBLIC_KEY
+              value: "%kernel.project_dir%/config/jwt/public.pem"
+            - name: JWT_PASSPHRASE
+              valueFrom:
+                secretKeyRef:
+                  name: synkro-secrets
+                  key: JWT_PASSPHRASE
+            - name: CORS_ALLOW_ORIGIN
+              valueFrom:
+                configMapKeyRef:
+                  name: synkro-config
+                  key: CORS_ALLOW_ORIGIN
+            - name: GOOGLE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: synkro-secrets
+                  key: GOOGLE_CLIENT_ID
+            - name: GOOGLE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: synkro-secrets
+                  key: GOOGLE_CLIENT_SECRET
+            - name: GOOGLE_REDIRECT_URI
+              valueFrom:
+                configMapKeyRef:
+                  name: synkro-config
+                  key: GOOGLE_REDIRECT_URI
+            - name: MAILER_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: synkro-secrets
+                  key: MAILER_DSN
+            - name: APP_FRONTEND_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: synkro-config
+                  key: APP_FRONTEND_URL
+            - name: DEFAULT_URI
+              valueFrom:
+                configMapKeyRef:
+                  name: synkro-config
+                  key: DEFAULT_URI
+      containers:
+        - name: backend-fpm
+          image: moignon/synkro-backend:latest
+          ports:
+            - containerPort: 9000
+          env: *backend-env
+          volumeMounts:
+            - name: backend-public
+              mountPath: /var/www/public
+            - name: dotenv
+              mountPath: /var/www/.env
+              subPath: dotenv
+            - name: jwt-keys
+              mountPath: /var/www/config/jwt
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          readinessProbe:
+            tcpSocket:
+              port: 9000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+
+        - name: backend-nginx
+          image: nginx:1.27-alpine
+          ports:
+            - containerPort: 8000
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: default.conf
+            - name: backend-public
+              mountPath: /var/www/public
+              readOnly: true
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "100m"
+
+      volumes:
+        - name: backend-public
+          emptyDir: {}
+        - name: nginx-config
+          configMap:
+            name: backend-nginx-config
+        - name: dotenv
+          configMap:
+            name: backend-nginx-config
+            items:
+              - key: dotenv
+                path: dotenv
+        - name: jwt-keys
+          persistentVolumeClaim:
+            claimName: jwt-keys
