@@ -9,6 +9,7 @@ export interface TemplateItem {
   name: string
   description: string
   modules: { code: string; name: string }[]
+  templateModules: { id: number; module: { code: string; name: string } }[]
 }
 
 export interface EnterpriseUser {

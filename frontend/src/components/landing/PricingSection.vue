@@ -254,7 +254,7 @@
         <h3 class="text-2xl font-bold text-center mb-8">Questions fréquentes</h3>
         <div class="space-y-4">
           <div class="collapse collapse-plus bg-base-100 shadow">
-            <input type="radio" name="pricing-faq" checked="checked" />
+            <input type="radio" name="pricing-faq" checked="false" />
             <div class="collapse-title text-lg font-medium">
               Puis-je changer d'offre à tout moment ?
             </div>

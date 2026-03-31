@@ -107,6 +107,9 @@ function handleClose() {
   memberSearch.value = ''
   emit('close')
 }
+function handleBlur() {
+  setTimeout(() => showMemberDropdown.value = false, 200)
+}
 
 // Fetch enterprise users when visibility changes to private
 watch(visibility, async (newValue) => {
@@ -218,7 +221,7 @@ onMounted(() => {
               placeholder="Rechercher un membre..."
               class="input input-bordered w-full"
               @focus="showMemberDropdown = true"
-              @blur="setTimeout(() => showMemberDropdown = false, 200)"
+              @blur="handleBlur"
             />
 
             <!-- Dropdown -->
