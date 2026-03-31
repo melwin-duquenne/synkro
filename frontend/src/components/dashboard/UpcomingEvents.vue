@@ -85,7 +85,6 @@
 </template>
 
 <script setup lang="ts">
-import { useRouter } from 'vue-router'
 
 interface Event {
   id: number
@@ -96,7 +95,7 @@ interface Event {
   room?: { id: number; name: string } | null
 }
 
-const props = defineProps<{
+defineProps<{
   upcomingEvents?: Event[]
   todayEvents?: Event[]
 }>()
@@ -105,7 +104,6 @@ const emit = defineEmits<{
   'event-click': [event: Event]
 }>()
 
-const router = useRouter()
 
 const handleEventClick = (event: Event) => {
 
@@ -197,9 +195,4 @@ const formatDateTime = (dateString: string): string => {
   }
 }
 
-const navigateToRoom = (roomId?: number) => {
-  if (roomId) {
-    router.push(`/rooms/${roomId}`)
-  }
-}
 </script>

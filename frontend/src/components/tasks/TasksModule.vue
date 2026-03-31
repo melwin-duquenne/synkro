@@ -52,7 +52,6 @@ const showArchived = ref(false)
 
 const draggedTask = ref<Task | null>(null)
 const draggedColumn = ref<KanbanColumn | null>(null)
-const dragOverColumnId = ref<number | null>(null)
 const dragOverColumnIndex = ref<number | null>(null)
 
 // Filters
@@ -258,6 +257,7 @@ async function onDrop(e: DragEvent, newColumnId: number) {
 }
 
 // Drag and Drop for Columns
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function onColumnDragStart(column: KanbanColumn, index: number) {
   draggedColumn.value = column
   dragOverColumnIndex.value = null

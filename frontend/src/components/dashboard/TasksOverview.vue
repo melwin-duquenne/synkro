@@ -167,7 +167,7 @@ interface Room {
   name: string
 }
 
-const props = defineProps<{
+defineProps<{
   tasks?: TasksData
   availableRooms?: Room[]
 }>()

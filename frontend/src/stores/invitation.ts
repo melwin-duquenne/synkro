@@ -89,7 +89,7 @@ export const useInvitationStore = defineStore('invitation', () => {
     }
   }
 
-  async function acceptInvitation(token: string): Promise<{ success: boolean; data?: any }> {
+  async function acceptInvitation(token: string): Promise<{ success: boolean; data?: unknown }> {
     const authStore = useAuthStore()
     loading.value = true
     error.value = null
