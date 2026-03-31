@@ -70,7 +70,7 @@ function formatDateForInput(date: Date): string {
 function parseDateTimeString(dateTimeStr: string): { date: string; time: string } {
   // Parse la chaîne ISO sans conversion de timezone
   const parts = dateTimeStr.split('T')
-  const date = parts[0]
+  const date = parts[0] || ''
   const time = parts[1] ? parts[1].substring(0, 5) : '00:00'
   return { date, time }
 }
