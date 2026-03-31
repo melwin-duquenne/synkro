@@ -65,7 +65,7 @@ export const useRoomsStore = defineStore('rooms', () => {
         // Handle both API Platform format and custom format
         rooms.value = data.member || data['hydra:member'] || data
       }
-    } catch (e) {
+    } catch {
       error.value = 'Impossible de charger les salons'
     } finally {
       loading.value = false

@@ -3,8 +3,7 @@ import { useAuthStore } from '@/stores/auth'
 import type {
   Participant,
   LocalMediaState,
-  CallState,
-  SIGNALING_MESSAGE_TYPES
+  CallState
 } from '@/types/webrtc'
 
 const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:3001'
@@ -200,6 +199,7 @@ export function useWebRTC(roomId: number) {
         if (view.length < 2) return
 
         const messageType = view[0]
+        if (messageType === undefined) return
 
         // Only handle WebRTC message types (2-5)
         if (messageType < 2 || messageType > 5) return
@@ -221,7 +221,7 @@ export function useWebRTC(roomId: number) {
             break
         }
       }
-    } catch (e) {
+    } catch {
       // Not a WebRTC message or parse error
     }
   }
@@ -309,7 +309,7 @@ export function useWebRTC(roomId: number) {
       console.log(`[WebRTC] Received track from ${remotePeerId}`)
       const participant = participants.value.get(remotePeerId)
       if (participant) {
-        participant.stream = event.streams[0]
+        participant.stream = event.streams[0] ?? null
         // Force reactivity
         participants.value = new Map(participants.value)
       }

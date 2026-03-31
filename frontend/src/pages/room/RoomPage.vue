@@ -55,7 +55,7 @@ function handleRoomUpdated(updatedRoom: Room) {
 function getModuleComponent(moduleCode: string | null) {
   if (!moduleCode) return null
   
-  const components: Record<string, any> = {
+  const components: Record<string, ReturnType<typeof import('vue')['defineComponent']>> = {
     editor: EditorModule,
     chat: ChatModule,
     tasks: TasksModule,

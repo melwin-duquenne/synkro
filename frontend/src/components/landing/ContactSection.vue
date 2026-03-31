@@ -85,9 +85,9 @@ async function submitForm() {
     setTimeout(() => {
       submitStatus.value = 'idle'
     }, 5000)
-  } catch (error: any) {
+  } catch (error: unknown) {
     submitStatus.value = 'error'
-    errorMessage.value = error.message || 'Une erreur est survenue. Veuillez réessayer.'
+    errorMessage.value = error instanceof Error ? error.message : 'Une erreur est survenue. Veuillez réessayer.'
   } finally {
     isSubmitting.value = false
   }

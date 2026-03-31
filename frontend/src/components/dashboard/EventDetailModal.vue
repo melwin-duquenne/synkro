@@ -136,7 +136,7 @@ interface Event {
     room: { id: number; name: string } | null
 }
 
-const props = defineProps<{
+defineProps<{
     open: boolean
     event: Event | null
 }>()
