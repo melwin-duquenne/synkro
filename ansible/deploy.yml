@@ -139,7 +139,14 @@
       copy:
         src: ../.env
         dest: "{{ app_dir }}/.env"
-        mode: '0600'  # Lecture seule par root
+        mode: '0644'  # Lisible par Docker
+
+    - name: S'assurer que .env est lisible par Docker
+      file:
+        path: "{{ app_dir }}/.env"
+        mode: '0644'
+        owner: root
+        group: root
 
     # ─── CLÉS JWT ────────────────────────────────────────────────────────────
     - name: Créer le répertoire des clés JWT
