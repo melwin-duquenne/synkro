@@ -189,22 +189,30 @@ data:
 
         {
           "id": 13,
-          "type": "stat",
+          "type": "bargauge",
           "title": "Redémarrages de pods (1h)",
           "gridPos": { "x": 16, "y": 6, "w": 8, "h": 8 },
           "datasource": { "type": "prometheus", "uid": "prometheus-synkro" },
           "options": {
             "reduceOptions": { "calcs": ["lastNotNull"] },
-            "orientation": "vertical",
-            "textMode": "value_and_name",
-            "colorMode": "background"
+            "orientation": "horizontal",
+            "displayMode": "basic",
+            "valueMode": "color",
+            "showUnfilled": true,
+            "minVizWidth": 0,
+            "minVizHeight": 16
           },
           "fieldConfig": {
             "defaults": {
               "unit": "short",
+              "min": 0,
               "thresholds": {
                 "mode": "absolute",
-                "steps": [{ "value": null, "color": "green" }, { "value": 1, "color": "yellow" }, { "value": 3, "color": "red" }]
+                "steps": [
+                  { "value": null, "color": "green" },
+                  { "value": 1,    "color": "yellow" },
+                  { "value": 3,    "color": "red" }
+                ]
               },
               "color": { "mode": "thresholds" }
             }
@@ -229,7 +237,19 @@ data:
           "fieldConfig": {
             "defaults": {
               "unit": "binBps",
-              "custom": { "lineWidth": 2, "fillOpacity": 10 }
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "thresholdsStyle": { "mode": "line" }
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "value": null,    "color": "green" },
+                  { "value": 102400,  "color": "yellow" },
+                  { "value": 1048576, "color": "red" }
+                ]
+              }
             }
           },
           "targets": [
@@ -264,7 +284,19 @@ data:
           "fieldConfig": {
             "defaults": {
               "unit": "short",
-              "custom": { "lineWidth": 2, "fillOpacity": 10 }
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "thresholdsStyle": { "mode": "line" }
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "value": null, "color": "green" },
+                  { "value": 0.1,  "color": "yellow" },
+                  { "value": 0.35, "color": "red" }
+                ]
+              }
             }
           },
           "targets": [{
@@ -284,7 +316,19 @@ data:
           "fieldConfig": {
             "defaults": {
               "unit": "bytes",
-              "custom": { "lineWidth": 2, "fillOpacity": 10 }
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "thresholdsStyle": { "mode": "line" }
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "value": null,      "color": "green" },
+                  { "value": 209715200, "color": "yellow" },
+                  { "value": 419430400, "color": "red" }
+                ]
+              }
             }
           },
           "targets": [{
