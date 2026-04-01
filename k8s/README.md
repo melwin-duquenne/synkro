@@ -22,7 +22,7 @@ Internet
     ├──► websocket-synkro x1 (:3001)
     │         │ Serveur Node.js temps réel
     │
-    ├──► grafana (LoadBalancer 84.234.27.2 :3000)
+    ├──► grafana (84.234.27.2 :3000)
     │
     └──► postgres-synkro (:5432) — primaire
               └──► postgres-replica (:5432) — réplique lecture seule
