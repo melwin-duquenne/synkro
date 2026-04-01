@@ -25,7 +25,7 @@ spec:
           msg := sprintf("Container '%v' must define resources.limits.memory", [container.name])
         }
 ---
-apiVersion: K8sRequiredResourceLimits.constraints.gatekeeper.sh/v1beta1
+apiVersion: constraints.gatekeeper.sh/v1beta1
 kind: K8sRequiredResourceLimits
 metadata:
   name: require-resource-limits
@@ -59,7 +59,7 @@ spec:
           msg := sprintf("Container '%v' must not run as privileged", [container.name])
         }
 ---
-apiVersion: K8sBlockPrivileged.constraints.gatekeeper.sh/v1beta1
+apiVersion: constraints.gatekeeper.sh/v1beta1
 kind: K8sBlockPrivileged
 metadata:
   name: block-privileged-containers
@@ -103,7 +103,7 @@ spec:
           msg := sprintf("Missing required labels: %v", [missing])
         }
 ---
-apiVersion: K8sRequiredLabels.constraints.gatekeeper.sh/v1beta1
+apiVersion: constraints.gatekeeper.sh/v1beta1
 kind: K8sRequiredLabels
 metadata:
   name: require-app-label
@@ -116,3 +116,156 @@ spec:
     namespaces: ["synkro"]
   parameters:
     labels: ["app"]
+---
+# ─────────────────────────────────────────────────────────────
+# 4. ConstraintTemplate: Interdire le tag :latest
+# ─────────────────────────────────────────────────────────────
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8sblocklatestimage
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sBlockLatestImage
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8sblocklatestimage
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.template.spec.containers[_]
+          endswith(container.image, ":latest")
+          msg := sprintf("Container '%v' utilise le tag ':latest' — utilisez un tag versionné", [container.name])
+        }
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.template.spec.initContainers[_]
+          endswith(container.image, ":latest")
+          msg := sprintf("InitContainer '%v' utilise le tag ':latest' — utilisez un tag versionné", [container.name])
+        }
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sBlockLatestImage
+metadata:
+  name: block-latest-tag
+spec:
+  enforcementAction: dryrun
+  match:
+    kinds:
+      - apiGroups: ["apps"]
+        kinds: ["Deployment", "StatefulSet"]
+    namespaces: ["synkro"]
+---
+# ─────────────────────────────────────────────────────────────
+# 5. ConstraintTemplate: Exiger une readiness probe
+# ─────────────────────────────────────────────────────────────
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8srequirereadinessprobe
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sRequireReadinessProbe
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8srequirereadinessprobe
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.template.spec.containers[_]
+          not container.readinessProbe
+          msg := sprintf("Container '%v' doit définir une readinessProbe", [container.name])
+        }
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sRequireReadinessProbe
+metadata:
+  name: require-readiness-probe
+spec:
+  enforcementAction: dryrun
+  match:
+    kinds:
+      - apiGroups: ["apps"]
+        kinds: ["Deployment", "StatefulSet"]
+    namespaces: ["synkro"]
+---
+# ─────────────────────────────────────────────────────────────
+# 6. ConstraintTemplate: Bloquer hostNetwork / hostPID / hostIPC
+# ─────────────────────────────────────────────────────────────
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8sblockhostnamespace
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sBlockHostNamespace
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8sblockhostnamespace
+        violation[{"msg": msg}] {
+          input.review.object.spec.template.spec.hostNetwork == true
+          msg := "hostNetwork est interdit"
+        }
+        violation[{"msg": msg}] {
+          input.review.object.spec.template.spec.hostPID == true
+          msg := "hostPID est interdit"
+        }
+        violation[{"msg": msg}] {
+          input.review.object.spec.template.spec.hostIPC == true
+          msg := "hostIPC est interdit"
+        }
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sBlockHostNamespace
+metadata:
+  name: block-host-namespace
+spec:
+  enforcementAction: dryrun
+  match:
+    kinds:
+      - apiGroups: ["apps"]
+        kinds: ["Deployment", "StatefulSet"]
+    namespaces: ["synkro"]
+---
+# ─────────────────────────────────────────────────────────────
+# 7. ConstraintTemplate: Exiger des resource requests
+# ─────────────────────────────────────────────────────────────
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8srequiredresourcerequests
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sRequiredResourceRequests
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8srequiredresourcerequests
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.template.spec.containers[_]
+          not container.resources.requests.cpu
+          msg := sprintf("Container '%v' doit définir resources.requests.cpu", [container.name])
+        }
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.template.spec.containers[_]
+          not container.resources.requests.memory
+          msg := sprintf("Container '%v' doit définir resources.requests.memory", [container.name])
+        }
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sRequiredResourceRequests
+metadata:
+  name: require-resource-requests
+spec:
+  enforcementAction: dryrun
+  match:
+    kinds:
+      - apiGroups: ["apps"]
+        kinds: ["Deployment", "StatefulSet"]
+    namespaces: ["synkro"]
