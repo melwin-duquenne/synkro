@@ -19,6 +19,7 @@ services:
     volumes:
       - backend_public:/var/www/public
       - ./backend/config/jwt:/var/www/config/jwt:ro
+      - ./.env:/var/www/.env:ro
     depends_on:
       - postgres-synkro
     networks:
