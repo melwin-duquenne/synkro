@@ -1,3 +1,4 @@
+# StatefulSet pour le nœud replica PostgreSQL (lecture seule, réplication streaming depuis le primaire)
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -15,6 +16,7 @@ spec:
         app: postgres-replica
     spec:
       initContainers:
+        # Clone le primaire via pg_basebackup avant le premier démarrage pour initialiser les données
         - name: clone-primary
           image: postgres:16
           command:
@@ -27,6 +29,7 @@ spec:
                 exit 0
               fi
               echo "Cloning primary..."
+              # -Fp : format plain, -Xs : inclut les WAL dans la sauvegarde, -R : génère le fichier standby.signal
               PGPASSWORD="${REPLICATION_PASSWORD}" pg_basebackup \
                 -h postgres-synkro \
                 -U replicator \
@@ -78,12 +81,14 @@ spec:
             limits:
               memory: "512Mi"
               cpu: "500m"
+          # Délai plus long que le primaire (15s) pour laisser le temps à pg_basebackup de finir
           readinessProbe:
             exec:
               command: ["pg_isready", "-U", "$(POSTGRES_USER)"]
             initialDelaySeconds: 15
             periodSeconds: 10
 
+  # volumeClaimTemplates crée automatiquement un PVC par replica — garantit un stockage isolé et stable
   volumeClaimTemplates:
     - metadata:
         name: postgres-replica-storage
@@ -93,6 +98,7 @@ spec:
           requests:
             storage: 5Gi
 ---
+# Service interne pour les lectures en lecture seule depuis le replica (décongestionne le primaire)
 apiVersion: v1
 kind: Service
 metadata:

@@ -1,9 +1,11 @@
+# Déploiement du backend Symfony : PHP-FPM + Nginx dans le même pod (sidecar pattern)
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: backend-synkro
   namespace: synkro
 spec:
+  # 3 replicas pour absorber la charge API et assurer la continuité en cas de redémarrage d'un pod
   replicas: 3
   selector:
     matchLabels:
@@ -14,6 +16,7 @@ spec:
         app: backend-synkro
     spec:
       initContainers:
+        # Génère la paire de clés RSA 4096 bits pour signer/vérifier les JWT — uniquement si absentes
         - name: generate-jwt-keys
           image: alpine/openssl:latest
           command:
@@ -40,6 +43,7 @@ spec:
             - name: jwt-keys
               mountPath: /jwt
 
+        # Copie les assets publics Symfony vers un volume partagé avec Nginx (uploads, index.php, etc.)
         - name: copy-public
           image: moignon/synkro-backend:latest
           command: ["sh", "-c", "cp -a /var/www/public/. /srv/public/"]
@@ -47,6 +51,7 @@ spec:
             - name: backend-public
               mountPath: /srv/public
 
+        # Applique les migrations Doctrine au démarrage pour maintenir le schéma BDD à jour
         - name: migrations
           image: moignon/synkro-backend:latest
           command: ["php", "bin/console", "doctrine:migrations:migrate", "--no-interaction"]
@@ -56,6 +61,7 @@ spec:
               subPath: dotenv
             - name: jwt-keys
               mountPath: /var/www/config/jwt
+          # Ancre YAML réutilisée par le container principal pour éviter la duplication des variables d'env
           env: &backend-env
             - name: APP_ENV
               valueFrom:
@@ -82,6 +88,7 @@ spec:
                 secretKeyRef:
                   name: synkro-secrets
                   key: POSTGRES_DB
+            # URL construite dynamiquement à partir des variables précédentes — pointe vers le Service du primaire PostgreSQL
             - name: DATABASE_URL
               value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres-synkro:5432/$(POSTGRES_DB)?serverVersion=16&charset=utf8"
             - name: JWT_SECRET_KEY
@@ -129,10 +136,12 @@ spec:
                   name: synkro-config
                   key: DEFAULT_URI
       containers:
+        # Container PHP-FPM : traite les requêtes PHP transmises par Nginx via FastCGI sur le port 9000
         - name: backend-fpm
           image: moignon/synkro-backend:latest
           ports:
             - containerPort: 9000
+          # Réutilise les variables d'env définies dans l'initContainer migrations via l'ancre YAML
           env: *backend-env
           volumeMounts:
             - name: backend-public
@@ -140,6 +149,7 @@ spec:
             - name: dotenv
               mountPath: /var/www/.env
               subPath: dotenv
+            # Monte les clés JWT générées par l'initContainer pour que LexikJWT puisse signer les tokens
             - name: jwt-keys
               mountPath: /var/www/config/jwt
           resources:
@@ -149,12 +159,14 @@ spec:
             limits:
               memory: "512Mi"
               cpu: "500m"
+          # Vérifie que PHP-FPM écoute bien sur le socket avant d'envoyer des requêtes
           readinessProbe:
             tcpSocket:
               port: 9000
             initialDelaySeconds: 10
             periodSeconds: 10
 
+        # Sidecar Nginx : reçoit les requêtes HTTP et les transmet à PHP-FPM via FastCGI
         - name: backend-nginx
           image: nginx:1.27-alpine
           ports:
@@ -163,6 +175,7 @@ spec:
             - name: nginx-config
               mountPath: /etc/nginx/conf.d/default.conf
               subPath: default.conf
+            # Lecture seule : Nginx n'a besoin que de servir les fichiers statiques, pas de les modifier
             - name: backend-public
               mountPath: /var/www/public
               readOnly: true
@@ -175,17 +188,20 @@ spec:
               cpu: "100m"
 
       volumes:
+        # Volume éphémère partagé entre l'initContainer copy-public et le sidecar Nginx
         - name: backend-public
           emptyDir: {}
         - name: nginx-config
           configMap:
             name: backend-nginx-config
+        # Le .env Symfony est extrait de la ConfigMap pour éviter de le bake dans l'image
         - name: dotenv
           configMap:
             name: backend-nginx-config
             items:
               - key: dotenv
                 path: dotenv
+        # Volume persistant contenant les clés RSA JWT partagées entre tous les pods backend
         - name: jwt-keys
           persistentVolumeClaim:
             claimName: jwt-keys

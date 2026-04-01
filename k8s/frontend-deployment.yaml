@@ -1,9 +1,11 @@
+# Déploiement du frontend Vue 3 servi par Nginx
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: frontend-synkro
   namespace: synkro
 spec:
+  # 3 replicas pour la haute disponibilité et la distribution de la charge
   replicas: 3
   selector:
     matchLabels:
@@ -18,10 +20,12 @@ spec:
           image: moignon/synkro-frontend:latest
           ports:
             - containerPort: 80
+          # Injecte la configuration Nginx personnalisée (proxy /api, /ws, cache assets)
           volumeMounts:
             - name: nginx-config
               mountPath: /etc/nginx/conf.d/default.conf
               subPath: default.conf
+          # Ressources légères : le frontend ne fait que servir des fichiers statiques
           resources:
             requests:
               memory: "64Mi"
@@ -29,6 +33,7 @@ spec:
             limits:
               memory: "128Mi"
               cpu: "100m"
+          # Empêche d'envoyer du trafic au pod avant que Nginx soit prêt à répondre
           readinessProbe:
             httpGet:
               path: /

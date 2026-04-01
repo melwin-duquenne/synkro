@@ -34,6 +34,19 @@ data:
       "refresh": "30s",
       "schemaVersion": 37,
       "time": { "from": "now-1h", "to": "now" },
+      "timepicker": {
+        "quick_ranges": [
+          { "display": "5 minutes",  "from": "now-5m",  "to": "now" },
+          { "display": "30 minutes", "from": "now-30m", "to": "now" },
+          { "display": "1 heure",    "from": "now-1h",  "to": "now" },
+          { "display": "3 heures",   "from": "now-3h",  "to": "now" },
+          { "display": "1 jour",     "from": "now-1d",  "to": "now" },
+          { "display": "5 jours",    "from": "now-5d",  "to": "now" },
+          { "display": "1 semaine",  "from": "now-1w",  "to": "now" },
+          { "display": "3 semaines", "from": "now-3w",  "to": "now" },
+          { "display": "1 mois",     "from": "now-1M",  "to": "now" }
+        ]
+      },
       "templating": {
         "list": [
           {
@@ -386,25 +399,37 @@ data:
 
         {
           "id": 32,
-          "type": "stat",
-          "title": "Taille de la base",
+          "type": "bargauge",
+          "title": "Espace utilisé (PVC 10 GiB)",
           "gridPos": { "x": 12, "y": 32, "w": 6, "h": 8 },
           "datasource": { "type": "prometheus", "uid": "prometheus-synkro" },
-          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "textMode": "auto" },
+          "options": {
+            "reduceOptions": { "calcs": ["lastNotNull"] },
+            "orientation": "horizontal",
+            "displayMode": "basic",
+            "showUnfilled": true
+          },
           "fieldConfig": {
             "defaults": {
               "unit": "bytes",
+              "min": 0,
+              "max": 10737418240,
               "thresholds": {
                 "mode": "absolute",
-                "steps": [{ "value": null, "color": "blue" }]
+                "steps": [
+                  { "value": null,       "color": "green" },
+                  { "value": 7516192768, "color": "yellow" },
+                  { "value": 9663676416, "color": "red" }
+                ]
               },
               "color": { "mode": "thresholds" }
             }
           },
           "targets": [{
-            "expr": "pg_database_size_bytes{datname=\"synkro\"}",
+            "expr": "sum(pg_database_size_bytes{datname=\"synkro\"})",
             "refId": "A",
-            "legendFormat": "Taille"
+            "legendFormat": "synkro",
+            "instant": true
           }]
         },
 

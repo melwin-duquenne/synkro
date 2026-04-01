@@ -1,6 +1,7 @@
 # ─────────────────────────────────────────────────────────────
 # 1. ConstraintTemplate: Require resource limits on all containers
 # ─────────────────────────────────────────────────────────────
+# Sans limits, un container peut consommer toutes les ressources du nœud et provoquer des évictions
 apiVersion: templates.gatekeeper.sh/v1
 kind: ConstraintTemplate
 metadata:
@@ -25,6 +26,7 @@ spec:
           msg := sprintf("Container '%v' must define resources.limits.memory", [container.name])
         }
 ---
+# dryrun : la contrainte est évaluée mais n'est pas bloquante — permet de tester avant d'activer deny
 apiVersion: constraints.gatekeeper.sh/v1beta1
 kind: K8sRequiredResourceLimits
 metadata:
@@ -40,6 +42,7 @@ spec:
 # ─────────────────────────────────────────────────────────────
 # 2. ConstraintTemplate: Block privileged containers
 # ─────────────────────────────────────────────────────────────
+# Un container privilégié a accès complet au nœud hôte — risque majeur de sécurité à bloquer impérativement
 apiVersion: templates.gatekeeper.sh/v1
 kind: ConstraintTemplate
 metadata:
@@ -74,6 +77,7 @@ spec:
 # ─────────────────────────────────────────────────────────────
 # 3. ConstraintTemplate: Require label 'app' on Deployments
 # ─────────────────────────────────────────────────────────────
+# Le label 'app' est indispensable pour que les Services et les sélecteurs fonctionnent correctement
 apiVersion: templates.gatekeeper.sh/v1
 kind: ConstraintTemplate
 metadata:
@@ -159,6 +163,7 @@ spec:
 # ─────────────────────────────────────────────────────────────
 # 5. ConstraintTemplate: Exiger une readiness probe
 # ─────────────────────────────────────────────────────────────
+# Sans readinessProbe, Kubernetes envoie du trafic à un pod qui n'est pas encore prêt, causant des erreurs 502
 apiVersion: templates.gatekeeper.sh/v1
 kind: ConstraintTemplate
 metadata:
@@ -193,6 +198,7 @@ spec:
 # ─────────────────────────────────────────────────────────────
 # 6. ConstraintTemplate: Bloquer hostNetwork / hostPID / hostIPC
 # ─────────────────────────────────────────────────────────────
+# Ces options donnent accès aux namespaces réseau/process/IPC du nœud hôte — vecteur d'évasion de container
 apiVersion: templates.gatekeeper.sh/v1
 kind: ConstraintTemplate
 metadata:
@@ -234,6 +240,7 @@ spec:
 # ─────────────────────────────────────────────────────────────
 # 7. ConstraintTemplate: Exiger des resource requests
 # ─────────────────────────────────────────────────────────────
+# Sans requests, le scheduler Kubernetes ne peut pas placer correctement les pods sur les nœuds
 apiVersion: templates.gatekeeper.sh/v1
 kind: ConstraintTemplate
 metadata:

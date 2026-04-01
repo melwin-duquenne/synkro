@@ -1,6 +1,7 @@
 # ─────────────────────────────────────────────────────────────
 # Deployment
 # ─────────────────────────────────────────────────────────────
+# postgres-exporter traduit les statistiques PostgreSQL en métriques Prometheus (connexions, taille BDD, etc.)
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -17,6 +18,7 @@ spec:
     metadata:
       labels:
         app: postgres-exporter
+      # Annotations lues par Prometheus pour découvrir et scraper automatiquement ce pod
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "9187"
@@ -39,6 +41,7 @@ spec:
                 secretKeyRef:
                   name: synkro-secrets
                   key: POSTGRES_PASSWORD
+            # Chaîne de connexion construite dynamiquement à partir des credentials du Secret
             - name: DATA_SOURCE_NAME
               value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres-synkro:5432/synkro?sslmode=disable"
           resources:

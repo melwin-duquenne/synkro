@@ -1,6 +1,7 @@
 # ─────────────────────────────────────────────────────────────
 # RBAC
 # ─────────────────────────────────────────────────────────────
+# Prometheus a besoin d'accéder à l'API Kubernetes pour la découverte automatique des cibles (service discovery)
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -18,6 +19,7 @@ rules:
   - apiGroups: ["extensions", "networking.k8s.io"]
     resources: ["ingresses"]
     verbs: ["get", "list", "watch"]
+  # Accès à /metrics sur les composants du cluster (kubelet, etc.)
   - nonResourceURLs: ["/metrics"]
     verbs: ["get"]
 ---
@@ -44,6 +46,7 @@ metadata:
   namespace: synkro
 data:
   prometheus.yml: |
+    # Collecte les métriques toutes les 15 secondes sur toutes les cibles
     global:
       scrape_interval: 15s
       evaluation_interval: 15s
@@ -186,6 +189,7 @@ spec:
         app: prometheus
     spec:
       serviceAccountName: prometheus
+      # fsGroup 65534 permet à Prometheus (nobody) d'écrire dans le PVC de stockage des séries temporelles
       securityContext:
         fsGroup: 65534
         runAsUser: 65534
@@ -196,7 +200,9 @@ spec:
           args:
             - "--config.file=/etc/prometheus/prometheus.yml"
             - "--storage.tsdb.path=/prometheus"
+            # Conserve 15 jours de métriques — à augmenter si l'analyse historique est nécessaire
             - "--storage.tsdb.retention.time=15d"
+            # Permet le rechargement à chaud de la configuration via HTTP POST /-/reload
             - "--web.enable-lifecycle"
           ports:
             - containerPort: 9090

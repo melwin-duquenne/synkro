@@ -16,6 +16,7 @@ spec:
 # ─────────────────────────────────────────────────────────────
 # ConfigMap — datasource auto-provision
 # ─────────────────────────────────────────────────────────────
+# Provisionne automatiquement Prometheus comme datasource au démarrage de Grafana
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -26,11 +27,14 @@ data:
     apiVersion: 1
     datasources:
       - name: Prometheus
+        # UID stable référencé dans les dashboards pour éviter les liens cassés après recréation
         uid: prometheus-synkro
         type: prometheus
         url: http://prometheus.synkro.svc.cluster.local:9090
         isDefault: true
+        # access: proxy = Grafana appelle Prometheus côté serveur (pas depuis le navigateur)
         access: proxy
+        # editable: false empêche la modification accidentelle de la datasource depuis l'UI
         editable: false
 ---
 # ─────────────────────────────────────────────────────────────
@@ -53,6 +57,7 @@ spec:
       labels:
         app: grafana
     spec:
+      # UID 472 est l'utilisateur grafana dans l'image officielle — fsGroup permet l'accès en écriture au PVC
       securityContext:
         fsGroup: 472
         runAsUser: 472
@@ -73,6 +78,7 @@ spec:
                 secretKeyRef:
                   name: synkro-secrets
                   key: GRAFANA_ADMIN_PASSWORD
+            # Indique à Grafana où trouver les fichiers de provisioning (datasources, dashboards)
             - name: GF_PATHS_PROVISIONING
               value: /etc/grafana/provisioning
           volumeMounts:

@@ -1,11 +1,15 @@
+# Volume persistant pour stocker les clés RSA JWT (private.pem / public.pem)
+# Partagé entre l'initContainer qui génère les clés et les pods backend qui les utilisent
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: jwt-keys
   namespace: synkro
 spec:
+  # ReadWriteOnce : un seul nœud peut monter ce volume en écriture — suffisant pour des fichiers de clés
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
+      # 1Mi est largement suffisant pour deux fichiers .pem RSA 4096 bits
       storage: 1Mi

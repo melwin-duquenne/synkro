@@ -1,3 +1,4 @@
+# Configuration PostgreSQL pour la réplication en streaming primaire→replica
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -5,13 +6,18 @@ metadata:
   namespace: synkro
 data:
   primary.conf: |
+    # Active le Write-Ahead Log au niveau replica pour permettre la réplication en streaming
     wal_level = replica
+    # Autorise jusqu'à 3 connexions de réplication simultanées (primaire + 2 replicas potentiels)
     max_wal_senders = 3
+    # Conserve 64 Mo de WAL pour éviter que le replica décroché ne manque de segments
     wal_keep_size = 64
+    # Permet au replica de servir des requêtes en lecture (hot standby)
     hot_standby = on
     listen_addresses = '*'
 
   pg_hba_extra.conf: |
+    # Autorise le rôle replicator à se connecter depuis n'importe quel pod du cluster (plage 10.0.0.0/8)
     host replication replicator 10.0.0.0/8 md5
 
   init-replication.sh: |
@@ -22,9 +28,10 @@ data:
 
     # Allow replication connections from within the cluster
     echo "host replication replicator 10.0.0.0/8 md5" >> "$PGDATA/pg_hba.conf"
+    # Recharge la configuration à chaud sans redémarrer PostgreSQL
     psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" -c "SELECT pg_reload_conf();"
 
-    # Create replication user
+    # Crée le rôle de réplication uniquement s'il n'existe pas déjà (idempotent)
     psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
       DO \$\$
       BEGIN

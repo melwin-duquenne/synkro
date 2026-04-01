@@ -1,12 +1,15 @@
 # ─────────────────────────────────────────────────────────────
 # RBAC
 # ─────────────────────────────────────────────────────────────
+# kube-state-metrics expose des métriques sur l'état des objets Kubernetes (pods, deployments, etc.)
+# Il a besoin d'un accès cluster-wide en lecture seule pour observer toutes les ressources
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: kube-state-metrics
   namespace: synkro
 ---
+# ClusterRole avec uniquement list/watch — jamais de permissions d'écriture pour la sécurité
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -104,6 +107,7 @@ spec:
               port: 8080
             initialDelaySeconds: 5
             periodSeconds: 10
+          # Exécuté en tant qu'utilisateur nobody (65534) pour limiter les risques si le container est compromis
           securityContext:
             runAsNonRoot: true
             runAsUser: 65534

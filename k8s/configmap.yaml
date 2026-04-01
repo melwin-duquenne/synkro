@@ -1,3 +1,5 @@
+# Variables de configuration non-sensibles partagées par les pods du backend
+# Les valeurs sensibles (mots de passe, clés) sont dans secrets.yaml, pas ici
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -5,7 +7,10 @@ metadata:
   namespace: synkro
 data:
   APP_ENV: "prod"
+  # Autorise toutes les origines HTTP/HTTPS — à restreindre au domaine réel en production sécurisée
   CORS_ALLOW_ORIGIN: "^https?://.*$"
+  # URI de retour après authentification Google OAuth2 (doit correspondre à la console GCP)
   GOOGLE_REDIRECT_URI: "http://195.15.195.73/auth/google/callback"
+  # URL publique du frontend, utilisée par Symfony pour générer des liens absolus
   APP_FRONTEND_URL: "http://195.15.195.73"
   DEFAULT_URI: "http://195.15.195.73"

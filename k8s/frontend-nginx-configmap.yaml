@@ -1,3 +1,4 @@
+# Configuration Nginx du frontend : sert les fichiers statiques Vue et proxifie les appels backend/WS
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -5,6 +6,7 @@ metadata:
   namespace: synkro
 data:
   default.conf: |
+    # Utilise le DNS interne Kubernetes pour résoudre les services à la volée (évite les erreurs si un service redémarre)
     resolver 10.96.0.10 valid=10s;
 
     server {
@@ -13,17 +15,21 @@ data:
         root /usr/share/nginx/html;
         index index.html;
 
+        # Active la compression pour réduire la bande passante des réponses texte/JS/JSON
         gzip on;
         gzip_types text/plain text/css application/json application/javascript text/javascript;
 
+        # index.html ne doit jamais être mis en cache : c'est le point d'entrée de l'app SPA
         location = /index.html {
             add_header Cache-Control "no-store, no-cache, must-revalidate";
         }
 
+        # Les assets Vite sont versionnés (hash dans le nom) : cache agressif d'un an sans revalidation
         location /assets/ {
             add_header Cache-Control "public, max-age=31536000, immutable";
         }
 
+        # Proxy transparent vers le backend Symfony pour toutes les routes API
         location /api/ {
             set $backend http://backend-synkro.synkro.svc.cluster.local:8000;
             proxy_pass $backend$request_uri;
@@ -33,6 +39,7 @@ data:
             proxy_set_header X-Forwarded-Proto $scheme;
         }
 
+        # Proxy pour les fichiers uploadés servis par Symfony
         location /uploads/ {
             set $backend http://backend-synkro.synkro.svc.cluster.local:8000;
             proxy_pass $backend$request_uri;
@@ -40,6 +47,7 @@ data:
             proxy_set_header X-Real-IP $remote_addr;
         }
 
+        # Proxy pour les routes d'authentification (OAuth Google callback notamment)
         location /auth/ {
             set $backend http://backend-synkro.synkro.svc.cluster.local:8000;
             proxy_pass $backend$request_uri;
@@ -48,6 +56,7 @@ data:
             proxy_set_header X-Forwarded-Proto $scheme;
         }
 
+        # Proxy WebSocket avec upgrade HTTP→WS et timeout long pour les connexions persistantes
         location /ws {
             set $websocket http://websocket-synkro.synkro.svc.cluster.local:3001;
             proxy_pass $websocket$request_uri;
@@ -55,9 +64,11 @@ data:
             proxy_set_header Upgrade $http_upgrade;
             proxy_set_header Connection "upgrade";
             proxy_set_header Host $host;
+            # 86400s = 24h : évite la déconnexion des sockets inactives sur de longues sessions
             proxy_read_timeout 86400;
         }
 
+        # Fallback SPA : toute route inconnue renvoie index.html pour que Vue Router prenne la main
         location / {
             try_files $uri $uri/ /index.html;
         }

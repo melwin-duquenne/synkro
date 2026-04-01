@@ -1,9 +1,11 @@
+# Déploiement du serveur WebSocket Node.js pour la communication temps réel
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: websocket-synkro
   namespace: synkro
 spec:
+  # 1 replica : les connexions WebSocket sont stateful, une mise à l'échelle nécessiterait un broker (Redis pub/sub)
   replicas: 1
   selector:
     matchLabels:
@@ -30,12 +32,14 @@ spec:
             limits:
               memory: "256Mi"
               cpu: "250m"
+          # Redémarre le pod si le serveur Node plante silencieusement (vérification toutes les 30s)
           livenessProbe:
             httpGet:
               path: /health
               port: 3001
             initialDelaySeconds: 10
             periodSeconds: 30
+          # Attend que le serveur soit opérationnel avant d'envoyer du trafic WebSocket
           readinessProbe:
             httpGet:
               path: /health
