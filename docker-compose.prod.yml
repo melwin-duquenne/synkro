@@ -1,108 +1,80 @@
 services:
-  backend-synkro:
-    image: ${DOCKERHUB_USERNAME}/synkro-backend:latest
-    container_name: symfony_app
-    restart: unless-stopped
-    volumes:
-      - ./.env:/var/www/.env
-    ports:
-      - ${PORT_BACKEND}
+  backend-fpm:
+    image: cacali/synkro-backend:latest
+    container_name: synkro_backend_fpm
+    restart: always
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-synkro:${PORT_POSTGRES_2}/${POSTGRES_DB}?serverVersion=16&charset=utf8
+      APP_ENV: prod
+      APP_SECRET: ${APP_SECRET}
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-synkro:5432/${POSTGRES_DB}?serverVersion=16&charset=utf8
+      JWT_SECRET_KEY: "%kernel.project_dir%/config/jwt/private.pem"
+      JWT_PUBLIC_KEY: "%kernel.project_dir%/config/jwt/public.pem"
+      JWT_PASSPHRASE: ${JWT_PASSPHRASE}
+      CORS_ALLOW_ORIGIN: ${CORS_ALLOW_ORIGIN}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
-      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
-      JWT_PASSPHRASE: ${JWT_PASSPHRASE}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI}
       MAILER_DSN: ${MAILER_DSN}
       APP_FRONTEND_URL: ${APP_FRONTEND_URL}
-      CORS_ALLOW_ORIGIN: ${CORS_ALLOW_ORIGIN}
-      DEFAULT_URI: ${DEFAULT_URI}
+    volumes:
+      - backend_public:/var/www/public
+      - ./backend/config/jwt:/var/www/config/jwt:ro
     depends_on:
-      postgres-synkro:
-        condition: service_healthy
-    command: >
-      sh -c "php bin/console doctrine:migrations:migrate --no-interaction &&
-             php bin/console cache:clear &&
-             exec php-fpm"
+      - postgres-synkro
     networks:
-      - synkronet-synkro
+      - synkronet-prod
 
-  websocket-synkro:
-    image: ${DOCKERHUB_USERNAME}/synkro-websocket:latest
-    container_name: websocket_server
-    restart: unless-stopped
-    ports:
-      - ${PORT_WEBSOCKET}
-    environment:
-      - NODE_ENV=${NODE_ENV}
-      - PORT=${PORT}
+  backend-synkro:
+    image: nginx:1.27-alpine
+    container_name: synkro_backend_nginx
+    restart: always
+    volumes:
+      - ./backend/docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - backend_public:/var/www/public:ro
     depends_on:
-      - backend-synkro
+      - backend-fpm
     networks:
-      - synkronet-synkro
+      - synkronet-prod
 
   frontend-synkro:
-    image: ${DOCKERHUB_USERNAME}/synkro-frontend:latest
-    container_name: frontend_app
-    restart: unless-stopped
+    image: cacali/synkro-frontend:latest
+    container_name: synkro_frontend
+    restart: always
     ports:
-      - "127.0.0.1:8080:80"  # Exposer sur localhost:8080 seulement pour Nginx
-    environment:
-      - VITE_BACKEND_TARGET=${VITE_BACKEND_TARGET}
-      - VITE_API_URL=${VITE_API_URL}
-      - VITE_WS_URL=${VITE_WS_URL}
-      - VITE_BACKEND_URL=${VITE_BACKEND_URL}
-      - BASE_URL=${BASE_URL}
+      - "8080:80"
     depends_on:
       - backend-synkro
       - websocket-synkro
     networks:
-      - synkronet-synkro
+      - synkronet-prod
 
-  mailpit-synkro:
-    image: axllent/mailpit
-    container_name: mailpit
-    restart: unless-stopped
-    ports:
-      - "8025:8025"
-      - "1025:1025"
+  websocket-synkro:
+    image: cacali/synkro-websocket:latest
+    container_name: synkro_websocket
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: "3001"
     networks:
-      - synkronet-synkro
+      - synkronet-prod
 
   postgres-synkro:
     image: postgres:16
-    container_name: postgres_db
+    container_name: synkro_postgres_prod
     restart: always
-    ports:
-      - ${PORT_POSTGRES}
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
     networks:
-      - synkronet-synkro
-
-  # L'outil qui permet la mise à jour automatique sans toucher au VPS
-  watchtower:
-    image: containrrr/watchtower
-    container_name: watchtower
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    command: --interval 300 --cleanup
-    restart: always
+      - synkronet-prod
 
 volumes:
-  postgres_data:
+  postgres_data_prod:
+  backend_public:
 
 networks:
-  synkronet-synkro:
+  synkronet-prod:
     driver: bridge

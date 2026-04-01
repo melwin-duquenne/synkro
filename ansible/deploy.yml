@@ -2,91 +2,181 @@
 - name: Configuration VPS et Déploiement Synkro
   hosts: vps
   become: yes
+
+  vars:
+    app_dir: /opt/synkro
+    domain: synkro.ovh
+    certbot_email: admin@synkro.ovh
+    backup_dir: /opt/synkro-backups
+
+  # ─── PRE-CHECKS ────────────────────────────────────────────────────────────
+  pre_tasks:
+    - name: Vérifier que le fichier .env existe en local
+      delegate_to: localhost
+      become: no
+      stat:
+        path: ../.env
+      register: env_file
+      failed_when: not env_file.stat.exists
+
+    - name: Vérifier que docker-compose.prod.yml existe en local
+      delegate_to: localhost
+      become: no
+      stat:
+        path: ../docker-compose.prod.yml
+      register: compose_file
+      failed_when: not compose_file.stat.exists
+
   tasks:
+    # ─── SYSTÈME ─────────────────────────────────────────────────────────────
     - name: Mise à jour du système (apt)
-      apt: update_cache=yes upgrade=dist
-
-    - name: Installation des dépendances Docker
       apt:
-        name: [apt-transport-https, ca-certificates, curl, software-properties-common, python3-pip, openssl, python3-cryptography, nginx, certbot, python3-certbot-nginx, lsof]
+        update_cache: yes
+        upgrade: dist
+        cache_valid_time: 3600
+
+    - name: Installation des dépendances système
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+          - python3-pip
+          - openssl
+          - python3-cryptography
+          - nginx
+          - certbot
+          - python3-certbot-nginx
+          - lsof
+          - logrotate
+          - ufw
         state: present
 
-    - name: Ajout de la clé GPG officielle Docker
-      apt_key:
-        url: https://download.docker.com/linux/ubuntu/gpg
-        state: present
-
-    - name: Installation de Docker (Version Officielle)
+    # ─── DOCKER ──────────────────────────────────────────────────────────────
+    - name: Installation de Docker (si absent)
       apt:
         name:
           - docker-ce
           - docker-ce-cli
           - containerd.io
           - docker-buildx-plugin
-          - docker-compose-plugin  # C'est la version recommandée maintenant
+          - docker-compose-plugin
         state: present
         update_cache: yes
+      ignore_errors: yes  # Docker déjà installé sur le VPS
 
-    - name: Désactiver l'authentification par mot de passe SSH (Sécurité)
+    - name: S'assurer que Docker tourne
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    # ─── SÉCURITÉ SSH ────────────────────────────────────────────────────────
+    - name: Désactiver l'authentification par mot de passe SSH
       lineinfile:
         path: /etc/ssh/sshd_config
         regexp: '^#?PasswordAuthentication'
         line: 'PasswordAuthentication no'
       notify: Redémarrer SSH
 
+    # ─── PARE-FEU ────────────────────────────────────────────────────────────
+    - name: Autoriser SSH dans UFW
+      ufw:
+        rule: allow
+        name: OpenSSH
+
+    - name: Autoriser HTTP dans UFW
+      ufw:
+        rule: allow
+        port: '80'
+        proto: tcp
+
+    - name: Autoriser HTTPS dans UFW
+      ufw:
+        rule: allow
+        port: '443'
+        proto: tcp
+
+    - name: Activer UFW
+      ufw:
+        state: enabled
+        policy: deny
+
+    # ─── BACKUP AVANT DÉPLOIEMENT ────────────────────────────────────────────
+    - name: Créer le répertoire de backup
+      file:
+        path: "{{ backup_dir }}"
+        state: directory
+        mode: '0700'
+
+    - name: Sauvegarder .env existant
+      copy:
+        src: "{{ app_dir }}/.env"
+        dest: "{{ backup_dir }}/.env.{{ ansible_date_time.iso8601_basic_short }}"
+        remote_src: yes
+      ignore_errors: yes
+
+    - name: Sauvegarder les clés JWT existantes
+      archive:
+        path: "{{ app_dir }}/backend/config/jwt"
+        dest: "{{ backup_dir }}/jwt-keys-{{ ansible_date_time.iso8601_basic_short }}.tar.gz"
+      ignore_errors: yes
+
+    # ─── RÉPERTOIRES APPLICATION ─────────────────────────────────────────────
     - name: Créer le répertoire de l'application
       file:
-        path: /opt/synkro
+        path: "{{ app_dir }}"
         state: directory
         mode: '0755'
 
     - name: Copier le fichier docker-compose.prod.yml
       copy:
         src: ../docker-compose.prod.yml
-        dest: /opt/synkro/docker-compose.yml
+        dest: "{{ app_dir }}/docker-compose.yml"
 
-    - name: Copier le fichier .env (Indispensable pour tes variables)
+    - name: Copier le fichier .env
       copy:
         src: ../.env
-        dest: /opt/synkro/.env
+        dest: "{{ app_dir }}/.env"
+        mode: '0600'  # Lecture seule par root
 
+    # ─── CLÉS JWT ────────────────────────────────────────────────────────────
     - name: Créer le répertoire des clés JWT
       file:
-        path: /opt/synkro/backend/config/jwt
+        path: "{{ app_dir }}/backend/config/jwt"
         state: directory
-        mode: '0755'
+        mode: '0700'
 
     - name: Générer la clé privée JWT (RSA 4096)
       openssl_privatekey:
-        path: /opt/synkro/backend/config/jwt/private.pem
+        path: "{{ app_dir }}/backend/config/jwt/private.pem"
         type: RSA
         size: 4096
-        force: no  # Ne régénère pas si elle existe déjà
+        force: no
 
     - name: Générer la clé publique JWT
       openssl_publickey:
-        path: /opt/synkro/backend/config/jwt/public.pem
-        privatekey_path: /opt/synkro/backend/config/jwt/private.pem
+        path: "{{ app_dir }}/backend/config/jwt/public.pem"
+        privatekey_path: "{{ app_dir }}/backend/config/jwt/private.pem"
         format: PEM
         force: no
 
-    - name: Définir les permissions correctes pour les clés JWT
+    - name: Permissions strictes sur les clés JWT
       file:
         path: "{{ item }}"
         mode: '0600'
         owner: root
         group: root
       loop:
-        - /opt/synkro/backend/config/jwt/private.pem
-        - /opt/synkro/backend/config/jwt/public.pem
+        - "{{ app_dir }}/backend/config/jwt/private.pem"
+        - "{{ app_dir }}/backend/config/jwt/public.pem"
 
-    - name: Arrêter et supprimer les conteneurs existants
-      shell: docker compose -f /opt/synkro/docker-compose.yml down || true
+    # ─── NGINX HÔTE (HTTP uniquement pour Certbot) ───────────────────────────
+    # IMPORTANT : le frontend Docker écoute sur 8080 (pas 80)
+    # Nginx hôte gère le SSL et proxifie vers le conteneur frontend
 
-    - name: Nettoyer les ressources Docker (dangling images, volumes orphelines)
-      shell: docker system prune -f --volumes
-
-    - name: Arrêter les services web courants (nginx, apache2)
+    - name: Arrêter les services web en conflit (libérer port 80)
       systemd:
         name: "{{ item }}"
         state: stopped
@@ -94,44 +184,41 @@
       loop:
         - nginx
         - apache2
-      ignore_errors: yes  # Ne pas échouer si le service n'existe pas
+      ignore_errors: yes
 
-    - name: Tuer les processus utilisant le port 80
+    - name: Tuer les processus sur le port 80
       shell: lsof -ti:80 | xargs kill -9 2>/dev/null || true
 
-    - name: Créer le répertoire pour Certbot
+    - name: Créer le répertoire Certbot webroot
       file:
         path: /var/www/certbot
         state: directory
         mode: '0755'
 
-    - name: Créer la config Nginx pour Synkro avec Certbot
+    - name: Supprimer la config Nginx par défaut
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/nginx/sites-enabled/default
+        - /etc/nginx/sites-enabled/app.conf
+        - /etc/nginx/sites-available/app.conf
+
+    - name: Config Nginx hôte — HTTP (pour Certbot)
       copy:
         content: |
-          upstream frontend {
-              server 127.0.0.1:8080;
-          }
-          
-          upstream backend {
-              server 127.0.0.1:8000;
-          }
-          
-          upstream websocket {
-              server 127.0.0.1:3001;
-          }
-          
           server {
               listen 80;
-              server_name synkro.ovh www.synkro.ovh;
-          
-              # Pour Certbot : autoriser les requêtes ACME
+              server_name {{ domain }} www.{{ domain }};
+
+              # Challenge ACME pour Let's Encrypt
               location /.well-known/acme-challenge/ {
                   root /var/www/certbot;
               }
-          
-              # Proxy vers le frontend pour Certbot
+
+              # Redirection provisoire vers le frontend (port 8080)
               location / {
-                  proxy_pass http://frontend;
+                  proxy_pass http://127.0.0.1:8080;
                   proxy_set_header Host $host;
                   proxy_set_header X-Real-IP $remote_addr;
                   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -141,87 +228,135 @@
         dest: /etc/nginx/sites-available/synkro
         backup: yes
 
-    - name: Activer le site Nginx Synkro
+    - name: Activer le vhost Synkro
       file:
         src: /etc/nginx/sites-available/synkro
         dest: /etc/nginx/sites-enabled/synkro
         state: link
 
-    - name: Supprimer les anciens vhosts Synkro en conflit
-      shell: |
-        set -eu
-        for f in /etc/nginx/sites-enabled/*synkro* /etc/nginx/sites-available/*synkro*; do
-          [ -e "$f" ] || continue
-          if [ "$f" != "/etc/nginx/sites-enabled/synkro" ] && [ "$f" != "/etc/nginx/sites-available/synkro" ]; then
-            rm -f "$f"
-          fi
-        done
+    - name: Tester la config Nginx HTTP
+      shell: nginx -t
+      register: nginx_test
+      failed_when: nginx_test.rc != 0
 
-    - name: Supprimer la config Nginx par défaut
-      file:
-        path: /etc/nginx/sites-enabled/default
-        state: absent
-
-    - name: Supprimer le vhost système app.conf (conflit avec synkro.ovh)
-      file:
-        path: "{{ item }}"
-        state: absent
-      loop:
-        - /etc/nginx/sites-enabled/app.conf
-        - /etc/nginx/sites-available/app.conf
-
-    - name: Tester et démarrer la config Nginx
+    - name: Démarrer Nginx hôte
       systemd:
         name: nginx
         state: started
         enabled: yes
         daemon_reload: yes
 
-    - name: Générer le certificat SSL avec Certbot (Let's Encrypt)
+    # ─── DOCKER COMPOSE — DÉPLOIEMENT ────────────────────────────────────────
+    # Le frontend doit écouter sur 8080 (Nginx hôte proxifie vers lui)
+    # Assure-toi que docker-compose.prod.yml a : ports: "8080:80" sur frontend-synkro
+
+    - name: Créer le répertoire docker du backend
+      file:
+        path: "{{ app_dir }}/backend/docker"
+        state: directory
+        mode: '0755'
+
+    - name: Copier le nginx.conf du backend (PHP-FPM)
+      copy:
+        src: ../backend/docker/nginx.conf
+        dest: "{{ app_dir }}/backend/docker/nginx.conf"
+
+    - name: Arrêter les conteneurs existants
+      shell: docker compose -f {{ app_dir }}/docker-compose.yml down --remove-orphans || true
+
+    - name: Nettoyer les images et volumes orphelins
+      shell: docker system prune -f --volumes
+
+    - name: Puller les dernières images depuis Docker Hub
+      shell: docker compose -f {{ app_dir }}/docker-compose.yml pull
+      register: docker_pull
+      failed_when: docker_pull.rc != 0
+
+    - name: Démarrer les conteneurs
+      shell: docker compose -f {{ app_dir }}/docker-compose.yml up -d --remove-orphans
+      register: docker_up
+      failed_when: docker_up.rc != 0
+
+    # ─── HEALTH CHECKS ───────────────────────────────────────────────────────
+    - name: Attendre que le frontend réponde (port 8080)
+      wait_for:
+        host: 127.0.0.1
+        port: 8080
+        timeout: 60
+        delay: 5
+      register: frontend_health
+      failed_when: false
+
+    - name: Vérifier la réponse HTTP du frontend
+      uri:
+        url: http://127.0.0.1:8080
+        status_code: 200
+        timeout: 10
+      register: frontend_check
+      retries: 5
+      delay: 5
+      until: frontend_check.status == 200
+      failed_when: false
+
+    - name: Afficher le statut du health check frontend
+      debug:
+        msg: "Frontend {{ 'OK ✓' if frontend_check.status is defined and frontend_check.status == 200 else 'KO ✗ — vérifier les logs Docker' }}"
+
+    - name: Afficher les logs en cas d'échec du frontend
+      shell: docker compose -f {{ app_dir }}/docker-compose.yml logs --tail=50 frontend-synkro
+      when: frontend_check.status is not defined or frontend_check.status != 200
+      register: frontend_logs
+
+    - name: Logs frontend (debug)
+      debug:
+        var: frontend_logs.stdout_lines
+      when: frontend_logs is defined and frontend_logs.stdout_lines is defined
+
+    # ─── CERTBOT SSL ─────────────────────────────────────────────────────────
+    - name: Générer le certificat SSL Let's Encrypt
       shell: |
         certbot certonly --webroot -w /var/www/certbot \
-          -d synkro.ovh -d www.synkro.ovh \
-          --email admin@synkro.ovh \
+          -d {{ domain }} -d www.{{ domain }} \
+          --email {{ certbot_email }} \
           --agree-tos \
           --non-interactive \
           --preferred-challenges http \
           || true
 
-    - name: Mettre à jour la config Nginx avec HTTPS
+    - name: Vérifier que le certificat a été généré
+      stat:
+        path: /etc/letsencrypt/live/{{ domain }}/fullchain.pem
+      register: cert_stat
+
+    - name: Config Nginx hôte — HTTPS (si certificat présent)
       copy:
         content: |
-          upstream frontend {
-              server 127.0.0.1:8080;
-          }
-          
-          upstream backend {
-              server 127.0.0.1:8000;
-          }
-          
-          upstream websocket {
-              server 127.0.0.1:3001;
-          }
-          
           server {
               listen 80;
-              server_name synkro.ovh www.synkro.ovh;
+              server_name {{ domain }} www.{{ domain }};
               return 301 https://$host$request_uri;
           }
-          
+
           server {
               listen 443 ssl http2;
-              server_name synkro.ovh www.synkro.ovh;
-          
-              ssl_certificate /etc/letsencrypt/live/synkro.ovh/fullchain.pem;
-              ssl_certificate_key /etc/letsencrypt/live/synkro.ovh/privkey.pem;
+              server_name {{ domain }} www.{{ domain }};
+
+              ssl_certificate /etc/letsencrypt/live/{{ domain }}/fullchain.pem;
+              ssl_certificate_key /etc/letsencrypt/live/{{ domain }}/privkey.pem;
               ssl_protocols TLSv1.2 TLSv1.3;
               ssl_ciphers HIGH:!aNULL:!MD5;
               ssl_prefer_server_ciphers on;
               ssl_session_cache shared:SSL:10m;
               ssl_session_timeout 10m;
-          
+
+              # Headers de sécurité
+              add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+              add_header X-Frame-Options DENY always;
+              add_header X-Content-Type-Options nosniff always;
+
+              # Frontend Vue.js (conteneur Docker sur 8080)
               location / {
-                  proxy_pass http://frontend;
+                  proxy_pass http://127.0.0.1:8080;
                   proxy_set_header Host $host;
                   proxy_set_header X-Real-IP $remote_addr;
                   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -229,20 +364,49 @@
               }
           }
         dest: /etc/nginx/sites-available/synkro
+      when: cert_stat.stat.exists
 
-    - name: Valider la configuration Nginx finale
+    - name: Valider la config Nginx finale
       shell: nginx -t
+      register: nginx_final_test
+      failed_when: nginx_final_test.rc != 0
 
     - name: Recharger Nginx avec la config HTTPS
       systemd:
         name: nginx
         state: restarted
 
-    - name: Pull des images et lancement des conteneurs
-      shell: docker compose -f /opt/synkro/docker-compose.yml up -d
+    # ─── ROTATION DES LOGS DOCKER ────────────────────────────────────────────
+    - name: Configurer la rotation des logs Docker
+      copy:
+        content: |
+          {
+            "log-driver": "json-file",
+            "log-opts": {
+              "max-size": "10m",
+              "max-file": "5"
+            }
+          }
+        dest: /etc/docker/daemon.json
+      notify: Redémarrer Docker
 
+    # ─── RENOUVELLEMENT AUTO CERTBOT ─────────────────────────────────────────
+    - name: Cron de renouvellement automatique SSL
+      cron:
+        name: "Certbot renewal"
+        minute: "0"
+        hour: "3"
+        weekday: "1"
+        job: "certbot renew --quiet --post-hook 'systemctl reload nginx'"
+
+  # ─── HANDLERS ──────────────────────────────────────────────────────────────
   handlers:
     - name: Redémarrer SSH
       service:
         name: sshd
+        state: restarted
+
+    - name: Redémarrer Docker
+      systemd:
+        name: docker
         state: restarted
