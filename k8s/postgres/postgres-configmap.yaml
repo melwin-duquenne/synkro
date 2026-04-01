@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-config
+  namespace: synkro
+data:
+  primary.conf: |
+    wal_level = replica
+    max_wal_senders = 3
+    wal_keep_size = 64
+    hot_standby = on
+    listen_addresses = '*'
+
+  pg_hba_extra.conf: |
+    host replication replicator 10.0.0.0/8 md5
+
+  init-replication.sh: |
+    #!/bin/bash
+    set -e
+
+    # Executed by /docker-entrypoint-initdb.d — PostgreSQL is already running at this point
+
+    # Allow replication connections from within the cluster
+    echo "host replication replicator 10.0.0.0/8 md5" >> "$PGDATA/pg_hba.conf"
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" -c "SELECT pg_reload_conf();"
+
+    # Create replication user
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+      DO \$\$
+      BEGIN
+        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'replicator') THEN
+          CREATE ROLE replicator WITH REPLICATION LOGIN PASSWORD '$REPLICATION_PASSWORD';
+        END IF;
+      END
+      \$\$;
+    EOSQL
+
+    echo "Replication user ready."

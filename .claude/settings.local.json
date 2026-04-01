@@ -10,7 +10,8 @@
       "Bash(find:*)",
       "Bash(cd:*)",
       "Bash(npx eslint:*)",
-      "Bash(npx vue-tsc:*)"
+      "Bash(npx vue-tsc:*)",
+      "Bash(node:*)"
     ]
   }
 }
