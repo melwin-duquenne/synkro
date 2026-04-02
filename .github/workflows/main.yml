@@ -31,6 +31,7 @@ jobs:
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/synkro-backend:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/synkro-backend:${{ github.sha }}
+          no-cache: true
           cache-from: type=gha,scope=backend
           cache-to: type=gha,mode=max,scope=backend
 
