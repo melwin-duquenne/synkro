@@ -253,6 +253,7 @@ Un **filtre "Service"** en haut du dashboard permet d'isoler un ou plusieurs ser
 ## Ordre de déploiement
 
 ```bash
+export KUBECONFIG=~/kube/pck-neddugf-kubeconfig
 # 1. Namespace + secrets + configmap
 kubectl apply -f k8s/namespace.yaml
 kubectl apply -f k8s/secrets.yaml
@@ -308,7 +309,7 @@ kubectl get constraints -A
 # http://84.234.27.2:3000 → dashboard "Synkro — Vue d'ensemble"
 ```
 posgred m'être en place patronie.
-grahpana le passer en portforward. solution pour le sécurisé un peux plus.
+grahpana le passer en portforward. solution pour le sécurisé un peux plus. :ok
 pk le backen n'est pas exposer dans un service extérieur.
 renomer le frontend-synkro loadbalancer.
 m'être au claire l'architecture et surtout le loadbalancer.

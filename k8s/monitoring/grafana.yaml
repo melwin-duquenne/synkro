@@ -118,7 +118,7 @@ spec:
             name: grafana-dashboard-synkro
 ---
 # ─────────────────────────────────────────────────────────────
-# Service — NodePort pour accès externe
+# Service — ClusterIP uniquement, accès via kubectl port-forward (non exposé publiquement)
 # ─────────────────────────────────────────────────────────────
 apiVersion: v1
 kind: Service
@@ -126,7 +126,7 @@ metadata:
   name: grafana
   namespace: synkro
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   selector:
     app: grafana
   ports:

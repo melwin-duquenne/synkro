@@ -5,10 +5,10 @@ graph TB
     %% ─── EXTERNE ───────────────────────────────────────────────
     Browser([Navigateur])
     LB["LoadBalancer\n195.15.195.73:80"]
-    LBGrafana["LoadBalancer\n84.234.27.2:3000"]
+    Admin([Administrateur\nport-forward])
 
     Browser -->|HTTP| LB
-    Browser -->|HTTP| LBGrafana
+    Admin -->|kubectl port-forward\nlocalhost:3000| SVC_GRAF
 
     %% ─── NAMESPACE SYNKRO ──────────────────────────────────────
     subgraph synkro["Namespace : synkro"]
@@ -76,9 +76,8 @@ graph TB
         GRAF -.-> PVC_GRAF
         PG_EXP -->|connexion| SVC_PG
 
-        SVC_GRAF["Service grafana\nLoadBalancer :3000"]
+        SVC_GRAF["Service grafana\nClusterIP :3000\n(port-forward uniquement)"]
         GRAF --- SVC_GRAF
-        LBGrafana --> SVC_GRAF
 
         Kubelet([kubelet / cadvisor\nCPU + mémoire containers]) -->|scrape| PROM
 
@@ -101,7 +100,7 @@ graph TB
     %% ─── STYLES ─────────────────────────────────────────────────
     style Browser fill:#f0f4ff,stroke:#4a6cf7
     style LB fill:#4a6cf7,color:#fff,stroke:#3451b2
-    style LBGrafana fill:#4a6cf7,color:#fff,stroke:#3451b2
+    style Admin fill:#f0f4ff,stroke:#4a6cf7
     style frontendGroup fill:#e8f5e9,stroke:#43a047
     style backendGroup fill:#e3f2fd,stroke:#1e88e5
     style postgresGroup fill:#fff3e0,stroke:#fb8c00
