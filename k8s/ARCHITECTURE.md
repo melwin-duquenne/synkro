@@ -40,26 +40,31 @@ graph TB
         SVC_WS --> WS
 
         %% ── PostgreSQL ──
-        subgraph postgresGroup["PostgreSQL — Streaming Replication"]
-            PG_PRI[(postgres-primary\nStatefulSet :5432\nécriture + lecture)]
-            PG_REP[(postgres-replica\nStatefulSet :5432\nlecture seule)]
-            PG_PRI -->|streaming replication\nwal_level=replica| PG_REP
+        subgraph postgresGroup["PostgreSQL — Patroni HA (Spilo)"]
+            PG0[(patroni-0\nLeader :5432)]
+            PG1[(patroni-1\nReplica :5432)]
+            PG2[(patroni-2\nReplica :5432)]
+            PG0 -->|streaming replication| PG1 & PG2
         end
-        SVC_PG["Service postgres-synkro\nClusterIP :5432"]
+        SVC_PG["Service postgres-synkro\nClusterIP :5432\nspilo-role=master"]
+        SVC_PGREP["Service postgres-replica\nClusterIP :5432\nspilo-role=replica"]
         BE1 & BE2 & BE3 -->|write| SVC_PG
-        SVC_PG --> PG_PRI
+        SVC_PG --> PG0
+        SVC_PGREP --> PG1 & PG2
 
         %% ── Stockage ──
         subgraph storage["Volumes persistants (PVC)"]
             PVC_JWT[PVC jwt-keys\n100Mi]
-            PVC_PG[PVC postgres-data\n10Gi]
-            PVC_REP[PVC postgres-replica\n5Gi]
+            PVC_PG0[PVC patroni-data-0\n5Gi]
+            PVC_PG1[PVC patroni-data-1\n5Gi]
+            PVC_PG2[PVC patroni-data-2\n5Gi]
             PVC_PROM[PVC prometheus-data\n10Gi]
             PVC_GRAF[PVC grafana-data\n2Gi]
         end
         BE1 & BE2 & BE3 -.->|clés RSA JWT| PVC_JWT
-        PG_PRI -.-> PVC_PG
-        PG_REP -.-> PVC_REP
+        PG0 -.-> PVC_PG0
+        PG1 -.-> PVC_PG1
+        PG2 -.-> PVC_PG2
 
         %% ── Monitoring ──
         subgraph monitoring["Monitoring"]
@@ -109,8 +114,9 @@ graph TB
     style config fill:#fce4ec,stroke:#e91e63
     style gatekeeper fill:#ffebee,stroke:#e53935
     style GK fill:#ffcdd2,stroke:#e53935
-    style PG_PRI fill:#ffe0b2,stroke:#fb8c00
-    style PG_REP fill:#fff9c4,stroke:#f9a825
+    style PG0 fill:#ffe0b2,stroke:#fb8c00
+    style PG1 fill:#fff9c4,stroke:#f9a825
+    style PG2 fill:#fff9c4,stroke:#f9a825
 ```
 
 ---
@@ -133,6 +139,7 @@ graph TB
 | Frontend | 80 | `195.15.195.73:80` |
 | Backend | 8000 | Non exposé (interne uniquement) |
 | WebSocket | 3001 | Non exposé (via frontend) |
-| PostgreSQL primary | 5432 | Non exposé |
+| PostgreSQL (Patroni leader) | 5432 | Non exposé |
+| PostgreSQL (Patroni replicas) | 5432 | Non exposé |
 | Prometheus | 9090 | Non exposé |
-| Grafana | 3000 | `84.234.27.2:3000` |
+| Grafana | 3000 | `kubectl port-forward` localhost:3000 |

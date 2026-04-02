@@ -109,43 +109,41 @@ Le pod contient **2 conteneurs** (sidecar pattern) :
 
 ## Base de données PostgreSQL
 
-### Architecture : Primary + Replica (streaming replication)
+### Architecture : Patroni HA (3 pods, failover automatique)
 
-PostgreSQL 16 est déployé en mode **réplication streaming** : toutes les écritures vont sur le primary, la réplique suit en temps réel et peut servir des lectures.
+PostgreSQL 16 est déployé via **Patroni** (image Zalando Spilo) en StatefulSet de 3 pods. Patroni gère automatiquement l'élection du leader, la réplication streaming vers les replicas, et le failover en ~30s si le leader tombe.
 
 ```
-backend-synkro ──write──► postgres-primary (postgres-synkro:5432)
+backend-synkro ──write──► Service postgres-synkro (sélectionne spilo-role=master)
                                    │
-                          streaming replication
+                           Patroni élit le leader
                                    │
-                                   ▼
-                          postgres-replica:5432
-                          (lecture seule)
+                    ┌──────────────┼──────────────┐
+                    ▼              ▼              ▼
+               patroni-0      patroni-1      patroni-2
+               (Leader)       (Replica)      (Replica)
+                    │              ▲              ▲
+                    └── streaming replication ────┘
+
+Service postgres-replica → sélectionne spilo-role=replica (lecture seule)
 ```
 
-> **Pourquoi pas plus de replicas PostgreSQL ?**  
-> Avec la réplication streaming native, il y a toujours un seul primary (écriture). Ajouter une 2ème replica ne suffit pas pour la haute disponibilité : si le primary tombe, la replica ne prend pas le relais automatiquement. Un gestionnaire de failover comme **Patroni** serait nécessaire pour cela — hors périmètre du projet.
+Kubernetes est utilisé comme DCS (Distributed Configuration Store) — pas besoin d'etcd externe. Patroni stocke l'état du cluster dans des ConfigMaps (`postgres-synkro-leader`, `postgres-synkro-config`).
 
-### `postgres/postgres-configmap.yaml`
+### `postgres/patroni-rbac.yaml`
 
-ConfigMap `postgres-config` contenant :
-- `primary.conf` : paramètres de réplication (`wal_level=replica`, `max_wal_senders=3`, `hot_standby=on`)
-- `pg_hba_extra.conf` : autorise les connexions de réplication depuis le réseau interne `10.0.0.0/8`
-- `init-replication.sh` : script d'initialisation qui crée le rôle `replicator` avec les droits de réplication
+ServiceAccount + Role + RoleBinding pour Patroni :
+- Droits sur `configmaps` et `endpoints` : stockage de l'état du cluster et du lock leader
+- Droits sur `pods` : découverte des membres du cluster via labels
 
-### `postgres/postgres-primary.yaml`
+### `postgres/patroni.yaml`
 
-**StatefulSet** `postgres-primary` (1 replica) :
-- Réutilise le PVC existant `postgres-data` (subPath `pgdata`)
-- Démarre PostgreSQL avec les options de réplication passées en arguments
-- **Service** `postgres-synkro` : point d'accès unique pour le backend (rétrocompatible)
-
-### `postgres/postgres-replica.yaml`
-
-**StatefulSet** `postgres-replica` (1 replica) :
-- **Init container `clone-primary`** : exécute `pg_basebackup` pour faire une copie complète du primary avant le premier démarrage
-- Démarre en mode lecture seule, connecté en streaming au primary
-- **Service** `postgres-replica` : accessible en interne
+**StatefulSet** `patroni` (3 replicas) avec image `ghcr.io/zalando/spilo-16:3.3-p1` :
+- `volumeClaimTemplates` : 1 PVC de 5Gi par pod (3 PVC créés automatiquement)
+- Anti-affinité : préfère répartir les pods sur des nodes différents
+- Variables clés : `SCOPE=postgres-synkro`, `SPILO_CONFIGURATION` (force le DCS Kubernetes), credentials depuis `synkro-secrets`
+- **Service** `postgres-synkro` → sélectionne `spilo-role=master` (même nom qu'avant, aucun changement côté backend)
+- **Service** `postgres-replica` → sélectionne `spilo-role=replica`
 
 ---
 
@@ -260,10 +258,10 @@ kubectl apply -f k8s/secrets.yaml
 kubectl apply -f k8s/configmap.yaml
 kubectl apply -f k8s/jwt-pvc.yaml
 
-# 2. PostgreSQL
-kubectl apply -f k8s/postgres/postgres-configmap.yaml
-kubectl apply -f k8s/postgres/postgres-primary.yaml
-kubectl apply -f k8s/postgres/postgres-replica.yaml
+# 2. PostgreSQL (Patroni HA)
+kubectl apply -f k8s/postgres/patroni-rbac.yaml
+kubectl apply -f k8s/postgres/patroni.yaml
+# Attendre ~60s que patroni-0 s'initialise et devienne leader avant de continuer
 
 # 3. Application
 kubectl apply -f k8s/backend-nginx-configmap.yaml
@@ -291,26 +289,23 @@ kubectl apply -f k8s/monitoring/grafana-dashboard-configmap.yaml
 ## Vérification
 
 ```bash
-# Tous les pods Running (3 frontend, 3 backend, 1 websocket, 1 postgres-primary, 1 postgres-replica)
+# Tous les pods Running (3 frontend, 3 backend, 1 websocket, 3 patroni)
 kubectl get pods -n synkro
 kubectl get pods -n gatekeeper-system
 
 # Services et IPs
 kubectl get svc -n synkro
 
-# Réplication PostgreSQL active
-kubectl exec -n synkro postgres-primary-0 -- \
-  psql -U synkro -c "SELECT client_addr, state, replay_lag FROM pg_stat_replication;"
+# État du cluster Patroni (1 Leader + 2 Replica, Lag in MB = 0)
+kubectl exec -n synkro patroni-0 -- bash -c "patronictl -c /run/postgres.yml list"
+
+# Test failover : tuer le leader → un replica prend le relais en ~30s
+kubectl delete pod patroni-0 -n synkro
 
 # Violations GateKeeper (mode dryrun — ne bloque rien)
 kubectl get constraints -A
 
-# Grafana
-# http://84.234.27.2:3000 → dashboard "Synkro — Vue d'ensemble"
+# Grafana — port-forward uniquement
+kubectl port-forward -n synkro svc/grafana 3000:3000
+# Puis ouvrir http://localhost:3000
 ```
-posgred m'être en place patronie.
-grahpana le passer en portforward. solution pour le sécurisé un peux plus. :ok
-pk le backen n'est pas exposer dans un service extérieur.
-renomer le frontend-synkro loadbalancer.
-m'être au claire l'architecture et surtout le loadbalancer.
-comprendre http://websocket-synkro.synkro.svc.cluster.local:3001.
