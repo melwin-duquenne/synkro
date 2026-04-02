@@ -11,7 +11,9 @@
       "Bash(cd:*)",
       "Bash(npx eslint:*)",
       "Bash(npx vue-tsc:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(kubectl get:*)",
+      "Bash(kubectl exec:*)"
     ]
   }
 }
