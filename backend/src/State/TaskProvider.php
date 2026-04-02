@@ -28,7 +28,7 @@ class TaskProvider implements ProviderInterface
     {
         $user = $this->security->getUser();
         if (!$user instanceof User) {
-            throw new AccessDeniedHttpException('Not authenticated');
+            throw new AccessDeniedHttpException('Vous devez être connecté pour effectuer cette action');
         }
 
         // For collection operations (GET /rooms/{roomId}/tasks)
@@ -52,11 +52,11 @@ class TaskProvider implements ProviderInterface
         $room = $this->entityManager->getRepository(Room::class)->find($roomId);
 
         if (!$room) {
-            throw new NotFoundHttpException('Room not found');
+            throw new NotFoundHttpException('Salon introuvable');
         }
 
         if (!$this->accessChecker->canAccess($user, $room)) {
-            throw new AccessDeniedHttpException('Access denied');
+            throw new AccessDeniedHttpException('Accès refusé');
         }
 
         $tasks = $this->entityManager->getRepository(Task::class)->findBy(
@@ -72,17 +72,17 @@ class TaskProvider implements ProviderInterface
         $room = $this->entityManager->getRepository(Room::class)->find($roomId);
 
         if (!$room) {
-            throw new NotFoundHttpException('Room not found');
+            throw new NotFoundHttpException('Salon introuvable');
         }
 
         if (!$this->accessChecker->canAccess($user, $room)) {
-            throw new AccessDeniedHttpException('Access denied');
+            throw new AccessDeniedHttpException('Accès refusé');
         }
 
         $task = $this->entityManager->getRepository(Task::class)->find($taskId);
 
         if (!$task || $task->getRoom()->getId() !== $roomId) {
-            throw new NotFoundHttpException('Task not found');
+            throw new NotFoundHttpException('Tâche introuvable');
         }
 
         return TaskOutput::fromEntity($task);

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRoomsStore, type EnterpriseUser } from '@/stores/rooms'
+import { useRoomsStore } from '@/stores/rooms'
 import { useAuthStore } from '@/stores/auth'
 import type { Room, RoomMember } from '@/types'
 import { isAtLeast, canManageRoomMembers } from '@/utils/permissions'
@@ -107,6 +107,10 @@ async function addMember(userId: number) {
   }
   memberSearch.value = ''
   showMemberDropdown.value = false
+}
+
+function hideMemberDropdown() {
+  setTimeout(() => showMemberDropdown.value = false, 200)
 }
 
 async function removeMember(userId: number) {
@@ -288,7 +292,7 @@ onMounted(() => {
                 placeholder="Rechercher un membre a ajouter..."
                 class="input input-bordered w-full"
                 @focus="showMemberDropdown = true"
-                @blur="setTimeout(() => showMemberDropdown = false, 200)"
+                @blur="hideMemberDropdown"
               />
 
               <!-- Dropdown -->

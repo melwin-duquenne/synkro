@@ -20,7 +20,7 @@ class MeProvider implements ProviderInterface
         $user = $this->security->getUser();
 
         if (!$user instanceof User) {
-            throw new AccessDeniedHttpException('Not authenticated');
+            throw new AccessDeniedHttpException('Vous devez être connecté pour effectuer cette action');
         }
 
         return UserOutput::fromEntity($user);

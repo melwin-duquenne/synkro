@@ -13,8 +13,6 @@ const emit = defineEmits<{
   download: [file: FileResource]
 }>()
 
-const API_URL = import.meta.env.VITE_API_URL || '/api'
-
 const previewType = computed(() => {
   if (!props.file) return 'none'
   const mime = props.file.mimeType || ''

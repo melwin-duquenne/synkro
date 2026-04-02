@@ -6,7 +6,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 final class CreateTaskInput
 {
-    #[Assert\NotBlank(message: 'Title is required')]
+    #[Assert\NotBlank(message: 'Le titre est requis')]
     #[Assert\Length(max: 255)]
     public string $title;
 

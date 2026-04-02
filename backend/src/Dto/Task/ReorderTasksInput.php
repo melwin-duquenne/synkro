@@ -6,7 +6,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 final class ReorderTasksInput
 {
-    #[Assert\NotBlank(message: 'Tasks array is required')]
+    #[Assert\NotBlank(message: 'La liste des tâches est requise')]
     #[Assert\All([
         new Assert\Collection([
             'id' => new Assert\NotNull(),

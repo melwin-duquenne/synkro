@@ -67,14 +67,10 @@ function formatDateForInput(date: Date): string {
   return `${year}-${month}-${day}`
 }
 
-function formatTimeForInput(date: Date): string {
-  return date.toTimeString().slice(0, 5)
-}
-
 function parseDateTimeString(dateTimeStr: string): { date: string; time: string } {
   // Parse la chaîne ISO sans conversion de timezone
   const parts = dateTimeStr.split('T')
-  const date = parts[0]
+  const date = parts[0] || ''
   const time = parts[1] ? parts[1].substring(0, 5) : '00:00'
   return { date, time }
 }
@@ -168,7 +164,7 @@ async function handleSubmit() {
     participantIds: showParticipants.value ? selectedParticipantIds.value : []
   }
 
-  let success = false
+  let success: boolean
 
   if (props.event) {
     const result = await calendarStore.updateEvent(props.event.id, data)

@@ -1,13 +1,15 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useAuthStore } from './auth'
-import type { Room, Module, RoomMember, User } from '@/types'
+import type { Room, Module, RoomMember } from '@/types'
+import { extractApiError } from '@/utils/apiError'
 
 export interface TemplateItem {
   id: number
   name: string
   description: string
   modules: { code: string; name: string }[]
+  templateModules: { id: number; module: { code: string; name: string } }[]
 }
 
 export interface EnterpriseUser {
@@ -64,8 +66,8 @@ export const useRoomsStore = defineStore('rooms', () => {
         // Handle both API Platform format and custom format
         rooms.value = data.member || data['hydra:member'] || data
       }
-    } catch (e) {
-      error.value = 'Failed to fetch rooms'
+    } catch {
+      error.value = 'Impossible de charger les salons'
     } finally {
       loading.value = false
     }
@@ -156,14 +158,14 @@ export const useRoomsStore = defineStore('rooms', () => {
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.error || errorData['hydra:description'] || 'Failed to create room')
+        throw new Error(extractApiError(errorData, 'Impossible de créer le salon'))
       }
 
       const room = await response.json()
       rooms.value.unshift(room)
       return room
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to create room'
+      error.value = e instanceof Error ? e.message : 'Impossible de créer le salon'
       return null
     } finally {
       loading.value = false

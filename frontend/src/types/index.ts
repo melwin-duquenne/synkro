@@ -42,7 +42,7 @@ export interface Room {
 export interface Module {
   id: number
   name: string
-  code: 'editor' | 'whiteboard' | 'chat' | 'video' | 'files' | 'tasks' | 'calendar'
+  code: 'editor' | 'whiteboard' | 'chat' | 'video' | 'files' | 'tasks' | 'calendar' | 'kanban' | 'documents'
   description?: string
 }
 

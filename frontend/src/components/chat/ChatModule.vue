@@ -88,7 +88,7 @@ function connectToRoom() {
       // Incrémenter les non-lus si le chat est fermé et que ce n'est pas notre message
       if (props.floating && !isOpen.value && messages.value.length > oldLength) {
         const lastMessage = messages.value[messages.value.length - 1]
-        if (lastMessage.userId !== authStore.user?.id) {
+        if (lastMessage && lastMessage.userId !== authStore.user?.id) {
           unreadCount.value++
         }
       }

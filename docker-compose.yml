@@ -1,6 +1,8 @@
 services:
   backend-synkro:
-    build: ./backend
+    build:
+      context: ./backend
+      target: dev
     container_name: symfony_app
     restart: unless-stopped
     volumes:
@@ -17,7 +19,9 @@ services:
       - synkronet-synkro
 
   websocket-synkro:
-    build: ./server
+    build:
+      context: ./server
+      target: dev
     container_name: websocket_server
     restart: unless-stopped
     ports:

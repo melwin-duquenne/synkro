@@ -53,7 +53,7 @@ import { useRoomsStore } from '@/stores/rooms'
 interface Room {
   id: number
   name: string
-  visibility: 'private' | 'public'
+  visibility: 'private' | 'public' | 'enterprise'
   moduleRooms?: Array<{
     id: number
     module: {

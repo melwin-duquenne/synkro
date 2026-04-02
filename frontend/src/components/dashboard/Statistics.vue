@@ -1,3 +1,4 @@
+<!-- eslint-disable vue/multi-word-component-names -->
 <template>
   <div class="card bg-base-100 shadow-xl">
     <div class="card-body">

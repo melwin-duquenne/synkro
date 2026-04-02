@@ -43,13 +43,13 @@ export const useFilesStore = defineStore('files', () => {
 
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data['hydra:description'] || data.detail || 'Failed to fetch files')
+        throw new Error(data['hydra:description'] || data.detail || 'Impossible de charger les fichiers')
       }
 
       const data = await response.json()
       files.value = Array.isArray(data) ? data : (data['hydra:member'] || data.member || [])
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to fetch files'
+      error.value = e instanceof Error ? e.message : 'Impossible de charger les fichiers'
     } finally {
       loading.value = false
     }
@@ -80,16 +80,16 @@ export const useFilesStore = defineStore('files', () => {
         } else {
           try {
             const data = JSON.parse(xhr.responseText)
-            error.value = data['hydra:description'] || data.detail || 'Upload failed'
+            error.value = data['hydra:description'] || data.detail || 'Échec de l\'envoi du fichier'
           } catch {
-            error.value = 'Upload failed'
+            error.value = 'Échec de l\'envoi du fichier'
           }
           resolve(false)
         }
       }
 
       xhr.onerror = () => {
-        error.value = 'Upload failed (network error)'
+        error.value = 'Échec de l\'envoi : erreur réseau'
         resolve(false)
       }
 
@@ -120,12 +120,12 @@ export const useFilesStore = defineStore('files', () => {
 
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data['hydra:description'] || data.detail || 'Failed to create folder')
+        throw new Error(data['hydra:description'] || data.detail || 'Impossible de créer le dossier')
       }
 
       return true
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to create folder'
+      error.value = e instanceof Error ? e.message : 'Impossible de créer le dossier'
       return false
     }
   }
@@ -139,12 +139,12 @@ export const useFilesStore = defineStore('files', () => {
       })
 
       if (!response.ok && response.status !== 204) {
-        throw new Error('Failed to delete')
+        throw new Error('Impossible de supprimer')
       }
 
       return true
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to delete'
+      error.value = e instanceof Error ? e.message : 'Impossible de supprimer'
       return false
     }
   }
@@ -163,12 +163,12 @@ export const useFilesStore = defineStore('files', () => {
 
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data['hydra:description'] || data.detail || 'Failed to rename')
+        throw new Error(data['hydra:description'] || data.detail || 'Impossible de renommer')
       }
 
       return true
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to rename'
+      error.value = e instanceof Error ? e.message : 'Impossible de renommer'
       return false
     }
   }
@@ -194,12 +194,12 @@ export const useFilesStore = defineStore('files', () => {
 
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data['hydra:description'] || data.detail || 'Failed to move')
+        throw new Error(data['hydra:description'] || data.detail || 'Impossible de déplacer')
       }
 
       return true
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to move'
+      error.value = e instanceof Error ? e.message : 'Impossible de déplacer'
       return false
     }
   }
@@ -212,7 +212,7 @@ export const useFilesStore = defineStore('files', () => {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to download')
+        throw new Error('Impossible de télécharger')
       }
 
       const blob = await response.blob()
@@ -225,7 +225,7 @@ export const useFilesStore = defineStore('files', () => {
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to download'
+      error.value = e instanceof Error ? e.message : 'Impossible de télécharger'
     }
   }
 
@@ -238,6 +238,7 @@ export const useFilesStore = defineStore('files', () => {
 
   function navigateToBreadcrumb(roomId: number, index: number) {
     const item = breadcrumbs.value[index]
+    if (!item) return
     currentFolderId.value = item.id
     breadcrumbs.value = breadcrumbs.value.slice(0, index + 1)
     searchQuery.value = ''

@@ -136,7 +136,7 @@ interface Event {
     room: { id: number; name: string } | null
 }
 
-const props = defineProps<{
+defineProps<{
     open: boolean
     event: Event | null
 }>()
@@ -190,7 +190,7 @@ const formatDateTime = (dateString: string): string => {
     const match = dateString.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/)
     if (!match) return dateString
     
-    const [, year, month, day, hour, minute] = match
+    const [, year = "0", month = "1", day = "1", hour = "0", minute = "0"] = match ?? [];
     const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute))
     
     return date.toLocaleString('fr-FR', {
@@ -210,8 +210,8 @@ const formatDuration = (start: string, end: string): string => {
     
     if (!matchStart || !matchEnd) return ''
     
-    const [, yearS, monthS, dayS, hourS, minuteS] = matchStart
-    const [, yearE, monthE, dayE, hourE, minuteE] = matchEnd
+    const [, yearS = "0", monthS = "1", dayS = "1", hourS = "0", minuteS = "0"] = matchStart ?? [];
+    const [, yearE = "0", monthE = "1", dayE = "1", hourE = "0", minuteE = "0"] = matchEnd ?? [];
     
     const startDate = new Date(parseInt(yearS), parseInt(monthS) - 1, parseInt(dayS), parseInt(hourS), parseInt(minuteS))
     const endDate = new Date(parseInt(yearE), parseInt(monthE) - 1, parseInt(dayE), parseInt(hourE), parseInt(minuteE))

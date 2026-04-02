@@ -82,7 +82,7 @@ class ResetPasswordProcessorTest extends TestCase
         $processor = new ResetPasswordProcessor($this->em, $this->hasher, $this->mailer);
 
         $this->expectException(BadRequestHttpException::class);
-        $this->expectExceptionMessage('Token has expired');
+        $this->expectExceptionMessage('Ce lien a expiré, veuillez en demander un nouveau');
 
         $input = new ResetPasswordInput();
         $input->token = 'expiredtoken';

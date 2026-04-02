@@ -8,6 +8,7 @@ use App\Dto\Auth\RegisterInput;
 use App\Dto\Auth\UserOutput;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
+use App\Exception\ErrorMessage;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
@@ -37,7 +38,7 @@ class AuthProcessor implements ProcessorInterface
             ->findOneBy(['email' => $data->email]);
 
         if ($existingUser) {
-            throw new ConflictHttpException('Email already registered');
+            throw new ConflictHttpException(ErrorMessage::USER_EMAIL_TAKEN);
         }
 
         $user = new User();

@@ -117,7 +117,7 @@ watch(() => props.open, (isOpen) => {
         if (props.initialColumnId) {
           columnId.value = props.initialColumnId
         } else if (availableColumns.value.length > 0 && !columnId.value) {
-          columnId.value = availableColumns.value[0].id
+          columnId.value = availableColumns.value[0]!.id
         }
       })
     } else {
@@ -125,7 +125,7 @@ watch(() => props.open, (isOpen) => {
       if (props.initialColumnId) {
         columnId.value = props.initialColumnId
       } else if (props.columns.length > 0 && !columnId.value) {
-        columnId.value = props.columns[0].id
+        columnId.value = props.columns[0]!.id
       }
     }
     if (members.value.length === 0) {
@@ -162,14 +162,14 @@ async function handleSubmit() {
 
     if (!response.ok) {
       const data = await response.json()
-      throw new Error(data.error || 'Failed to create task')
+      throw new Error(data.error || 'Impossible de créer la tâche')
     }
 
     const task = await response.json()
     emit('created', task)
     resetForm()
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Failed to create task'
+    error.value = e instanceof Error ? e.message : 'Impossible de créer la tâche'
   } finally {
     loading.value = false
   }
@@ -178,7 +178,7 @@ async function handleSubmit() {
 function resetForm() {
   title.value = ''
   description.value = ''
-  columnId.value = props.initialColumnId || (availableColumns.value.length > 0 ? availableColumns.value[0].id : null)
+  columnId.value = props.initialColumnId || (availableColumns.value.length > 0 ? availableColumns.value[0]!.id : null)
   assignedToId.value = null
   estimation.value = null
   error.value = null
@@ -257,7 +257,7 @@ function handleClose() {
             <span class="label-text-alt">Optionnel</span>
           </label>
           <select v-model="estimation" class="select select-bordered w-full">
-            <option v-for="option in estimationOptions" :key="option.value" :value="option.value">
+            <option v-for="option in estimationOptions" :key="option.value ?? 'none'" :value="option.value">
               {{ option.label }}
             </option>
           </select>

@@ -64,6 +64,7 @@ async function navigateInto(folder: FileResource) {
 
 async function navigateBreadcrumb(index: number) {
   const item = breadcrumbs.value[index]
+  if (!item) return
   currentParentId.value = item.id
   breadcrumbs.value = breadcrumbs.value.slice(0, index + 1)
   selectedFolderId.value = null

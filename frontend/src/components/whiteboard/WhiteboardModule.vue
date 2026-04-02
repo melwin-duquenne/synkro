@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, computed, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import * as Y from 'yjs'
 import { WebsocketProvider } from 'y-websocket'
 import { useAuthStore } from '@/stores/auth'
@@ -193,9 +193,9 @@ function drawStroke(stroke: Stroke) {
     case 'eraser':
       if (stroke.points.length < 2) return
       ctx.beginPath()
-      ctx.moveTo(stroke.points[0].x, stroke.points[0].y)
+      ctx.moveTo(stroke.points[0]!.x, stroke.points[0]!.y)
       for (let i = 1; i < stroke.points.length; i++) {
-        ctx.lineTo(stroke.points[i].x, stroke.points[i].y)
+        ctx.lineTo(stroke.points[i]!.x, stroke.points[i]!.y)
       }
       ctx.stroke()
       break
@@ -208,15 +208,16 @@ function drawStroke(stroke: Stroke) {
       ctx.stroke()
       break
 
-    case 'rectangle':
+    case 'rectangle': {
       if (!stroke.startPoint || !stroke.endPoint) return
       const rectWidth = stroke.endPoint.x - stroke.startPoint.x
       const rectHeight = stroke.endPoint.y - stroke.startPoint.y
       ctx.beginPath()
       ctx.strokeRect(stroke.startPoint.x, stroke.startPoint.y, rectWidth, rectHeight)
       break
+    }
 
-    case 'circle':
+    case 'circle': {
       if (!stroke.startPoint || !stroke.endPoint) return
       const radius = Math.sqrt(
         Math.pow(stroke.endPoint.x - stroke.startPoint.x, 2) +
@@ -226,6 +227,7 @@ function drawStroke(stroke: Stroke) {
       ctx.arc(stroke.startPoint.x, stroke.startPoint.y, radius, 0, Math.PI * 2)
       ctx.stroke()
       break
+    }
   }
 }
 
@@ -236,8 +238,8 @@ function getCanvasPoint(e: MouseEvent | TouchEvent): Point {
   let clientX: number, clientY: number
 
   if (e instanceof TouchEvent) {
-    clientX = e.touches[0].clientX
-    clientY = e.touches[0].clientY
+    clientX = e.touches[0]!.clientX
+    clientY = e.touches[0]!.clientY
   } else {
     clientX = e.clientX
     clientY = e.clientY
@@ -282,7 +284,7 @@ function draw(e: MouseEvent | TouchEvent) {
       ctx.strokeStyle = currentTool.value === 'eraser' ? '#ffffff' : currentColor.value
       ctx.lineWidth = currentTool.value === 'eraser' ? eraserWidth.value : strokeWidth.value
       ctx.beginPath()
-      const prev = currentStroke.value[currentStroke.value.length - 2]
+      const prev = currentStroke.value[currentStroke.value.length - 2]!
       ctx.moveTo(prev.x, prev.y)
       ctx.lineTo(point.x, point.y)
       ctx.stroke()
@@ -314,12 +316,13 @@ function drawShapePreview(start: Point, end: Point) {
       ctx.strokeRect(start.x, start.y, end.x - start.x, end.y - start.y)
       break
 
-    case 'circle':
+    case 'circle': {
       const radius = Math.sqrt(Math.pow(end.x - start.x, 2) + Math.pow(end.y - start.y, 2))
       ctx.beginPath()
       ctx.arc(start.x, start.y, radius, 0, Math.PI * 2)
       ctx.stroke()
       break
+    }
   }
 
   ctx.setLineDash([])

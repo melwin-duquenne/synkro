@@ -33,6 +33,7 @@ export interface DashboardData {
     startDate: string
     endDate: string
     eventType: string
+    room: { id: number; name: string } | null
   }>
   tasks: {
     today: Array<TaskItem>
@@ -113,19 +114,21 @@ export function useDashboard() {
       }
       
       if (!response.ok) {
-        throw new Error('Failed to fetch dashboard data')
+        throw new Error('Impossible de charger les données du tableau de bord')
       }
 
       const data = await response.json()
       
       // Helper pour extraire les données d'une Collection API Platform
-      const extractData = (value: any) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const extractData = (value: any): any => {
         if (value && typeof value === 'object' && value['@type'] === 'Collection' && Array.isArray(value.member)) {
           return value.member
         }
         // Si c'est un objet avec des propriétés qui sont des Collections, extraire chacune
         if (value && typeof value === 'object' && !Array.isArray(value)) {
-          const extracted: any = {}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const extracted: Record<string, any> = {}
           for (const [key, val] of Object.entries(value)) {
             if (key.startsWith('@')) continue // Ignorer les métadonnées API Platform
             extracted[key] = extractData(val)
@@ -178,8 +181,8 @@ export function useDashboard() {
         // Format direct (si le backend change)
         dashboardData.value = data
       }
-    } catch (err: any) {
-      error.value = err.message || 'Erreur lors du chargement du dashboard'
+    } catch (err: unknown) {
+      error.value = err instanceof Error ? err.message : 'Erreur lors du chargement du dashboard'
       console.error('Error fetching dashboard:', err)
     } finally {
       loading.value = false
