@@ -1,0 +1,1 @@
+#TODO linter empecher de push du code qui ne passe pas les tests ou erreurs sur toutes les branches (develop et branches avec les noms)

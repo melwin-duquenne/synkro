@@ -42,7 +42,7 @@ services:
     container_name: synkro_frontend
     restart: always
     ports:
-      - "8080:80"
+      - "${PORT_FRONTEND}"
     depends_on:
       - backend-synkro
       - websocket-synkro

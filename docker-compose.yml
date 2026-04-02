@@ -41,7 +41,7 @@ services:
     container_name: frontend_app
     restart: unless-stopped
     ports:
-      - ${PORT_FRONTEND}
+      - ${PORT_FRONTEND_DEV:-5173:5173}
     volumes:
       - ./frontend:/app
       - /app/node_modules

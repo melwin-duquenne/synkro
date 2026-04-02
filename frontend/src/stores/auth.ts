@@ -99,8 +99,12 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function loginWithGoogle(): void {
-    // Ne pas utiliser API_URL car la route OAuth n'est pas sous /api
-    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'
+    // Ne pas utiliser API_URL car la route OAuth n'est pas sous /api.
+    // Fallback same-origin pour éviter un hostname Docker interne côté navigateur.
+    const configuredBackendUrl = import.meta.env.VITE_BACKEND_URL
+    const backendUrl = configuredBackendUrl && !configuredBackendUrl.includes('backend-synkro')
+      ? configuredBackendUrl.replace(/\/$/, '')
+      : window.location.origin
     window.location.href = `${backendUrl}/auth/google`
   }
 
