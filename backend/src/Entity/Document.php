@@ -10,7 +10,7 @@ use App\Dto\Document\UpdateDocumentInput;
 use App\State\DocumentProcessor;
 use App\State\DocumentProvider;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'document')]
@@ -51,7 +51,7 @@ class Document
     private ?string $contentHtml = null;
 
     #[ORM\Column(type: 'blob', nullable: true)]
-    private $yjsState = null;
+    private mixed $yjsState = null;
 
     #[ORM\Column(type: 'datetime')]
     #[Groups(['document:read'])]
@@ -90,12 +90,12 @@ class Document
         return $this;
     }
 
-    public function getYjsState()
+    public function getYjsState(): mixed
     {
         return $this->yjsState;
     }
 
-    public function setYjsState($yjsState): self
+    public function setYjsState(mixed $yjsState): self
     {
         $this->yjsState = $yjsState;
         $this->updatedAt = new \DateTime();

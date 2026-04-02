@@ -10,7 +10,7 @@ use App\Dto\Whiteboard\UpdateWhiteboardInput;
 use App\State\WhiteboardProcessor;
 use App\State\WhiteboardProvider;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'whiteboard')]
@@ -47,7 +47,7 @@ class Whiteboard
     private ?Room $room = null;
 
     #[ORM\Column(type: 'blob', nullable: true)]
-    private $yjsState = null;
+    private mixed $yjsState = null;
 
     #[ORM\Column(type: 'json', nullable: true)]
     #[Groups(['whiteboard:read', 'whiteboard:write'])]
@@ -79,12 +79,12 @@ class Whiteboard
         return $this;
     }
 
-    public function getYjsState()
+    public function getYjsState(): mixed
     {
         return $this->yjsState;
     }
 
-    public function setYjsState($yjsState): self
+    public function setYjsState(mixed $yjsState): self
     {
         $this->yjsState = $yjsState;
         $this->updatedAt = new \DateTime();
