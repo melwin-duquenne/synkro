@@ -23,7 +23,7 @@
           <div class="avatar">
             <div class="w-10 h-10 rounded-full ring ring-offset-base-100 ring-offset-2"
                  :class="getStatusRingClass(member.status)">
-              <img v-if="member.avatar" :src="`${API_URL}/uploads/avatars/${member.avatar}`" :alt="member.name" />
+              <img v-if="member.avatar" :src="`${API_BASE}${member.avatar}`" :alt="member.name" />
               <div v-else class="bg-primary text-primary-content flex items-center justify-center text-sm font-bold">
                 {{ getInitials(member.name) }}
               </div>
@@ -59,7 +59,7 @@
 </template>
 
 <script setup lang="ts">
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || ''
 
 interface TeamMember {
   id: number
