@@ -1,0 +1,462 @@
+# ─────────────────────────────────────────────────────────────
+# Dashboard provider — indique à Grafana où chercher les JSON
+# ─────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-provider
+  namespace: synkro
+data:
+  provider.yaml: |
+    apiVersion: 1
+    providers:
+      - name: synkro
+        type: file
+        disableDeletion: true
+        editable: false
+        options:
+          path: /etc/grafana/provisioning/dashboards/json
+---
+# ─────────────────────────────────────────────────────────────
+# Dashboard JSON — tableau de bord Synkro
+# ─────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-synkro
+  namespace: synkro
+data:
+  synkro.json: |
+    {
+      "title": "Synkro — Vue d'ensemble",
+      "uid": "synkro-overview",
+      "timezone": "browser",
+      "refresh": "30s",
+      "schemaVersion": 37,
+      "time": { "from": "now-1h", "to": "now" },
+      "timepicker": {
+        "quick_ranges": [
+          { "display": "5 minutes",  "from": "now-5m",  "to": "now" },
+          { "display": "30 minutes", "from": "now-30m", "to": "now" },
+          { "display": "1 heure",    "from": "now-1h",  "to": "now" },
+          { "display": "3 heures",   "from": "now-3h",  "to": "now" },
+          { "display": "1 jour",     "from": "now-1d",  "to": "now" },
+          { "display": "5 jours",    "from": "now-5d",  "to": "now" },
+          { "display": "1 semaine",  "from": "now-1w",  "to": "now" },
+          { "display": "3 semaines", "from": "now-3w",  "to": "now" },
+          { "display": "1 mois",     "from": "now-1M",  "to": "now" }
+        ]
+      },
+      "templating": {
+        "list": [
+          {
+            "name": "service",
+            "label": "Service",
+            "type": "custom",
+            "query": "frontend-synkro,backend-synkro,websocket-synkro,postgres-primary,postgres-replica,prometheus,grafana,kube-state-metrics,postgres-exporter",
+            "multi": true,
+            "includeAll": true,
+            "allValue": ".*",
+            "current": { "text": "All", "value": "$__all" },
+            "options": []
+          }
+        ]
+      },
+      "panels": [
+
+        {
+          "id": 1,
+          "type": "row",
+          "title": "État des services",
+          "collapsed": false,
+          "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 }
+        },
+
+        {
+          "id": 2,
+          "type": "stat",
+          "title": "Frontend",
+          "gridPos": { "x": 0, "y": 1, "w": 6, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "prometheus-synkro" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "textMode": "value" },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [{ "type": "value", "options": {
+                "0": { "text": "0 / 3", "color": "red",    "index": 0 },
+                "1": { "text": "1 / 3", "color": "yellow", "index": 1 },
+                "2": { "text": "2 / 3", "color": "yellow", "index": 2 },
+                "3": { "text": "3 / 3", "color": "green",  "index": 3 }
+              }}],
+              "thresholds": { "mode": "absolute", "steps": [{ "value": null, "color": "red" }, { "value": 1, "color": "yellow" }, { "value": 3, "color": "green" }] },
+              "color": { "mode": "thresholds" }
+            }
+          },
+          "targets": [{ "expr": "sum(kube_pod_status_ready{namespace=\"synkro\", pod=~\"frontend-synkro.*\", condition=\"true\"}) or vector(0)", "refId": "A" }]
+        },
+
+        {
+          "id": 3,
+          "type": "stat",
+          "title": "Backend",
+          "gridPos": { "x": 6, "y": 1, "w": 6, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "prometheus-synkro" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "textMode": "value" },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [{ "type": "value", "options": {
+                "0": { "text": "0 / 3", "color": "red",    "index": 0 },
+                "1": { "text": "1 / 3", "color": "yellow", "index": 1 },
+                "2": { "text": "2 / 3", "color": "yellow", "index": 2 },
+                "3": { "text": "3 / 3", "color": "green",  "index": 3 }
+              }}],
+              "thresholds": { "mode": "absolute", "steps": [{ "value": null, "color": "red" }, { "value": 1, "color": "yellow" }, { "value": 3, "color": "green" }] },
+              "color": { "mode": "thresholds" }
+            }
+          },
+          "targets": [{ "expr": "sum(kube_pod_status_ready{namespace=\"synkro\", pod=~\"backend-synkro.*\", condition=\"true\"}) or vector(0)", "refId": "A" }]
+        },
+
+        {
+          "id": 4,
+          "type": "stat",
+          "title": "WebSocket",
+          "gridPos": { "x": 12, "y": 1, "w": 6, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "prometheus-synkro" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "textMode": "value" },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [{ "type": "value", "options": {
+                "0": { "text": "0 / 1", "color": "red",   "index": 0 },
+                "1": { "text": "1 / 1", "color": "green", "index": 1 }
+              }}],
+              "thresholds": { "mode": "absolute", "steps": [{ "value": null, "color": "red" }, { "value": 1, "color": "green" }] },
+              "color": { "mode": "thresholds" }
+            }
+          },
+          "targets": [{ "expr": "sum(kube_pod_status_ready{namespace=\"synkro\", pod=~\"websocket-synkro.*\", condition=\"true\"}) or vector(0)", "refId": "A" }]
+        },
+
+        {
+          "id": 5,
+          "type": "stat",
+          "title": "PostgreSQL",
+          "gridPos": { "x": 18, "y": 1, "w": 6, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "prometheus-synkro" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "textMode": "value" },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [{ "type": "value", "options": {
+                "0": { "text": "0 / 1", "color": "red",   "index": 0 },
+                "1": { "text": "1 / 1", "color": "green", "index": 1 }
+              }}],
+              "thresholds": { "mode": "absolute", "steps": [{ "value": null, "color": "red" }, { "value": 1, "color": "green" }] },
+              "color": { "mode": "thresholds" }
+            }
+          },
+          "targets": [{ "expr": "sum(kube_pod_status_ready{namespace=\"synkro\", pod=~\"postgres-primary.*\", condition=\"true\"}) or vector(0)", "refId": "A" }]
+        },
+
+        {
+          "id": 10,
+          "type": "row",
+          "title": "Charge du serveur",
+          "collapsed": false,
+          "gridPos": { "x": 0, "y": 5, "w": 24, "h": 1 }
+        },
+
+        {
+          "id": 11,
+          "type": "gauge",
+          "title": "CPU utilisé (% des limites)",
+          "gridPos": { "x": 0, "y": 6, "w": 8, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus-synkro" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": false, "showThresholdMarkers": true },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0,
+              "max": 100,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [{ "value": null, "color": "green" }, { "value": 60, "color": "yellow" }, { "value": 85, "color": "red" }]
+              },
+              "color": { "mode": "thresholds" }
+            }
+          },
+          "targets": [{
+            "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"synkro\", container!=\"\", container!=\"POD\"}[5m])) / sum(kube_pod_container_resource_limits{namespace=\"synkro\", resource=\"cpu\"}) * 100",
+            "refId": "A",
+            "legendFormat": "CPU"
+          }]
+        },
+
+        {
+          "id": 12,
+          "type": "gauge",
+          "title": "Mémoire utilisée (% des limites)",
+          "gridPos": { "x": 8, "y": 6, "w": 8, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus-synkro" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": false, "showThresholdMarkers": true },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0,
+              "max": 100,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [{ "value": null, "color": "green" }, { "value": 70, "color": "yellow" }, { "value": 90, "color": "red" }]
+              },
+              "color": { "mode": "thresholds" }
+            }
+          },
+          "targets": [{
+            "expr": "sum(container_memory_working_set_bytes{namespace=\"synkro\", container!=\"\", container!=\"POD\"}) / sum(kube_pod_container_resource_limits{namespace=\"synkro\", resource=\"memory\"}) * 100",
+            "refId": "A",
+            "legendFormat": "Mémoire"
+          }]
+        },
+
+        {
+          "id": 13,
+          "type": "bargauge",
+          "title": "Redémarrages de pods (1h)",
+          "gridPos": { "x": 16, "y": 6, "w": 8, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus-synkro" },
+          "options": {
+            "reduceOptions": { "calcs": ["lastNotNull"] },
+            "orientation": "horizontal",
+            "displayMode": "basic",
+            "valueMode": "color",
+            "showUnfilled": true,
+            "minVizWidth": 0,
+            "minVizHeight": 16
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "value": null, "color": "green" },
+                  { "value": 1,    "color": "yellow" },
+                  { "value": 3,    "color": "red" }
+                ]
+              },
+              "color": { "mode": "thresholds" }
+            }
+          },
+          "targets": [{
+            "expr": "sum by(pod) (increase(kube_pod_container_status_restarts_total{namespace=\"synkro\"}[1h]))",
+            "refId": "A",
+            "legendFormat": "{{ pod }}"
+          }]
+        },
+
+        {
+          "id": 14,
+          "type": "timeseries",
+          "title": "Trafic réseau entrant / sortant  (jaune=100KB/s  rouge=1MB/s)",
+          "gridPos": { "x": 0, "y": 14, "w": 24, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus-synkro" },
+          "options": {
+            "tooltip": { "mode": "multi" },
+            "legend": { "displayMode": "list", "placement": "bottom" }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "binBps",
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "thresholdsStyle": { "mode": "line" }
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "value": null,    "color": "green" },
+                  { "value": 102400,  "color": "yellow" },
+                  { "value": 1048576, "color": "red" }
+                ]
+              }
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum by(service) (label_replace(rate(container_network_receive_bytes_total{namespace=\"synkro\", pod=~\"(${service})(-[a-z0-9]+-[a-z0-9]+|-[0-9]+)?$\"}[5m]), \"service\", \"$1\", \"pod\", \"^(.*?)(-[a-z0-9]+-[a-z0-9]+|-[0-9]+)$\"))",
+              "refId": "A",
+              "legendFormat": "↓ {{ service }}"
+            },
+            {
+              "expr": "sum by(service) (label_replace(rate(container_network_transmit_bytes_total{namespace=\"synkro\", pod=~\"(${service})(-[a-z0-9]+-[a-z0-9]+|-[0-9]+)?$\"}[5m]), \"service\", \"$1\", \"pod\", \"^(.*?)(-[a-z0-9]+-[a-z0-9]+|-[0-9]+)$\"))",
+              "refId": "B",
+              "legendFormat": "↑ {{ service }}"
+            }
+          ]
+        },
+
+        {
+          "id": 20,
+          "type": "row",
+          "title": "Ressources détaillées",
+          "collapsed": false,
+          "gridPos": { "x": 0, "y": 22, "w": 24, "h": 1 }
+        },
+
+        {
+          "id": 21,
+          "type": "timeseries",
+          "title": "CPU par service  (jaune=100m  rouge=350m cores)",
+          "gridPos": { "x": 0, "y": 23, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus-synkro" },
+          "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "thresholdsStyle": { "mode": "line" }
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "value": null, "color": "green" },
+                  { "value": 0.1,  "color": "yellow" },
+                  { "value": 0.35, "color": "red" }
+                ]
+              }
+            }
+          },
+          "targets": [{
+            "expr": "sum by(service) (label_replace(rate(container_cpu_usage_seconds_total{namespace=\"synkro\", container!=\"\", container!=\"POD\", pod=~\"(${service})(-[a-z0-9]+-[a-z0-9]+|-[0-9]+)?$\"}[5m]), \"service\", \"$1\", \"pod\", \"^(.*?)(-[a-z0-9]+-[a-z0-9]+|-[0-9]+)$\"))",
+            "refId": "A",
+            "legendFormat": "{{ service }}"
+          }]
+        },
+
+        {
+          "id": 22,
+          "type": "timeseries",
+          "title": "Mémoire par service  (jaune=200MB  rouge=400MB)",
+          "gridPos": { "x": 12, "y": 23, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus-synkro" },
+          "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "thresholdsStyle": { "mode": "line" }
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "value": null,      "color": "green" },
+                  { "value": 209715200, "color": "yellow" },
+                  { "value": 419430400, "color": "red" }
+                ]
+              }
+            }
+          },
+          "targets": [{
+            "expr": "sum by(service) (label_replace(container_memory_working_set_bytes{namespace=\"synkro\", container!=\"\", container!=\"POD\", pod=~\"(${service})(-[a-z0-9]+-[a-z0-9]+|-[0-9]+)?$\"}, \"service\", \"$1\", \"pod\", \"^(.*?)(-[a-z0-9]+-[a-z0-9]+|-[0-9]+)$\"))",
+            "refId": "A",
+            "legendFormat": "{{ service }}"
+          }]
+        },
+
+        {
+          "id": 30,
+          "type": "row",
+          "title": "PostgreSQL",
+          "collapsed": false,
+          "gridPos": { "x": 0, "y": 31, "w": 24, "h": 1 }
+        },
+
+        {
+          "id": 31,
+          "type": "timeseries",
+          "title": "Transactions par seconde",
+          "gridPos": { "x": 0, "y": 32, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus-synkro" },
+          "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+          "fieldConfig": { "defaults": { "unit": "ops", "custom": { "lineWidth": 2, "fillOpacity": 15 } } },
+          "targets": [
+            {
+              "expr": "rate(pg_stat_database_xact_commit_total{datname=\"synkro\"}[5m])",
+              "refId": "A",
+              "legendFormat": "Commits/s"
+            },
+            {
+              "expr": "rate(pg_stat_database_xact_rollback_total{datname=\"synkro\"}[5m])",
+              "refId": "B",
+              "legendFormat": "Rollbacks/s"
+            }
+          ]
+        },
+
+        {
+          "id": 32,
+          "type": "bargauge",
+          "title": "Espace utilisé (PVC 10 GiB)",
+          "gridPos": { "x": 12, "y": 32, "w": 6, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus-synkro" },
+          "options": {
+            "reduceOptions": { "calcs": ["lastNotNull"] },
+            "orientation": "horizontal",
+            "displayMode": "basic",
+            "showUnfilled": true
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "min": 0,
+              "max": 10737418240,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "value": null,       "color": "green" },
+                  { "value": 7516192768, "color": "yellow" },
+                  { "value": 9663676416, "color": "red" }
+                ]
+              },
+              "color": { "mode": "thresholds" }
+            }
+          },
+          "targets": [{
+            "expr": "sum(pg_database_size_bytes{datname=\"synkro\"})",
+            "refId": "A",
+            "legendFormat": "synkro",
+            "instant": true
+          }]
+        },
+
+        {
+          "id": 33,
+          "type": "stat",
+          "title": "Lag réplication",
+          "gridPos": { "x": 18, "y": 32, "w": 6, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus-synkro" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "textMode": "auto" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [{ "value": null, "color": "green" }, { "value": 5, "color": "yellow" }, { "value": 30, "color": "red" }]
+              },
+              "color": { "mode": "thresholds" },
+              "noValue": "Synchro OK"
+            }
+          },
+          "targets": [{
+            "expr": "pg_replication_lag",
+            "refId": "A",
+            "legendFormat": "Lag"
+          }]
+        }
+
+      ]
+    }

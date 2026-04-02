@@ -1,0 +1,48 @@
+# ─────────────────────────────────────────────────────────────
+# RBAC Patroni — Patroni utilise l'API Kubernetes comme DCS
+# (Distributed Configuration Store) pour stocker l'état du cluster
+# et gérer l'élection du leader. Il a besoin de droits en lecture/écriture
+# sur les configmaps et endpoints du namespace synkro.
+# ─────────────────────────────────────────────────────────────
+
+# Compte de service dédié à Patroni
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: patroni
+  namespace: synkro
+---
+# Rôle avec les permissions minimales nécessaires à Patroni
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: patroni
+  namespace: synkro
+rules:
+  # ConfigMaps : Patroni stocke la config du cluster et l'état du leader
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["create", "get", "list", "patch", "update", "watch", "delete"]
+  # Endpoints : Patroni met à jour le service postgres-synkro pour pointer vers le leader
+  - apiGroups: [""]
+    resources: ["endpoints"]
+    verbs: ["create", "get", "list", "patch", "update", "watch", "delete"]
+  # Pods : Patroni lit l'état des pods pour connaître les membres du cluster
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "patch", "watch"]
+---
+# Liaison du rôle au compte de service
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: patroni
+  namespace: synkro
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: patroni
+subjects:
+  - kind: ServiceAccount
+    name: patroni
+    namespace: synkro

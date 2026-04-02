@@ -87,3 +87,5 @@ jspm_packages/
 
 # md inutile
 sauvegarde.md
+
+k8s/secrets.yaml

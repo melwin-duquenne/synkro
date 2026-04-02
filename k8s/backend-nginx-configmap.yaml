@@ -1,0 +1,44 @@
+# Configuration Nginx du backend et fichier .env minimal pour Symfony
+# Regroupe deux clés dans la même ConfigMap pour simplifier les montages de volumes
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-nginx-config
+  namespace: synkro
+data:
+  # Fichier .env minimal monté dans le container : les vraies variables viennent des env Kubernetes
+  dotenv: |
+    APP_ENV=prod
+  default.conf: |
+    server {
+        listen 8000;
+        server_name _;
+        root /var/www/public;
+        index index.php;
+
+        # Toute requête sans fichier statique correspondant est renvoyée vers index.php (front controller Symfony)
+        location / {
+            try_files $uri /index.php$is_args$args;
+        }
+
+        # Seul index.php traite les requêtes PHP — transmis à PHP-FPM sur le socket local 9000
+        location ~ ^/index\.php(/|$) {
+            fastcgi_pass 127.0.0.1:9000;
+            fastcgi_split_path_info ^(.+\.php)(/.*)$;
+            include fastcgi_params;
+            fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+            fastcgi_param DOCUMENT_ROOT $realpath_root;
+            # internal : empêche l'accès direct à /index.php depuis l'extérieur
+            internal;
+        }
+
+        # Sert directement les fichiers uploadés sans passer par PHP
+        location /uploads/ {
+            alias /var/www/public/uploads/;
+        }
+
+        # Bloque l'exécution de tout autre fichier PHP pour éviter les Remote Code Execution
+        location ~ \.php$ {
+            return 404;
+        }
+    }

@@ -1,0 +1,6 @@
+# Namespace dédié à l'ensemble des ressources de l'application Synkro
+# Permet d'isoler Synkro des autres applications du cluster et d'appliquer des politiques ciblées
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: synkro
