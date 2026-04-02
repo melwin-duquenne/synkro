@@ -140,6 +140,7 @@ jobs:
           MAILER_DSN=${{ secrets.MAILER_DSN }}
           APP_FRONTEND_URL=${{ secrets.APP_FRONTEND_URL }}
           VITE_WS_URL=${{ secrets.VITE_WS_URL }}
+          DEFAULT_URI=${{ secrets.DEFAULT_URI }}
           EOF
 
       - name: Générer l'inventory Ansible

@@ -54,7 +54,8 @@ ENV APP_ENV=prod \
     APP_FRONTEND_URL=http://localhost \
     GOOGLE_CLIENT_ID=placeholder \
     GOOGLE_CLIENT_SECRET=placeholder \
-    GOOGLE_REDIRECT_URI=http://localhost
+    GOOGLE_REDIRECT_URI=http://localhost \
+    DEFAULT_URI=http://localhost
 
 # Écraser le .env du repo (contient des ${} shell non interprétables par Symfony)
 # Les vraies valeurs sont dans les ENV ci-dessus et seront overridées au runtime
