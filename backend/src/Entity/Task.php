@@ -17,7 +17,7 @@ use App\Dto\Task\UpdateTaskInput;
 use App\State\TaskProcessor;
 use App\State\TaskProvider;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'task')]

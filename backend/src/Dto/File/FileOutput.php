@@ -4,7 +4,7 @@ namespace App\Dto\File;
 
 use App\Dto\UserSimpleOutput;
 use App\Entity\FileResource;
-use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 final class FileOutput
 {

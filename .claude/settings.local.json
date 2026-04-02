@@ -13,7 +13,10 @@
       "Bash(npx vue-tsc:*)",
       "Bash(node:*)",
       "Bash(kubectl get:*)",
-      "Bash(kubectl exec:*)"
+      "Bash(kubectl exec:*)",
+      "Bash(xargs sed:*)",
+      "Bash(python3:*)",
+      "Bash(python:*)"
     ]
   }
 }
