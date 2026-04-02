@@ -22,7 +22,7 @@ onMounted(async () => {
 
   if (error) {
     console.error('OAuth error:', error)
-    router.push('/auth/login?error=oauth_failed')
+    router.push('/login?error=oauth_failed')
     return
   }
 
@@ -38,10 +38,10 @@ onMounted(async () => {
       router.push('/dashboard')
     } catch (e) {
       console.error('Failed to fetch user:', e)
-      router.push('/auth/login?error=fetch_user_failed')
+      router.push('/login?error=fetch_user_failed')
     }
   } else {
-    router.push('/auth/login?error=no_token')
+    router.push('/login?error=no_token')
   }
 })
 </script>

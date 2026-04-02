@@ -61,13 +61,14 @@ class GoogleAuthController extends AbstractController
             $token = $this->jwtManager->create($user);
 
             // Rediriger vers le frontend avec le token
-            $frontendUrl = 'http://localhost:5173';
+            $frontendUrl = $_ENV['APP_FRONTEND_URL'] ?? 'http://localhost:5173';
             return $this->redirect($frontendUrl . '/auth/callback?token=' . $token);
 
         } catch (\Exception $e) {
             // Log l'erreur pour debug
             error_log('OAuth error: ' . $e->getMessage());
-            return $this->redirect('http://localhost:5173/login?error=oauth_failed&message=' . urlencode($e->getMessage()));
+            $frontendUrl = $_ENV['APP_FRONTEND_URL'] ?? 'http://localhost:5173';
+            return $this->redirect($frontendUrl . '/login?error=oauth_failed&message=' . urlencode($e->getMessage()));
         }
     }
 
@@ -82,10 +83,7 @@ class GoogleAuthController extends AbstractController
         $token = $this->jwtManager->create($user);
 
         // Rediriger vers le frontend avec le token
-        $frontendUrl = $request->getSchemeAndHttpHost() === 'http://localhost:8000'
-            ? 'http://localhost:5173'
-            : $request->getSchemeAndHttpHost();
-
+        $frontendUrl = $_ENV['APP_FRONTEND_URL'] ?? 'http://localhost:5173';
         return $this->redirect($frontendUrl . '/auth/callback?token=' . $token);
     }
 
