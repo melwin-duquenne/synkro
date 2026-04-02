@@ -307,3 +307,9 @@ kubectl get constraints -A
 # Grafana
 # http://84.234.27.2:3000 → dashboard "Synkro — Vue d'ensemble"
 ```
+posgred m'être en place patronie.
+grahpana le passer en portforward. solution pour le sécurisé un peux plus.
+pk le backen n'est pas exposer dans un service extérieur.
+renomer le frontend-synkro loadbalancer.
+m'être au claire l'architecture et surtout le loadbalancer.
+comprendre http://websocket-synkro.synkro.svc.cluster.local:3001.
