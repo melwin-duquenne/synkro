@@ -28,6 +28,8 @@ jobs:
           file: ./backend/Dockerfile
           target: prod
           push: true
+          provenance: false
+          sbom: false
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/synkro-backend:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/synkro-backend:${{ github.sha }}
@@ -58,6 +60,8 @@ jobs:
           file: ./server/Dockerfile
           target: prod
           push: true
+          provenance: false
+          sbom: false
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/synkro-websocket:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/synkro-websocket:${{ github.sha }}
@@ -87,6 +91,8 @@ jobs:
           file: ./frontend/Dockerfile
           target: prod
           push: true
+          provenance: false
+          sbom: false
           build-args: |
             VITE_API_URL=/api
             VITE_WS_URL=${{ secrets.VITE_WS_URL }}
