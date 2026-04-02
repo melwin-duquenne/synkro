@@ -19,11 +19,11 @@
       register: env_file
       failed_when: not env_file.stat.exists
 
-    - name: Vérifier que docker-compose.prod.yml existe en local
+    - name: Vérifier que docker-compose.deploiement.yml existe en local
       delegate_to: localhost
       become: no
       stat:
-        path: ../docker-compose.prod.yml
+        path: ../docker-compose.deploiement.yml
       register: compose_file
       failed_when: not compose_file.stat.exists
 
@@ -130,9 +130,9 @@
         state: directory
         mode: '0755'
 
-    - name: Copier le fichier docker-compose.prod.yml
+    - name: Copier le fichier docker-compose.deploiement.yml
       copy:
-        src: ../docker-compose.prod.yml
+        src: ../docker-compose.deploiement.yml
         dest: "{{ app_dir }}/docker-compose.yml"
 
     - name: Copier le fichier .env
@@ -255,7 +255,7 @@
 
     # ─── DOCKER COMPOSE — DÉPLOIEMENT ────────────────────────────────────────
     # Le frontend doit écouter sur 8080 (Nginx hôte proxifie vers lui)
-    # Assure-toi que docker-compose.prod.yml a : ports: "8080:80" sur frontend-synkro
+    # Assure-toi que docker-compose.deploiement.yml a : ports: "8080:80" sur frontend-synkro
 
     - name: Créer le répertoire docker du backend
       file:

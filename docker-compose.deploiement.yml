@@ -1,6 +1,6 @@
 services:
   backend-fpm:
-    image: cacali/synkro-backend:latest
+    image: moignon/synkro-backend:latest
     container_name: synkro_backend_fpm
     restart: always
     environment:
@@ -38,7 +38,7 @@ services:
       - synkronet-prod
 
   frontend-synkro:
-    image: cacali/synkro-frontend:latest
+    image: moignon/synkro-frontend:latest
     container_name: synkro_frontend
     restart: always
     ports:
@@ -50,7 +50,7 @@ services:
       - synkronet-prod
 
   websocket-synkro:
-    image: cacali/synkro-websocket:latest
+    image: moignon/synkro-websocket:latest
     container_name: synkro_websocket
     restart: always
     environment:
