@@ -169,10 +169,10 @@
         format: PEM
         force: no
 
-    - name: Permissions strictes sur les clés JWT
+    - name: Permissions sur les clés JWT (lisibles par www-data dans le conteneur)
       file:
         path: "{{ item }}"
-        mode: '0600'
+        mode: '0644'
         owner: root
         group: root
       loop:
