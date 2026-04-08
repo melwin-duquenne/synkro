@@ -15,6 +15,19 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = computed(() => !!token.value)
 
+  async function safeParseError(response: Response, fallback: string): Promise<string> {
+    const contentType = response.headers.get('content-type') || ''
+    if (contentType.includes('json')) {
+      try {
+        const data = await response.json()
+        return extractApiError(data, fallback)
+      } catch {
+        return `${fallback} (HTTP ${response.status})`
+      }
+    }
+    return `${fallback} (HTTP ${response.status})`
+  }
+
   async function login(credentials: LoginCredentials): Promise<boolean> {
     loading.value = true
     error.value = null
@@ -22,13 +35,15 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/ld+json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
         body: JSON.stringify(credentials)
       })
 
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(extractApiError(data, 'Connexion échouée. Vérifiez vos identifiants'))
+        throw new Error(await safeParseError(response, 'Connexion échouée. Vérifiez vos identifiants'))
       }
 
       const data = await response.json()
@@ -52,13 +67,15 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const response = await fetch(`${API_URL}/auth/register`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/ld+json' },
+        headers: {
+          'Content-Type': 'application/ld+json',
+          'Accept': 'application/ld+json'
+        },
         body: JSON.stringify(data)
       })
 
       if (!response.ok) {
-        const responseData = await response.json()
-        throw new Error(responseData.error || 'Inscription échouée. Vérifiez les informations saisies')
+        throw new Error(await safeParseError(response, 'Inscription échouée. Vérifiez les informations saisies'))
       }
 
       // Auto login after registration

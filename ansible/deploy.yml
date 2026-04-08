@@ -133,7 +133,7 @@
     - name: Copier le fichier docker-compose.deploiement.yml
       copy:
         src: ../docker-compose.deploiement.yml
-        dest: "{{ app_dir }}/docker-compose.yml"
+        dest: "{{ app_dir }}/docker-compose.deploiement.yml"
 
     - name: Copier le fichier .env
       copy:
@@ -269,18 +269,18 @@
         dest: "{{ app_dir }}/backend/docker/nginx.conf"
 
     - name: Arrêter les conteneurs existants
-      shell: docker compose --env-file {{ app_dir }}/.env -f {{ app_dir }}/docker-compose.yml down --remove-orphans || true
+      shell: docker compose --env-file {{ app_dir }}/.env -f {{ app_dir }}/docker-compose.deploiement.yml down --remove-orphans || true
 
     - name: Nettoyer les images et volumes orphelins
       shell: docker system prune -f --volumes
 
     - name: Puller les dernières images depuis Docker Hub
-      shell: docker compose --env-file {{ app_dir }}/.env -f {{ app_dir }}/docker-compose.yml pull
+      shell: docker compose --env-file {{ app_dir }}/.env -f {{ app_dir }}/docker-compose.deploiement.yml pull
       register: docker_pull
       failed_when: docker_pull.rc != 0
 
     - name: Démarrer les conteneurs
-      shell: docker compose --env-file {{ app_dir }}/.env -f {{ app_dir }}/docker-compose.yml up -d --remove-orphans
+      shell: docker compose --env-file {{ app_dir }}/.env -f {{ app_dir }}/docker-compose.deploiement.yml up -d --remove-orphans
       register: docker_up
       failed_when: docker_up.rc != 0
 
@@ -310,7 +310,7 @@
         msg: "Frontend {{ 'OK ✓' if frontend_check.status is defined and frontend_check.status == 200 else 'KO ✗ — vérifier les logs Docker' }}"
 
     - name: Afficher les logs en cas d'échec du frontend
-      shell: docker compose --env-file {{ app_dir }}/.env -f {{ app_dir }}/docker-compose.yml logs --tail=50 frontend-synkro
+      shell: docker compose --env-file {{ app_dir }}/.env -f {{ app_dir }}/docker-compose.deploiement.yml logs --tail=50 frontend-synkro
       when: frontend_check.status is not defined or frontend_check.status != 200
       register: frontend_logs
 
