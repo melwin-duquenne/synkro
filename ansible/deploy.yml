@@ -373,6 +373,38 @@
         dest: /etc/nginx/sites-available/synkro
       when: cert_stat.stat.exists
 
+    # ─── MODSECURITY (WAF OWASP CRS) ─────────────────────────────────────────
+    # API Platform utilise des content-types JSON spécifiques (ld+json,
+    # merge-patch+json) qui ne sont pas dans la liste OWASP CRS par défaut.
+    # Sans cette config, le WAF bloque toutes les requêtes POST/PATCH avec un
+    # 403 et l'erreur "Request content type is not allowed by policy" (920420).
+
+    - name: Vérifier la présence de crs-setup.conf
+      stat:
+        path: /etc/nginx/modsec/crs/crs-setup.conf
+      register: crs_setup
+
+    - name: Vérifier si les content-types API Platform sont déjà autorisés
+      shell: grep -q "application/ld+json" /etc/nginx/modsec/crs/crs-setup.conf
+      register: crs_already_patched
+      failed_when: false
+      changed_when: false
+      when: crs_setup.stat.exists
+
+    - name: Autoriser les content-types JSON d'API Platform dans OWASP CRS
+      replace:
+        path: /etc/nginx/modsec/crs/crs-setup.conf
+        regexp: "(setvar:'tx\\.allowed_request_content_type=[^']*\\|application/json\\|)([^']*')"
+        replace: "\\1 |application/ld+json| |application/merge-patch+json|\\2"
+      when:
+        - crs_setup.stat.exists
+        - crs_already_patched.rc != 0
+
+    - name: Avertir si crs-setup.conf est introuvable
+      debug:
+        msg: "ATTENTION : ModSecurity/OWASP CRS introuvable. Si tu l'installes plus tard, relance ce playbook."
+      when: not crs_setup.stat.exists
+
     - name: Valider la config Nginx finale
       shell: nginx -t
       register: nginx_final_test
