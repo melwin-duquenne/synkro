@@ -74,9 +74,50 @@ services:
     networks:
       - synkronet-prod
 
+  # ─── MONITORING ──────────────────────────────────────────────────────────
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: synkro_uptime_kuma
+    restart: always
+    ports:
+      - "3100:3001"
+    volumes:
+      - uptime_kuma_data:/app/data
+    networks:
+      - synkronet-prod
+
+  netdata:
+    image: netdata/netdata:stable
+    container_name: synkro_netdata
+    restart: always
+    ports:
+      - "19999:19999"
+    cap_add:
+      - SYS_PTRACE
+      - SYS_ADMIN
+    security_opt:
+      - apparmor:unconfined
+    volumes:
+      - netdata_config:/etc/netdata
+      - netdata_lib:/var/lib/netdata
+      - netdata_cache:/var/cache/netdata
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /etc/os-release:/host/etc/os-release:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - NETDATA_CLAIM_TOKEN=
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    networks:
+      - synkronet-prod
+
 volumes:
   postgres_data_prod:
   backend_public:
+  uptime_kuma_data:
+  netdata_config:
+  netdata_lib:
+  netdata_cache:
 
 networks:
   synkronet-prod:

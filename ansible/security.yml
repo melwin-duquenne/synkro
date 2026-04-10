@@ -291,6 +291,32 @@
                   proxy_read_timeout 86400;
               }
 
+              # ── Monitoring ──
+              # Uptime Kuma
+              location /status/ {
+                  auth_basic "Monitoring";
+                  auth_basic_user_file /etc/nginx/.htpasswd_monitoring;
+                  proxy_pass http://127.0.0.1:3100/;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto https;
+                  proxy_http_version 1.1;
+                  proxy_set_header Upgrade $http_upgrade;
+                  proxy_set_header Connection "upgrade";
+              }
+
+              # Netdata
+              location /netdata/ {
+                  auth_basic "Monitoring";
+                  auth_basic_user_file /etc/nginx/.htpasswd_monitoring;
+                  proxy_pass http://127.0.0.1:19999/;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto https;
+              }
+
               # Bloquer l'accès aux fichiers sensibles
               location ~ /\.(env|git|htaccess|htpasswd) {
                   deny all;
@@ -300,6 +326,19 @@
         dest: /etc/nginx/sites-available/synkro
       when: cert_stat.stat.exists
       notify: Recharger Nginx
+
+    - name: Installer apache2-utils pour htpasswd
+      apt:
+        name: apache2-utils
+        state: present
+
+    - name: Créer le fichier htpasswd pour le monitoring
+      shell: |
+        if [ ! -f /etc/nginx/.htpasswd_monitoring ]; then
+          htpasswd -cb /etc/nginx/.htpasswd_monitoring admin SynkroMonitor2026!
+        fi
+      args:
+        creates: /etc/nginx/.htpasswd_monitoring
 
     - name: Tester la config Nginx
       shell: nginx -t
@@ -328,7 +367,7 @@
     # ═══════════════════════════════════════════════════════════════════════
     # RÉSUMÉ
     # ═══════════════════════════════════════════════════════════════════════
-    - name: Résumé sécurité
+    - name: Résumé sécurité & monitoring
       debug:
         msg:
           - "Fail2ban: installé et configuré"
@@ -339,6 +378,10 @@
           - "Rate limiting: login 5r/min, register 3r/min, API 30r/s"
           - "Headers: HSTS, X-Frame-Options, X-Content-Type-Options, X-XSS-Protection, Referrer-Policy, Permissions-Policy"
           - "Réseau: SYN cookies, anti-spoofing, ICMP broadcast ignoré"
+          - "Monitoring:"
+          - "  - Uptime Kuma: https://{{ domain }}/status/"
+          - "  - Netdata: https://{{ domain }}/netdata/"
+          - "  - Auth: admin / SynkroMonitor2026!"
 
   handlers:
     - name: Redémarrer fail2ban
