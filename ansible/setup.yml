@@ -129,7 +129,7 @@
       copy:
         src: ../.env
         dest: "{{ app_dir }}/.env"
-        mode: '0600'
+        mode: '0644'
 
     - name: Copier le nginx.conf du backend
       copy:
