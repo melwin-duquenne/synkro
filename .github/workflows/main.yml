@@ -123,25 +123,55 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Générer le fichier .env depuis les secrets GitHub
+      - name: Générer le fichier .env depuis les secrets et variables GitHub
+        env:
+          APP_SECRET: ${{ secrets.APP_SECRET }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          JWT_PASSPHRASE: ${{ secrets.JWT_PASSPHRASE }}
+          CORS_ALLOW_ORIGIN: ${{ secrets.CORS_ALLOW_ORIGIN }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REDIRECT_URI: ${{ secrets.GOOGLE_REDIRECT_URI }}
+          MAILER_DSN: ${{ secrets.MAILER_DSN }}
+          APP_FRONTEND_URL: ${{ secrets.APP_FRONTEND_URL }}
+          VITE_WS_URL: ${{ secrets.VITE_WS_URL }}
+          DEFAULT_URI: ${{ secrets.DEFAULT_URI }}
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
         run: |
-          cat > .env << EOF
+          cat > .env <<ENVEOF
+          DOCKERHUB_USERNAME=${DOCKERHUB_USERNAME}
+          NODE_ENV=${{ vars.NODE_ENV }}
           APP_ENV=prod
-          APP_SECRET=${{ secrets.APP_SECRET }}
-          POSTGRES_USER=${{ secrets.POSTGRES_USER }}
-          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
-          POSTGRES_DB=${{ secrets.POSTGRES_DB }}
-          DATABASE_URL=${{ secrets.DATABASE_URL }}
-          JWT_PASSPHRASE=${{ secrets.JWT_PASSPHRASE }}
-          CORS_ALLOW_ORIGIN=${{ secrets.CORS_ALLOW_ORIGIN }}
-          GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
-          GOOGLE_REDIRECT_URI=${{ secrets.GOOGLE_REDIRECT_URI }}
-          MAILER_DSN=${{ secrets.MAILER_DSN }}
-          APP_FRONTEND_URL=${{ secrets.APP_FRONTEND_URL }}
-          VITE_WS_URL=${{ secrets.VITE_WS_URL }}
-          DEFAULT_URI=${{ secrets.DEFAULT_URI }}
-          EOF
+          APP_SECRET=${APP_SECRET}
+          POSTGRES_USER=${POSTGRES_USER}
+          POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+          POSTGRES_DB=${POSTGRES_DB}
+          DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-synkro:5432/${POSTGRES_DB}?serverVersion=16&charset=utf8
+          JWT_SECRET_KEY=%kernel.project_dir%/config/jwt/private.pem
+          JWT_PUBLIC_KEY=%kernel.project_dir%/config/jwt/public.pem
+          JWT_PASSPHRASE=${JWT_PASSPHRASE}
+          CORS_ALLOW_ORIGIN=${CORS_ALLOW_ORIGIN}
+          GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+          GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+          GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI}
+          MAILER_DSN=${MAILER_DSN}
+          APP_FRONTEND_URL=${APP_FRONTEND_URL}
+          VITE_WS_URL=${VITE_WS_URL}
+          VITE_API_URL=/api
+          VITE_BACKEND_TARGET=http://backend-synkro:8000
+          VITE_BACKEND_URL=http://backend-synkro:8000
+          DEFAULT_URI=${DEFAULT_URI}
+          PORT=${{ vars.PORT }}
+          PORT_BACKEND=${{ vars.PORT_BACKEND }}
+          PORT_FRONTEND=${{ vars.PORT_FRONTEND }}
+          PORT_POSTGRES=${{ vars.PORT_POSTGRES }}
+          PORT_POSTGRES_2=${{ vars.PORT_POSTGRES_2 }}
+          PORT_WEBSOCKET=${{ vars.PORT_WEBSOCKET }}
+          BASE_URL=/
+          ENVEOF
+          sed -i 's/^          //' .env
 
       - name: Générer l'inventory Ansible
         run: |

@@ -1,5 +1,5 @@
 ---
-- name: Configuration VPS et Déploiement Synkro
+- name: Déploiement Synkro — VPS
   hosts: vps
   become: yes
 
@@ -8,8 +8,10 @@
     domain: synkro.ovh
     certbot_email: admin@synkro.ovh
     backup_dir: /opt/synkro-backups
+    compose_file: "{{ app_dir }}/docker-compose.deploiement.yml"
+    compose_cmd: "docker compose --env-file {{ app_dir }}/.env -f {{ compose_file }}"
 
-  # ─── PRE-CHECKS ────────────────────────────────────────────────────────────
+  # ─── PRE-CHECKS ──────────────────────────────────────────────────────────
   pre_tasks:
     - name: Vérifier que le fichier .env existe en local
       delegate_to: localhost
@@ -24,12 +26,14 @@
       become: no
       stat:
         path: ../docker-compose.deploiement.yml
-      register: compose_file
-      failed_when: not compose_file.stat.exists
+      register: compose_file_check
+      failed_when: not compose_file_check.stat.exists
 
   tasks:
-    # ─── SYSTÈME ─────────────────────────────────────────────────────────────
-    - name: Mise à jour du système (apt)
+    # ═══════════════════════════════════════════════════════════════════════
+    # SYSTÈME
+    # ═══════════════════════════════════════════════════════════════════════
+    - name: Mise à jour du système
       apt:
         update_cache: yes
         upgrade: dist
@@ -53,8 +57,10 @@
           - ufw
         state: present
 
-    # ─── DOCKER ──────────────────────────────────────────────────────────────
-    - name: Installation de Docker (si absent)
+    # ═══════════════════════════════════════════════════════════════════════
+    # DOCKER
+    # ═══════════════════════════════════════════════════════════════════════
+    - name: Installation de Docker
       apt:
         name:
           - docker-ce
@@ -64,46 +70,55 @@
           - docker-compose-plugin
         state: present
         update_cache: yes
-      ignore_errors: yes  # Docker déjà installé sur le VPS
+      ignore_errors: yes
 
-    - name: S'assurer que Docker tourne
+    - name: Démarrer Docker
       systemd:
         name: docker
         state: started
         enabled: yes
 
-    # ─── SÉCURITÉ SSH ────────────────────────────────────────────────────────
-    - name: Désactiver l'authentification par mot de passe SSH
+    - name: Configurer la rotation des logs Docker
+      copy:
+        content: |
+          {
+            "log-driver": "json-file",
+            "log-opts": {
+              "max-size": "10m",
+              "max-file": "5"
+            }
+          }
+        dest: /etc/docker/daemon.json
+      notify: Redémarrer Docker
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # SÉCURITÉ
+    # ═══════════════════════════════════════════════════════════════════════
+    - name: Désactiver l'authentification SSH par mot de passe
       lineinfile:
         path: /etc/ssh/sshd_config
         regexp: '^#?PasswordAuthentication'
         line: 'PasswordAuthentication no'
       notify: Redémarrer SSH
 
-    # ─── PARE-FEU ────────────────────────────────────────────────────────────
-    - name: Autoriser SSH dans UFW
+    - name: Configurer UFW
       ufw:
         rule: allow
-        name: OpenSSH
-
-    - name: Autoriser HTTP dans UFW
-      ufw:
-        rule: allow
-        port: '80'
+        port: "{{ item }}"
         proto: tcp
-
-    - name: Autoriser HTTPS dans UFW
-      ufw:
-        rule: allow
-        port: '443'
-        proto: tcp
+      loop:
+        - '22'
+        - '80'
+        - '443'
 
     - name: Activer UFW
       ufw:
         state: enabled
         policy: deny
 
-    # ─── BACKUP AVANT DÉPLOIEMENT ────────────────────────────────────────────
+    # ═══════════════════════════════════════════════════════════════════════
+    # BACKUP
+    # ═══════════════════════════════════════════════════════════════════════
     - name: Créer le répertoire de backup
       file:
         path: "{{ backup_dir }}"
@@ -123,53 +138,109 @@
         dest: "{{ backup_dir }}/jwt-keys-{{ ansible_date_time.iso8601_basic_short }}.tar.gz"
       ignore_errors: yes
 
-    # ─── RÉPERTOIRES APPLICATION ─────────────────────────────────────────────
-    - name: Créer le répertoire de l'application
+    # ═══════════════════════════════════════════════════════════════════════
+    # FICHIERS APPLICATION
+    # ═══════════════════════════════════════════════════════════════════════
+    - name: Créer les répertoires
       file:
-        path: "{{ app_dir }}"
+        path: "{{ item }}"
         state: directory
         mode: '0755'
+      loop:
+        - "{{ app_dir }}"
+        - "{{ app_dir }}/backend/docker"
+        - "{{ app_dir }}/backend/config/jwt"
 
-    - name: Copier le fichier docker-compose.deploiement.yml
+    - name: Copier docker-compose.deploiement.yml
       copy:
         src: ../docker-compose.deploiement.yml
-        dest: "{{ app_dir }}/docker-compose.deploiement.yml"
+        dest: "{{ compose_file }}"
 
     - name: Copier le fichier .env
       copy:
         src: ../.env
         dest: "{{ app_dir }}/.env"
-        mode: '0644'  # Lisible par Docker
+        mode: '0600'
 
-    - name: S'assurer que .env est lisible par Docker
-      file:
-        path: "{{ app_dir }}/.env"
-        mode: '0644'
-        owner: root
-        group: root
+    - name: Copier le nginx.conf du backend
+      copy:
+        src: ../backend/docker/nginx.conf
+        dest: "{{ app_dir }}/backend/docker/nginx.conf"
 
-    # ─── CLÉS JWT ────────────────────────────────────────────────────────────
-    - name: Créer le répertoire des clés JWT
-      file:
-        path: "{{ app_dir }}/backend/config/jwt"
-        state: directory
-        mode: '0700'
+    # ═══════════════════════════════════════════════════════════════════════
+    # ARRÊT & PULL
+    # ═══════════════════════════════════════════════════════════════════════
+    - name: Arrêter les conteneurs existants
+      shell: "{{ compose_cmd }} down --remove-orphans || true"
 
-    - name: Générer la clé privée JWT (RSA 4096)
-      openssl_privatekey:
-        path: "{{ app_dir }}/backend/config/jwt/private.pem"
-        type: RSA
-        size: 4096
-        force: no
+    - name: Nettoyer les images orphelines (sans toucher aux volumes)
+      shell: docker image prune -f
 
-    - name: Générer la clé publique JWT
-      openssl_publickey:
-        path: "{{ app_dir }}/backend/config/jwt/public.pem"
-        privatekey_path: "{{ app_dir }}/backend/config/jwt/private.pem"
-        format: PEM
-        force: no
+    - name: Puller les dernières images
+      shell: "{{ compose_cmd }} pull"
+      register: docker_pull
+      failed_when: docker_pull.rc != 0
 
-    - name: Permissions sur les clés JWT (lisibles par www-data dans le conteneur)
+    # ═══════════════════════════════════════════════════════════════════════
+    # DÉMARRAGE DES SERVICES
+    # ═══════════════════════════════════════════════════════════════════════
+    - name: Démarrer les conteneurs
+      shell: "{{ compose_cmd }} up -d --remove-orphans"
+      register: docker_up
+      failed_when: docker_up.rc != 0
+
+    # ─── Attendre que PostgreSQL soit prêt ────────────────────────────────
+    - name: Attendre que PostgreSQL accepte les connexions
+      shell: "{{ compose_cmd }} exec -T postgres-synkro pg_isready"
+      retries: 15
+      delay: 3
+      register: pg_ready
+      until: pg_ready.rc == 0
+
+    - name: Vérifier que la base de données existe
+      shell: >
+        {{ compose_cmd }} exec -T postgres-synkro
+        psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT 1;"
+      environment:
+        POSTGRES_USER: "{{ lookup('ini', 'POSTGRES_USER type=properties file=../.env') | default('synkro_admin') }}"
+        POSTGRES_DB: "{{ lookup('ini', 'POSTGRES_DB type=properties file=../.env') | default('synkro_database') }}"
+      register: db_check
+      failed_when: false
+
+    - name: Afficher le statut PostgreSQL
+      debug:
+        msg: "PostgreSQL {{ 'OK' if db_check.rc == 0 else 'ERREUR — vérifier les credentials dans .env' }}"
+
+    # ─── Migrations Doctrine ──────────────────────────────────────────────
+    - name: Lancer les migrations Doctrine
+      shell: "{{ compose_cmd }} exec -T backend-fpm php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration"
+      register: migrations
+      retries: 3
+      delay: 5
+      until: migrations.rc == 0
+
+    - name: Afficher le résultat des migrations
+      debug:
+        msg: "{{ migrations.stdout_lines | default(['Aucune migration à exécuter']) }}"
+
+    # ─── Clés JWT ─────────────────────────────────────────────────────────
+    - name: Vérifier si les clés JWT existent dans le conteneur
+      shell: "{{ compose_cmd }} exec -T backend-fpm test -f /var/www/config/jwt/private.pem"
+      register: jwt_keys_exist
+      failed_when: false
+
+    - name: Générer les clés JWT via Symfony
+      shell: "{{ compose_cmd }} exec -T backend-fpm php bin/console lexik:jwt:generate-keypair --skip-if-exists"
+      register: jwt_gen
+      when: jwt_keys_exist.rc != 0
+
+    - name: Copier les clés JWT du conteneur vers l'hôte (persistance)
+      shell: |
+        {{ compose_cmd }} cp backend-fpm:/var/www/config/jwt/private.pem {{ app_dir }}/backend/config/jwt/private.pem
+        {{ compose_cmd }} cp backend-fpm:/var/www/config/jwt/public.pem {{ app_dir }}/backend/config/jwt/public.pem
+      when: jwt_keys_exist.rc != 0
+
+    - name: Permissions sur les clés JWT
       file:
         path: "{{ item }}"
         mode: '0644'
@@ -178,12 +249,19 @@
       loop:
         - "{{ app_dir }}/backend/config/jwt/private.pem"
         - "{{ app_dir }}/backend/config/jwt/public.pem"
+      ignore_errors: yes
 
-    # ─── NGINX HÔTE (HTTP uniquement pour Certbot) ───────────────────────────
-    # IMPORTANT : le frontend Docker écoute sur 8080 (pas 80)
-    # Nginx hôte gère le SSL et proxifie vers le conteneur frontend
+    - name: Redémarrer le backend pour charger les clés JWT
+      shell: "{{ compose_cmd }} restart backend-fpm"
+      when: jwt_keys_exist.rc != 0
 
-    - name: Arrêter les services web en conflit (libérer port 80)
+    - name: Vider le cache Symfony
+      shell: "{{ compose_cmd }} exec -T backend-fpm php bin/console cache:clear"
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # NGINX HÔTE — HTTP (pour Certbot)
+    # ═══════════════════════════════════════════════════════════════════════
+    - name: Arrêter les services web en conflit
       systemd:
         name: "{{ item }}"
         state: stopped
@@ -211,19 +289,17 @@
         - /etc/nginx/sites-enabled/app.conf
         - /etc/nginx/sites-available/app.conf
 
-    - name: Config Nginx hôte — HTTP (pour Certbot)
+    - name: Config Nginx — HTTP uniquement (pour Certbot)
       copy:
         content: |
           server {
               listen 80;
               server_name {{ domain }} www.{{ domain }};
 
-              # Challenge ACME pour Let's Encrypt
               location /.well-known/acme-challenge/ {
                   root /var/www/certbot;
               }
 
-              # Redirection provisoire vers le frontend (port 8080)
               location / {
                   proxy_pass http://127.0.0.1:8080;
                   proxy_set_header Host $host;
@@ -233,7 +309,6 @@
               }
           }
         dest: /etc/nginx/sites-available/synkro
-        backup: yes
 
     - name: Activer le vhost Synkro
       file:
@@ -241,74 +316,20 @@
         dest: /etc/nginx/sites-enabled/synkro
         state: link
 
-    - name: Tester la config Nginx HTTP
+    - name: Tester la config Nginx
       shell: nginx -t
-      register: nginx_test
-      failed_when: nginx_test.rc != 0
 
-    - name: Démarrer Nginx hôte
+    - name: Démarrer Nginx
       systemd:
         name: nginx
         state: started
         enabled: yes
         daemon_reload: yes
 
-    # ─── DOCKER COMPOSE — DÉPLOIEMENT ────────────────────────────────────────
-    # Le frontend doit écouter sur 8080 (Nginx hôte proxifie vers lui)
-    # Assure-toi que docker-compose.deploiement.yml a : ports: "8080:80" sur frontend-synkro
-
-    - name: Créer le répertoire docker du backend
-      file:
-        path: "{{ app_dir }}/backend/docker"
-        state: directory
-        mode: '0755'
-
-    - name: Copier le nginx.conf du backend (PHP-FPM)
-      copy:
-        src: ../backend/docker/nginx.conf
-        dest: "{{ app_dir }}/backend/docker/nginx.conf"
-
-    - name: Arrêter les conteneurs existants
-      shell: docker compose --env-file {{ app_dir }}/.env -f {{ app_dir }}/docker-compose.deploiement.yml down --remove-orphans || true
-
-    - name: Nettoyer les images orphelines (sans toucher aux volumes)
-      shell: docker system prune -f
-
-    - name: Puller les dernières images depuis Docker Hub
-      shell: docker compose --env-file {{ app_dir }}/.env -f {{ app_dir }}/docker-compose.deploiement.yml pull
-      register: docker_pull
-      failed_when: docker_pull.rc != 0
-
-    - name: Démarrer les conteneurs
-      shell: docker compose --env-file {{ app_dir }}/.env -f {{ app_dir }}/docker-compose.deploiement.yml up -d --remove-orphans
-      register: docker_up
-      failed_when: docker_up.rc != 0
-
-    # ─── BASE DE DONNÉES ────────────────────────────────────────────────────
-    - name: Attendre que PostgreSQL soit prêt
-      shell: >
-        docker compose --env-file {{ app_dir }}/.env
-        -f {{ app_dir }}/docker-compose.deploiement.yml
-        exec -T postgres-synkro pg_isready -U ${POSTGRES_USER:-blacksheep}
-      retries: 10
-      delay: 3
-      register: pg_ready
-      until: pg_ready.rc == 0
-
-    - name: Lancer les migrations Doctrine
-      shell: >
-        docker compose --env-file {{ app_dir }}/.env
-        -f {{ app_dir }}/docker-compose.deploiement.yml
-        exec -T backend-fpm php bin/console doctrine:migrations:migrate --no-interaction
-      register: migrations
-      failed_when: false
-
-    - name: Afficher le résultat des migrations
-      debug:
-        msg: "{{ migrations.stdout_lines | default(['Aucune sortie']) }}"
-
-    # ─── HEALTH CHECKS ───────────────────────────────────────────────────────
-    - name: Attendre que le frontend réponde (port 8080)
+    # ═══════════════════════════════════════════════════════════════════════
+    # HEALTH CHECKS
+    # ═══════════════════════════════════════════════════════════════════════
+    - name: Attendre que le frontend réponde
       wait_for:
         host: 127.0.0.1
         port: 8080
@@ -328,21 +349,41 @@
       until: frontend_check.status == 200
       failed_when: false
 
-    - name: Afficher le statut du health check frontend
+    - name: Vérifier la réponse HTTP du backend
+      uri:
+        url: http://127.0.0.1:8080/api
+        status_code: [200, 301, 302]
+        timeout: 10
+      register: backend_check
+      retries: 5
+      delay: 5
+      until: backend_check.status is defined
+      failed_when: false
+
+    - name: Résumé des health checks
       debug:
-        msg: "Frontend {{ 'OK ✓' if frontend_check.status is defined and frontend_check.status == 200 else 'KO ✗ — vérifier les logs Docker' }}"
+        msg:
+          - "Frontend: {{ 'OK' if frontend_check.status is defined and frontend_check.status == 200 else 'KO' }}"
+          - "Backend API: {{ 'OK' if backend_check.status is defined and backend_check.status in [200, 301, 302] else 'KO' }}"
+          - "PostgreSQL: {{ 'OK' if pg_ready.rc == 0 else 'KO' }}"
+          - "Migrations: {{ 'OK' if migrations.rc == 0 else 'KO' }}"
+          - "JWT Keys: {{ 'Existantes' if jwt_keys_exist.rc == 0 else 'Générées' }}"
 
-    - name: Afficher les logs en cas d'échec du frontend
-      shell: docker compose --env-file {{ app_dir }}/.env -f {{ app_dir }}/docker-compose.deploiement.yml logs --tail=50 frontend-synkro
-      when: frontend_check.status is not defined or frontend_check.status != 200
-      register: frontend_logs
+    - name: Afficher les logs en cas d'échec
+      shell: "{{ compose_cmd }} logs --tail=30"
+      when: >
+        (frontend_check.status is not defined or frontend_check.status != 200) or
+        (backend_check.status is not defined)
+      register: all_logs
 
-    - name: Logs frontend (debug)
+    - name: Logs (debug)
       debug:
-        var: frontend_logs.stdout_lines
-      when: frontend_logs is defined and frontend_logs.stdout_lines is defined
+        var: all_logs.stdout_lines
+      when: all_logs is defined and all_logs.stdout_lines is defined
 
-    # ─── CERTBOT SSL ─────────────────────────────────────────────────────────
+    # ═══════════════════════════════════════════════════════════════════════
+    # CERTBOT SSL
+    # ═══════════════════════════════════════════════════════════════════════
     - name: Générer le certificat SSL Let's Encrypt
       shell: |
         certbot certonly --webroot -w /var/www/certbot \
@@ -353,12 +394,12 @@
           --preferred-challenges http \
           || true
 
-    - name: Vérifier que le certificat a été généré
+    - name: Vérifier que le certificat existe
       stat:
         path: /etc/letsencrypt/live/{{ domain }}/fullchain.pem
       register: cert_stat
 
-    - name: Config Nginx hôte — HTTPS (si certificat présent)
+    - name: Config Nginx — HTTPS (si certificat présent)
       copy:
         content: |
           server {
@@ -379,12 +420,11 @@
               ssl_session_cache shared:SSL:10m;
               ssl_session_timeout 10m;
 
-              # Headers de sécurité
               add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
               add_header X-Frame-Options DENY always;
               add_header X-Content-Type-Options nosniff always;
 
-              # Frontend Vue.js (conteneur Docker sur 8080)
+              # Frontend
               location / {
                   proxy_pass http://127.0.0.1:8080;
                   proxy_set_header Host $host;
@@ -392,16 +432,26 @@
                   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
                   proxy_set_header X-Forwarded-Proto https;
               }
+
+              # WebSocket
+              location /ws {
+                  proxy_pass http://127.0.0.1:3001;
+                  proxy_http_version 1.1;
+                  proxy_set_header Upgrade $http_upgrade;
+                  proxy_set_header Connection "upgrade";
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto https;
+                  proxy_read_timeout 86400;
+              }
           }
         dest: /etc/nginx/sites-available/synkro
       when: cert_stat.stat.exists
 
-    # ─── MODSECURITY (WAF OWASP CRS) ─────────────────────────────────────────
-    # API Platform utilise des content-types JSON spécifiques (ld+json,
-    # merge-patch+json) qui ne sont pas dans la liste OWASP CRS par défaut.
-    # Sans cette config, le WAF bloque toutes les requêtes POST/PATCH avec un
-    # 403 et l'erreur "Request content type is not allowed by policy" (920420).
-
+    # ═══════════════════════════════════════════════════════════════════════
+    # MODSECURITY (WAF OWASP CRS)
+    # ═══════════════════════════════════════════════════════════════════════
     - name: Vérifier la présence de crs-setup.conf
       stat:
         path: /etc/nginx/modsec/crs/crs-setup.conf
@@ -423,37 +473,23 @@
         - crs_setup.stat.exists
         - crs_already_patched.rc != 0
 
-    - name: Avertir si crs-setup.conf est introuvable
+    - name: Avertir si ModSecurity est absent
       debug:
-        msg: "ATTENTION : ModSecurity/OWASP CRS introuvable. Si tu l'installes plus tard, relance ce playbook."
+        msg: "INFO : ModSecurity/OWASP CRS non installé — WAF désactivé."
       when: not crs_setup.stat.exists
 
+    # ═══════════════════════════════════════════════════════════════════════
+    # FINALISATION
+    # ═══════════════════════════════════════════════════════════════════════
     - name: Valider la config Nginx finale
       shell: nginx -t
-      register: nginx_final_test
-      failed_when: nginx_final_test.rc != 0
 
-    - name: Recharger Nginx avec la config HTTPS
+    - name: Recharger Nginx
       systemd:
         name: nginx
         state: restarted
 
-    # ─── ROTATION DES LOGS DOCKER ────────────────────────────────────────────
-    - name: Configurer la rotation des logs Docker
-      copy:
-        content: |
-          {
-            "log-driver": "json-file",
-            "log-opts": {
-              "max-size": "10m",
-              "max-file": "5"
-            }
-          }
-        dest: /etc/docker/daemon.json
-      notify: Redémarrer Docker
-
-    # ─── RENOUVELLEMENT AUTO CERTBOT ─────────────────────────────────────────
-    - name: Cron de renouvellement automatique SSL
+    - name: Cron de renouvellement SSL
       cron:
         name: "Certbot renewal"
         minute: "0"
@@ -461,7 +497,9 @@
         weekday: "1"
         job: "certbot renew --quiet --post-hook 'systemctl reload nginx'"
 
-  # ─── HANDLERS ──────────────────────────────────────────────────────────────
+  # ═══════════════════════════════════════════════════════════════════════
+  # HANDLERS
+  # ═══════════════════════════════════════════════════════════════════════
   handlers:
     - name: Redémarrer SSH
       service:
