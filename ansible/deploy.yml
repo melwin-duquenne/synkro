@@ -271,8 +271,8 @@
     - name: Arrêter les conteneurs existants
       shell: docker compose --env-file {{ app_dir }}/.env -f {{ app_dir }}/docker-compose.deploiement.yml down --remove-orphans || true
 
-    - name: Nettoyer les images et volumes orphelins
-      shell: docker system prune -f --volumes
+    - name: Nettoyer les images orphelines (sans toucher aux volumes)
+      shell: docker system prune -f
 
     - name: Puller les dernières images depuis Docker Hub
       shell: docker compose --env-file {{ app_dir }}/.env -f {{ app_dir }}/docker-compose.deploiement.yml pull
@@ -283,6 +283,29 @@
       shell: docker compose --env-file {{ app_dir }}/.env -f {{ app_dir }}/docker-compose.deploiement.yml up -d --remove-orphans
       register: docker_up
       failed_when: docker_up.rc != 0
+
+    # ─── BASE DE DONNÉES ────────────────────────────────────────────────────
+    - name: Attendre que PostgreSQL soit prêt
+      shell: >
+        docker compose --env-file {{ app_dir }}/.env
+        -f {{ app_dir }}/docker-compose.deploiement.yml
+        exec -T postgres-synkro pg_isready -U ${POSTGRES_USER:-blacksheep}
+      retries: 10
+      delay: 3
+      register: pg_ready
+      until: pg_ready.rc == 0
+
+    - name: Lancer les migrations Doctrine
+      shell: >
+        docker compose --env-file {{ app_dir }}/.env
+        -f {{ app_dir }}/docker-compose.deploiement.yml
+        exec -T backend-fpm php bin/console doctrine:migrations:migrate --no-interaction
+      register: migrations
+      failed_when: false
+
+    - name: Afficher le résultat des migrations
+      debug:
+        msg: "{{ migrations.stdout_lines | default(['Aucune sortie']) }}"
 
     # ─── HEALTH CHECKS ───────────────────────────────────────────────────────
     - name: Attendre que le frontend réponde (port 8080)
