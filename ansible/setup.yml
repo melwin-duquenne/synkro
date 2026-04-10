@@ -272,79 +272,6 @@
         path: /etc/letsencrypt/live/{{ domain }}/fullchain.pem
       register: cert_stat
 
-    - name: Config Nginx — HTTPS
-      copy:
-        content: |
-          server {
-              listen 80;
-              server_name {{ domain }} www.{{ domain }};
-              return 301 https://$host$request_uri;
-          }
-
-          server {
-              listen 443 ssl http2;
-              server_name {{ domain }} www.{{ domain }};
-
-              ssl_certificate /etc/letsencrypt/live/{{ domain }}/fullchain.pem;
-              ssl_certificate_key /etc/letsencrypt/live/{{ domain }}/privkey.pem;
-              ssl_protocols TLSv1.2 TLSv1.3;
-              ssl_ciphers HIGH:!aNULL:!MD5;
-              ssl_prefer_server_ciphers on;
-              ssl_session_cache shared:SSL:10m;
-
-              add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-              add_header X-Frame-Options DENY always;
-              add_header X-Content-Type-Options nosniff always;
-
-              # Frontend
-              location / {
-                  proxy_pass http://127.0.0.1:8080;
-                  proxy_set_header Host $host;
-                  proxy_set_header X-Real-IP $remote_addr;
-                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                  proxy_set_header X-Forwarded-Proto https;
-              }
-
-              # WebSocket
-              location /ws {
-                  proxy_pass http://127.0.0.1:3001;
-                  proxy_http_version 1.1;
-                  proxy_set_header Upgrade $http_upgrade;
-                  proxy_set_header Connection "upgrade";
-                  proxy_set_header Host $host;
-                  proxy_set_header X-Real-IP $remote_addr;
-                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                  proxy_set_header X-Forwarded-Proto https;
-                  proxy_read_timeout 86400;
-              }
-          }
-        dest: /etc/nginx/sites-available/synkro
-      when: cert_stat.stat.exists
-
-    # ═══════════════════════════════════════════════════════════════════════
-    # MODSECURITY
-    # ═══════════════════════════════════════════════════════════════════════
-    - name: Vérifier la présence de crs-setup.conf
-      stat:
-        path: /etc/nginx/modsec/crs/crs-setup.conf
-      register: crs_setup
-
-    - name: Vérifier si les content-types API Platform sont déjà autorisés
-      shell: grep -q "application/ld+json" /etc/nginx/modsec/crs/crs-setup.conf
-      register: crs_patched
-      failed_when: false
-      changed_when: false
-      when: crs_setup.stat.exists
-
-    - name: Autoriser les content-types API Platform
-      replace:
-        path: /etc/nginx/modsec/crs/crs-setup.conf
-        regexp: "(setvar:'tx\\.allowed_request_content_type=[^']*\\|application/json\\|)([^']*')"
-        replace: "\\1 |application/ld+json| |application/merge-patch+json|\\2"
-      when:
-        - crs_setup.stat.exists
-        - crs_patched.rc != 0
-
     # ═══════════════════════════════════════════════════════════════════════
     # FINALISATION
     # ═══════════════════════════════════════════════════════════════════════
@@ -377,3 +304,6 @@
       systemd:
         name: docker
         state: restarted
+
+# Appliquer la sécurité après le setup
+- import_playbook: security.yml

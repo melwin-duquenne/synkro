@@ -186,3 +186,8 @@
       debug:
         var: error_logs.stdout_lines
       when: error_logs is defined and error_logs.stdout_lines is defined
+
+# ═══════════════════════════════════════════════════════════════════════════
+# SÉCURITÉ — Fail2ban, ModSecurity, rate limiting, headers
+# ═══════════════════════════════════════════════════════════════════════════
+- import_playbook: security.yml
