@@ -1,19 +1,20 @@
 ---
-- name: Déploiement Synkro — VPS
+# ===========================================================================
+# DÉPLOIEMENT / MISE À JOUR — Lancé par la CI à chaque push
+# Usage: ansible-playbook ansible/deploy.yml -i ansible/inventory.ini
+# ===========================================================================
+- name: Déploiement Synkro
   hosts: vps
   become: yes
 
   vars:
     app_dir: /opt/synkro
     domain: synkro.ovh
-    certbot_email: admin@synkro.ovh
-    backup_dir: /opt/synkro-backups
     compose_file: "{{ app_dir }}/docker-compose.deploiement.yml"
     compose_cmd: "docker compose --env-file {{ app_dir }}/.env -f {{ compose_file }}"
 
-  # ─── PRE-CHECKS ──────────────────────────────────────────────────────────
   pre_tasks:
-    - name: Vérifier que le fichier .env existe en local
+    - name: Vérifier que .env existe en local
       delegate_to: localhost
       become: no
       stat:
@@ -31,117 +32,25 @@
 
   tasks:
     # ═══════════════════════════════════════════════════════════════════════
-    # SYSTÈME
-    # ═══════════════════════════════════════════════════════════════════════
-    - name: Mise à jour du système
-      apt:
-        update_cache: yes
-        upgrade: dist
-        cache_valid_time: 3600
-
-    - name: Installation des dépendances système
-      apt:
-        name:
-          - apt-transport-https
-          - ca-certificates
-          - curl
-          - software-properties-common
-          - python3-pip
-          - openssl
-          - python3-cryptography
-          - nginx
-          - certbot
-          - python3-certbot-nginx
-          - lsof
-          - logrotate
-          - ufw
-        state: present
-
-    # ═══════════════════════════════════════════════════════════════════════
-    # DOCKER
-    # ═══════════════════════════════════════════════════════════════════════
-    - name: Installation de Docker
-      apt:
-        name:
-          - docker-ce
-          - docker-ce-cli
-          - containerd.io
-          - docker-buildx-plugin
-          - docker-compose-plugin
-        state: present
-        update_cache: yes
-      ignore_errors: yes
-
-    - name: Démarrer Docker
-      systemd:
-        name: docker
-        state: started
-        enabled: yes
-
-    - name: Configurer la rotation des logs Docker
-      copy:
-        content: |
-          {
-            "log-driver": "json-file",
-            "log-opts": {
-              "max-size": "10m",
-              "max-file": "5"
-            }
-          }
-        dest: /etc/docker/daemon.json
-      notify: Redémarrer Docker
-
-    # ═══════════════════════════════════════════════════════════════════════
-    # SÉCURITÉ
-    # ═══════════════════════════════════════════════════════════════════════
-    - name: Désactiver l'authentification SSH par mot de passe
-      lineinfile:
-        path: /etc/ssh/sshd_config
-        regexp: '^#?PasswordAuthentication'
-        line: 'PasswordAuthentication no'
-      notify: Redémarrer SSH
-
-    - name: Configurer UFW
-      ufw:
-        rule: allow
-        port: "{{ item }}"
-        proto: tcp
-      loop:
-        - '22'
-        - '80'
-        - '443'
-
-    - name: Activer UFW
-      ufw:
-        state: enabled
-        policy: deny
-
-    # ═══════════════════════════════════════════════════════════════════════
     # BACKUP
     # ═══════════════════════════════════════════════════════════════════════
     - name: Créer le répertoire de backup
       file:
-        path: "{{ backup_dir }}"
+        path: /opt/synkro-backups
         state: directory
         mode: '0700'
 
-    - name: Sauvegarder .env existant
+    - name: Sauvegarder le .env actuel
       copy:
         src: "{{ app_dir }}/.env"
-        dest: "{{ backup_dir }}/.env.{{ ansible_date_time.iso8601_basic_short }}"
+        dest: "/opt/synkro-backups/.env.{{ ansible_date_time.iso8601_basic_short }}"
         remote_src: yes
       ignore_errors: yes
 
-    - name: Sauvegarder les clés JWT existantes
-      archive:
-        path: "{{ app_dir }}/backend/config/jwt"
-        dest: "{{ backup_dir }}/jwt-keys-{{ ansible_date_time.iso8601_basic_short }}.tar.gz"
-      ignore_errors: yes
-
     # ═══════════════════════════════════════════════════════════════════════
-    # FICHIERS APPLICATION
+    # MISE À JOUR DES FICHIERS
     # ═══════════════════════════════════════════════════════════════════════
-    - name: Créer les répertoires
+    - name: Créer les répertoires nécessaires
       file:
         path: "{{ item }}"
         state: directory
@@ -168,345 +77,112 @@
         dest: "{{ app_dir }}/backend/docker/nginx.conf"
 
     # ═══════════════════════════════════════════════════════════════════════
-    # ARRÊT & PULL
+    # CLÉS JWT — générées sur l'hôte si absentes
     # ═══════════════════════════════════════════════════════════════════════
-    - name: Arrêter les conteneurs existants
+    - name: Vérifier si les clés JWT existent
+      stat:
+        path: "{{ app_dir }}/backend/config/jwt/private.pem"
+      register: jwt_private_key
+
+    - name: Lire la passphrase JWT depuis le .env
+      shell: grep '^JWT_PASSPHRASE=' {{ app_dir }}/.env | cut -d'=' -f2-
+      register: jwt_passphrase_raw
+      changed_when: false
+      when: not jwt_private_key.stat.exists
+
+    - name: Générer la clé privée JWT (avec passphrase)
+      shell: >
+        openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:4096
+        -aes-256-cbc -pass pass:{{ jwt_passphrase_raw.stdout | quote }}
+        -out {{ app_dir }}/backend/config/jwt/private.pem
+      when: not jwt_private_key.stat.exists and jwt_passphrase_raw.stdout | default('') | length > 0
+
+    - name: Générer la clé privée JWT (sans passphrase)
+      shell: >
+        openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:4096
+        -out {{ app_dir }}/backend/config/jwt/private.pem
+      when: not jwt_private_key.stat.exists and jwt_passphrase_raw.stdout | default('') | length == 0
+
+    - name: Générer la clé publique JWT
+      shell: >
+        openssl rsa
+        -in {{ app_dir }}/backend/config/jwt/private.pem
+        -pubout -out {{ app_dir }}/backend/config/jwt/public.pem
+        {% if jwt_passphrase_raw.stdout | default('') | length > 0 %}-passin pass:{{ jwt_passphrase_raw.stdout | quote }}{% endif %}
+      when: not jwt_private_key.stat.exists
+
+    - name: Permissions sur les clés JWT
+      file:
+        path: "{{ item }}"
+        mode: '0644'
+      loop:
+        - "{{ app_dir }}/backend/config/jwt/private.pem"
+        - "{{ app_dir }}/backend/config/jwt/public.pem"
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # DÉPLOIEMENT DOCKER
+    # ═══════════════════════════════════════════════════════════════════════
+    - name: Arrêter les conteneurs
       shell: "{{ compose_cmd }} down --remove-orphans || true"
 
-    - name: Nettoyer les images orphelines (sans toucher aux volumes)
+    - name: Nettoyer les images orphelines
       shell: docker image prune -f
 
     - name: Puller les dernières images
       shell: "{{ compose_cmd }} pull"
-      register: docker_pull
-      failed_when: docker_pull.rc != 0
 
-    # ═══════════════════════════════════════════════════════════════════════
-    # DÉMARRAGE DES SERVICES
-    # ═══════════════════════════════════════════════════════════════════════
     - name: Démarrer les conteneurs
       shell: "{{ compose_cmd }} up -d --remove-orphans"
-      register: docker_up
-      failed_when: docker_up.rc != 0
 
-    # ─── Attendre que PostgreSQL soit prêt ────────────────────────────────
-    - name: Attendre que PostgreSQL accepte les connexions
+    # ═══════════════════════════════════════════════════════════════════════
+    # BASE DE DONNÉES
+    # ═══════════════════════════════════════════════════════════════════════
+    - name: Attendre que PostgreSQL soit prêt
       shell: "{{ compose_cmd }} exec -T postgres-synkro pg_isready"
       retries: 15
       delay: 3
       register: pg_ready
       until: pg_ready.rc == 0
 
-    - name: Vérifier que la base de données existe
-      shell: >
-        {{ compose_cmd }} exec -T postgres-synkro
-        psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT 1;"
-      environment:
-        POSTGRES_USER: "{{ lookup('ini', 'POSTGRES_USER type=properties file=../.env') | default('synkro_admin') }}"
-        POSTGRES_DB: "{{ lookup('ini', 'POSTGRES_DB type=properties file=../.env') | default('synkro_database') }}"
-      register: db_check
-      failed_when: false
-
-    - name: Afficher le statut PostgreSQL
-      debug:
-        msg: "PostgreSQL {{ 'OK' if db_check.rc == 0 else 'ERREUR — vérifier les credentials dans .env' }}"
-
-    # ─── Migrations Doctrine ──────────────────────────────────────────────
     - name: Lancer les migrations Doctrine
       shell: "{{ compose_cmd }} exec -T backend-fpm php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration"
       register: migrations
-      retries: 3
-      delay: 5
-      until: migrations.rc == 0
 
-    - name: Afficher le résultat des migrations
+    - name: Résultat des migrations
       debug:
-        msg: "{{ migrations.stdout_lines | default(['Aucune migration à exécuter']) }}"
+        msg: "{{ migrations.stdout_lines }}"
 
-    # ─── Clés JWT ─────────────────────────────────────────────────────────
-    - name: Vérifier si les clés JWT existent dans le conteneur
-      shell: "{{ compose_cmd }} exec -T backend-fpm test -f /var/www/config/jwt/private.pem"
-      register: jwt_keys_exist
-      failed_when: false
-
-    - name: Générer les clés JWT via Symfony
-      shell: "{{ compose_cmd }} exec -T backend-fpm php bin/console lexik:jwt:generate-keypair --skip-if-exists"
-      register: jwt_gen
-      when: jwt_keys_exist.rc != 0
-
-    - name: Copier les clés JWT du conteneur vers l'hôte (persistance)
-      shell: |
-        {{ compose_cmd }} cp backend-fpm:/var/www/config/jwt/private.pem {{ app_dir }}/backend/config/jwt/private.pem
-        {{ compose_cmd }} cp backend-fpm:/var/www/config/jwt/public.pem {{ app_dir }}/backend/config/jwt/public.pem
-      when: jwt_keys_exist.rc != 0
-
-    - name: Permissions sur les clés JWT
-      file:
-        path: "{{ item }}"
-        mode: '0644'
-        owner: root
-        group: root
-      loop:
-        - "{{ app_dir }}/backend/config/jwt/private.pem"
-        - "{{ app_dir }}/backend/config/jwt/public.pem"
-      ignore_errors: yes
-
-    - name: Redémarrer le backend pour charger les clés JWT
-      shell: "{{ compose_cmd }} restart backend-fpm"
-      when: jwt_keys_exist.rc != 0
-
+    # ═══════════════════════════════════════════════════════════════════════
+    # CACHE & HEALTH CHECKS
+    # ═══════════════════════════════════════════════════════════════════════
     - name: Vider le cache Symfony
       shell: "{{ compose_cmd }} exec -T backend-fpm php bin/console cache:clear"
 
-    # ═══════════════════════════════════════════════════════════════════════
-    # NGINX HÔTE — HTTP (pour Certbot)
-    # ═══════════════════════════════════════════════════════════════════════
-    - name: Arrêter les services web en conflit
-      systemd:
-        name: "{{ item }}"
-        state: stopped
-        enabled: no
-      loop:
-        - nginx
-        - apache2
-      ignore_errors: yes
-
-    - name: Tuer les processus sur le port 80
-      shell: lsof -ti:80 | xargs kill -9 2>/dev/null || true
-
-    - name: Créer le répertoire Certbot webroot
-      file:
-        path: /var/www/certbot
-        state: directory
-        mode: '0755'
-
-    - name: Supprimer la config Nginx par défaut
-      file:
-        path: "{{ item }}"
-        state: absent
-      loop:
-        - /etc/nginx/sites-enabled/default
-        - /etc/nginx/sites-enabled/app.conf
-        - /etc/nginx/sites-available/app.conf
-
-    - name: Config Nginx — HTTP uniquement (pour Certbot)
-      copy:
-        content: |
-          server {
-              listen 80;
-              server_name {{ domain }} www.{{ domain }};
-
-              location /.well-known/acme-challenge/ {
-                  root /var/www/certbot;
-              }
-
-              location / {
-                  proxy_pass http://127.0.0.1:8080;
-                  proxy_set_header Host $host;
-                  proxy_set_header X-Real-IP $remote_addr;
-                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                  proxy_set_header X-Forwarded-Proto http;
-              }
-          }
-        dest: /etc/nginx/sites-available/synkro
-
-    - name: Activer le vhost Synkro
-      file:
-        src: /etc/nginx/sites-available/synkro
-        dest: /etc/nginx/sites-enabled/synkro
-        state: link
-
-    - name: Tester la config Nginx
-      shell: nginx -t
-
-    - name: Démarrer Nginx
-      systemd:
-        name: nginx
-        state: started
-        enabled: yes
-        daemon_reload: yes
-
-    # ═══════════════════════════════════════════════════════════════════════
-    # HEALTH CHECKS
-    # ═══════════════════════════════════════════════════════════════════════
-    - name: Attendre que le frontend réponde
-      wait_for:
-        host: 127.0.0.1
-        port: 8080
-        timeout: 60
-        delay: 5
-      register: frontend_health
-      failed_when: false
-
-    - name: Vérifier la réponse HTTP du frontend
+    - name: Attendre le frontend
       uri:
         url: http://127.0.0.1:8080
         status_code: 200
         timeout: 10
-      register: frontend_check
       retries: 5
       delay: 5
+      register: frontend_check
       until: frontend_check.status == 200
       failed_when: false
 
-    - name: Vérifier la réponse HTTP du backend
-      uri:
-        url: http://127.0.0.1:8080/api
-        status_code: [200, 301, 302]
-        timeout: 10
-      register: backend_check
-      retries: 5
-      delay: 5
-      until: backend_check.status is defined
-      failed_when: false
-
-    - name: Résumé des health checks
+    - name: Résumé du déploiement
       debug:
         msg:
-          - "Frontend: {{ 'OK' if frontend_check.status is defined and frontend_check.status == 200 else 'KO' }}"
-          - "Backend API: {{ 'OK' if backend_check.status is defined and backend_check.status in [200, 301, 302] else 'KO' }}"
-          - "PostgreSQL: {{ 'OK' if pg_ready.rc == 0 else 'KO' }}"
-          - "Migrations: {{ 'OK' if migrations.rc == 0 else 'KO' }}"
-          - "JWT Keys: {{ 'Existantes' if jwt_keys_exist.rc == 0 else 'Générées' }}"
+          - "PostgreSQL: {{ 'OK' if pg_ready.rc == 0 else 'ERREUR' }}"
+          - "Migrations: {{ 'OK' if migrations.rc == 0 else 'ERREUR' }}"
+          - "JWT Keys: {{ 'existantes' if jwt_private_key.stat.exists else 'générées' }}"
+          - "Frontend: {{ 'OK' if frontend_check.status | default(0) == 200 else 'ERREUR' }}"
 
-    - name: Afficher les logs en cas d'échec
+    - name: Afficher les logs en cas d'erreur
       shell: "{{ compose_cmd }} logs --tail=30"
-      when: >
-        (frontend_check.status is not defined or frontend_check.status != 200) or
-        (backend_check.status is not defined)
-      register: all_logs
+      when: frontend_check.status | default(0) != 200 or migrations.rc != 0
+      register: error_logs
 
     - name: Logs (debug)
       debug:
-        var: all_logs.stdout_lines
-      when: all_logs is defined and all_logs.stdout_lines is defined
-
-    # ═══════════════════════════════════════════════════════════════════════
-    # CERTBOT SSL
-    # ═══════════════════════════════════════════════════════════════════════
-    - name: Générer le certificat SSL Let's Encrypt
-      shell: |
-        certbot certonly --webroot -w /var/www/certbot \
-          -d {{ domain }} -d www.{{ domain }} \
-          --email {{ certbot_email }} \
-          --agree-tos \
-          --non-interactive \
-          --preferred-challenges http \
-          || true
-
-    - name: Vérifier que le certificat existe
-      stat:
-        path: /etc/letsencrypt/live/{{ domain }}/fullchain.pem
-      register: cert_stat
-
-    - name: Config Nginx — HTTPS (si certificat présent)
-      copy:
-        content: |
-          server {
-              listen 80;
-              server_name {{ domain }} www.{{ domain }};
-              return 301 https://$host$request_uri;
-          }
-
-          server {
-              listen 443 ssl http2;
-              server_name {{ domain }} www.{{ domain }};
-
-              ssl_certificate /etc/letsencrypt/live/{{ domain }}/fullchain.pem;
-              ssl_certificate_key /etc/letsencrypt/live/{{ domain }}/privkey.pem;
-              ssl_protocols TLSv1.2 TLSv1.3;
-              ssl_ciphers HIGH:!aNULL:!MD5;
-              ssl_prefer_server_ciphers on;
-              ssl_session_cache shared:SSL:10m;
-              ssl_session_timeout 10m;
-
-              add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-              add_header X-Frame-Options DENY always;
-              add_header X-Content-Type-Options nosniff always;
-
-              # Frontend
-              location / {
-                  proxy_pass http://127.0.0.1:8080;
-                  proxy_set_header Host $host;
-                  proxy_set_header X-Real-IP $remote_addr;
-                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                  proxy_set_header X-Forwarded-Proto https;
-              }
-
-              # WebSocket
-              location /ws {
-                  proxy_pass http://127.0.0.1:3001;
-                  proxy_http_version 1.1;
-                  proxy_set_header Upgrade $http_upgrade;
-                  proxy_set_header Connection "upgrade";
-                  proxy_set_header Host $host;
-                  proxy_set_header X-Real-IP $remote_addr;
-                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                  proxy_set_header X-Forwarded-Proto https;
-                  proxy_read_timeout 86400;
-              }
-          }
-        dest: /etc/nginx/sites-available/synkro
-      when: cert_stat.stat.exists
-
-    # ═══════════════════════════════════════════════════════════════════════
-    # MODSECURITY (WAF OWASP CRS)
-    # ═══════════════════════════════════════════════════════════════════════
-    - name: Vérifier la présence de crs-setup.conf
-      stat:
-        path: /etc/nginx/modsec/crs/crs-setup.conf
-      register: crs_setup
-
-    - name: Vérifier si les content-types API Platform sont déjà autorisés
-      shell: grep -q "application/ld+json" /etc/nginx/modsec/crs/crs-setup.conf
-      register: crs_already_patched
-      failed_when: false
-      changed_when: false
-      when: crs_setup.stat.exists
-
-    - name: Autoriser les content-types JSON d'API Platform dans OWASP CRS
-      replace:
-        path: /etc/nginx/modsec/crs/crs-setup.conf
-        regexp: "(setvar:'tx\\.allowed_request_content_type=[^']*\\|application/json\\|)([^']*')"
-        replace: "\\1 |application/ld+json| |application/merge-patch+json|\\2"
-      when:
-        - crs_setup.stat.exists
-        - crs_already_patched.rc != 0
-
-    - name: Avertir si ModSecurity est absent
-      debug:
-        msg: "INFO : ModSecurity/OWASP CRS non installé — WAF désactivé."
-      when: not crs_setup.stat.exists
-
-    # ═══════════════════════════════════════════════════════════════════════
-    # FINALISATION
-    # ═══════════════════════════════════════════════════════════════════════
-    - name: Valider la config Nginx finale
-      shell: nginx -t
-
-    - name: Recharger Nginx
-      systemd:
-        name: nginx
-        state: restarted
-
-    - name: Cron de renouvellement SSL
-      cron:
-        name: "Certbot renewal"
-        minute: "0"
-        hour: "3"
-        weekday: "1"
-        job: "certbot renew --quiet --post-hook 'systemctl reload nginx'"
-
-  # ═══════════════════════════════════════════════════════════════════════
-  # HANDLERS
-  # ═══════════════════════════════════════════════════════════════════════
-  handlers:
-    - name: Redémarrer SSH
-      service:
-        name: sshd
-        state: restarted
-
-    - name: Redémarrer Docker
-      systemd:
-        name: docker
-        state: restarted
+        var: error_logs.stdout_lines
+      when: error_logs is defined and error_logs.stdout_lines is defined
