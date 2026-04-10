@@ -291,32 +291,6 @@
                   proxy_read_timeout 86400;
               }
 
-              # ── Monitoring ──
-              # Uptime Kuma
-              location /status/ {
-                  auth_basic "Monitoring";
-                  auth_basic_user_file /etc/nginx/.htpasswd_monitoring;
-                  proxy_pass http://127.0.0.1:3100/;
-                  proxy_set_header Host $host;
-                  proxy_set_header X-Real-IP $remote_addr;
-                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                  proxy_set_header X-Forwarded-Proto https;
-                  proxy_http_version 1.1;
-                  proxy_set_header Upgrade $http_upgrade;
-                  proxy_set_header Connection "upgrade";
-              }
-
-              # Netdata
-              location /netdata/ {
-                  auth_basic "Monitoring";
-                  auth_basic_user_file /etc/nginx/.htpasswd_monitoring;
-                  proxy_pass http://127.0.0.1:19999/;
-                  proxy_set_header Host $host;
-                  proxy_set_header X-Real-IP $remote_addr;
-                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                  proxy_set_header X-Forwarded-Proto https;
-              }
-
               # Bloquer l'accès aux fichiers sensibles
               location ~ /\.(env|git|htaccess|htpasswd) {
                   deny all;
@@ -325,6 +299,103 @@
           }
         dest: /etc/nginx/sites-available/synkro
       when: cert_stat.stat.exists
+      notify: Recharger Nginx
+
+    - name: Config Nginx — status.{{ domain }} (Uptime Kuma)
+      copy:
+        content: |
+          server {
+              listen 80;
+              server_name status.{{ domain }};
+              return 301 https://$host$request_uri;
+          }
+
+          server {
+              listen 443 ssl http2;
+              server_name status.{{ domain }};
+
+              ssl_certificate /etc/letsencrypt/live/{{ domain }}/fullchain.pem;
+              ssl_certificate_key /etc/letsencrypt/live/{{ domain }}/privkey.pem;
+
+              auth_basic "Monitoring";
+              auth_basic_user_file /etc/nginx/.htpasswd_monitoring;
+
+              location / {
+                  proxy_pass http://127.0.0.1:3100;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto https;
+                  proxy_http_version 1.1;
+                  proxy_set_header Upgrade $http_upgrade;
+                  proxy_set_header Connection "upgrade";
+              }
+          }
+        dest: /etc/nginx/sites-available/synkro-kuma
+      notify: Recharger Nginx
+
+    - name: Config Nginx — netdata.{{ domain }} (Netdata)
+      copy:
+        content: |
+          server {
+              listen 80;
+              server_name netdata.{{ domain }};
+              return 301 https://$host$request_uri;
+          }
+
+          server {
+              listen 443 ssl http2;
+              server_name netdata.{{ domain }};
+
+              ssl_certificate /etc/letsencrypt/live/{{ domain }}/fullchain.pem;
+              ssl_certificate_key /etc/letsencrypt/live/{{ domain }}/privkey.pem;
+
+              auth_basic "Monitoring";
+              auth_basic_user_file /etc/nginx/.htpasswd_monitoring;
+
+              location / {
+                  proxy_pass http://127.0.0.1:9100;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto https;
+              }
+          }
+        dest: /etc/nginx/sites-available/synkro-netdata
+      notify: Recharger Nginx
+
+    - name: Activer les vhosts monitoring
+      file:
+        src: "/etc/nginx/sites-available/{{ item }}"
+        dest: "/etc/nginx/sites-enabled/{{ item }}"
+        state: link
+      loop:
+        - synkro-kuma
+        - synkro-netdata
+      notify: Recharger Nginx
+
+    - name: Générer les certificats SSL pour les sous-domaines monitoring
+      shell: |
+        certbot certonly --webroot -w /var/www/certbot \
+          -d status.{{ domain }} -d netdata.{{ domain }} \
+          --email admin@{{ domain }} \
+          --agree-tos --non-interactive || true
+      register: certbot_monitoring
+
+    - name: Vérifier le certificat monitoring
+      stat:
+        path: /etc/letsencrypt/live/status.{{ domain }}/fullchain.pem
+      register: cert_monitoring
+
+    - name: Mettre à jour les vhosts avec les certificats dédiés
+      replace:
+        path: "/etc/nginx/sites-available/{{ item.file }}"
+        regexp: "/etc/letsencrypt/live/{{ domain }}/"
+        replace: "/etc/letsencrypt/live/{{ item.cert }}/"
+      loop:
+        - { file: 'synkro-kuma', cert: 'status.{{ domain }}' }
+        - { file: 'synkro-netdata', cert: 'netdata.{{ domain }}' }
+      when: cert_monitoring.stat.exists
       notify: Recharger Nginx
 
     - name: Installer apache2-utils pour htpasswd
@@ -379,8 +450,8 @@
           - "Headers: HSTS, X-Frame-Options, X-Content-Type-Options, X-XSS-Protection, Referrer-Policy, Permissions-Policy"
           - "Réseau: SYN cookies, anti-spoofing, ICMP broadcast ignoré"
           - "Monitoring:"
-          - "  - Uptime Kuma: https://{{ domain }}/status/"
-          - "  - Netdata: https://{{ domain }}/netdata/"
+          - "  - Uptime Kuma: https://status.{{ domain }}"
+          - "  - Netdata: https://netdata.{{ domain }}"
           - "  - Auth: admin / SynkroMonitor2026!"
 
   handlers:

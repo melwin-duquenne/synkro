@@ -80,7 +80,7 @@ services:
     container_name: synkro_uptime_kuma
     restart: always
     ports:
-      - "3100:3001"
+      - "127.0.0.1:3100:3001"
     volumes:
       - uptime_kuma_data:/app/data
     networks:
@@ -91,7 +91,7 @@ services:
     container_name: synkro_netdata
     restart: always
     ports:
-      - "19999:19999"
+      - "127.0.0.1:9100:19999"
     cap_add:
       - SYS_PTRACE
       - SYS_ADMIN
