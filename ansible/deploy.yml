@@ -152,14 +152,6 @@
       debug:
         msg: "{{ migrations.stdout_lines }}"
 
-    - name: Charger les fixtures
-      shell: "{{ compose_cmd }} exec -T backend-fpm php bin/console doctrine:fixtures:load --no-interaction"
-      register: fixtures
-
-    - name: Résultat des fixtures
-      debug:
-        msg: "{{ fixtures.stdout_lines }}"
-
     # ═══════════════════════════════════════════════════════════════════════
     # CACHE & HEALTH CHECKS
     # ═══════════════════════════════════════════════════════════════════════
