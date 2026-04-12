@@ -42,14 +42,15 @@ class SetupEntrepriseProcessor implements ProcessorInterface
         $emailParts = explode('@', $user->getEmail());
         $domain = $emailParts[1];
 
-        // Create a new entreprise for this user
+        // Create a new entreprise
+        $companyName = $data->companyName ?? ucfirst(explode('.', $domain)[0]);
         $entreprise = new Entreprise();
         $entreprise->setDomain($domain);
-        $companyName = $data->companyName ?? ucfirst(explode('.', $domain)[0]);
         $entreprise->setName($companyName);
         $this->entityManager->persist($entreprise);
 
         $user->setEntreprise($entreprise);
+        $user->setRole(User::ROLE_ADMIN);
         $this->entityManager->flush();
 
         return [

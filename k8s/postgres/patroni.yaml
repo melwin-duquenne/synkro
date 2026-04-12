@@ -1,0 +1,233 @@
+# ─────────────────────────────────────────────────────────────
+# StatefulSet Patroni — 3 pods PostgreSQL 16 + Patroni (Spilo)
+#
+# Patroni gère automatiquement :
+#   - L'élection du leader parmi les 3 pods
+#   - La réplication streaming vers les replicas
+#   - Le failover automatique si le leader tombe (~30s)
+#   - La promotion d'une replica en nouveau leader
+#
+# Image : ghcr.io/zalando/spilo-16 (Zalando Spilo)
+# PostgreSQL 16 + Patroni intégrés, utilisée en production chez Zalando
+# ─────────────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: patroni
+  namespace: synkro
+  labels:
+    app: patroni
+spec:
+  # 3 pods = 1 leader + 2 replicas — quorum suffisant pour l'élection
+  replicas: 3
+  serviceName: patroni
+  selector:
+    matchLabels:
+      app: patroni
+  template:
+    metadata:
+      labels:
+        app: patroni
+        # cluster-name requis : Patroni filtre les pods membres avec app=patroni ET cluster-name=<scope>
+        # Sans ce label, patronictl list retourne vide et les replicas ne trouvent pas le leader
+        cluster-name: postgres-synkro
+    spec:
+      # Compte de service avec droits K8s API pour Patroni
+      serviceAccountName: patroni
+
+      # Anti-affinité : force la répartition sur des nodes différents
+      # pour qu'une panne de node ne touche pas tous les pods
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: patroni
+                topologyKey: kubernetes.io/hostname
+
+      containers:
+        - name: postgres
+          image: ghcr.io/zalando/spilo-16:3.3-p1
+          ports:
+            - name: postgresql
+              containerPort: 5432
+            # Port REST API Patroni — utilisé pour les health checks et patronictl
+            - name: patroni
+              containerPort: 8008
+          env:
+            # Nom du cluster Patroni — doit correspondre au nom du Service
+            - name: SCOPE
+              value: "postgres-synkro"
+
+            # Force la configuration DCS kubernetes — spilo merge ce JSON dans le patroni.yml généré
+            # Nécessaire car spilo détecte "openstack" (cloud provider) et ne génère pas la section kubernetes
+            # use_endpoints: false → Patroni utilise un ConfigMap pour le lock leader
+            # (use_endpoints:true crée un conflit avec l'Endpoints du Service postgres-synkro)
+            # Patroni labellise les pods spilo-role=master/replica, les Services routent via ces labels
+            - name: SPILO_CONFIGURATION
+              value: '{"kubernetes":{"namespace":"synkro","labels":{"app":"patroni"},"use_endpoints":false}}'
+
+            # Spilo détecte qu'il tourne sur K8s uniquement si KUBERNETES_SERVICE_HOST est défini.
+            # K8s l'injecte normalement, mais certains clusters le désactivent — on le force ici.
+            - name: KUBERNETES_SERVICE_HOST
+              value: "kubernetes.default.svc.cluster.local"
+            - name: KUBERNETES_SERVICE_PORT
+              value: "443"
+
+            # Identifiant unique du pod dans le cluster Patroni
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+
+            # IP du pod — Patroni l'utilise pour se connecter entre membres
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+
+            # Namespace K8s — nom exact attendu par spilo pour configurer le DCS kubernetes
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: PATRONI_KUBERNETES_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            # IP utilisée dans la section kubernetes du patroni.yml généré
+            - name: PATRONI_KUBERNETES_POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+
+            # Labels pour que Patroni retrouve les pods du cluster
+            - name: PATRONI_KUBERNETES_LABELS
+              value: '{"app": "patroni"}'
+
+            # Répertoire des données PostgreSQL
+            - name: PGROOT
+              value: /home/postgres/pgdata
+
+            # Mot de passe superuser PostgreSQL
+            - name: PGPASSWORD_SUPERUSER
+              valueFrom:
+                secretKeyRef:
+                  name: synkro-secrets
+                  key: POSTGRES_PASSWORD
+
+            # Mot de passe du rôle de réplication
+            - name: PGPASSWORD_REPLICATION
+              valueFrom:
+                secretKeyRef:
+                  name: synkro-secrets
+                  key: REPLICATION_PASSWORD
+
+            # Mot de passe standby (identique à replication pour spilo)
+            - name: PGPASSWORD_STANDBY
+              valueFrom:
+                secretKeyRef:
+                  name: synkro-secrets
+                  key: REPLICATION_PASSWORD
+
+            # Utilisateur superuser de l'application
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: synkro-secrets
+                  key: POSTGRES_USER
+
+            # Nom de la base de données applicative
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: synkro-secrets
+                  key: POSTGRES_DB
+
+          volumeMounts:
+            - name: patroni-data
+              mountPath: /home/postgres/pgdata
+
+          # Readiness : vérifie que Patroni est prêt via son API REST
+          readinessProbe:
+            httpGet:
+              path: /readiness
+              port: 8008
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 3
+
+          # Liveness : vérifie que Patroni répond (sinon K8s redémarre le pod)
+          livenessProbe:
+            httpGet:
+              path: /liveness
+              port: 8008
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            failureThreshold: 3
+
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+
+  # Chaque pod a son propre PVC de 5Gi — créés automatiquement par K8s
+  volumeClaimTemplates:
+    - metadata:
+        name: patroni-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 5Gi
+---
+# ─────────────────────────────────────────────────────────────
+# Service ÉCRITURE — pointe toujours vers le pod leader (master)
+# Patroni ajoute automatiquement le label spilo-role=master au leader
+# et le retire quand il change — ce service suit automatiquement
+# Même nom que l'ancien service → aucun changement dans le backend
+# ─────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-synkro
+  namespace: synkro
+  labels:
+    app: patroni
+spec:
+  type: ClusterIP
+  selector:
+    app: patroni
+    # Patroni applique ce label au pod leader — le service bascule automatiquement
+    spilo-role: master
+  ports:
+    - name: postgresql
+      port: 5432
+      targetPort: 5432
+---
+# ─────────────────────────────────────────────────────────────
+# Service LECTURE — pointe vers les replicas (lecture seule)
+# Permet de délester les lectures du leader si besoin
+# ─────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-replica
+  namespace: synkro
+  labels:
+    app: patroni
+spec:
+  type: ClusterIP
+  selector:
+    app: patroni
+    # Patroni applique ce label aux pods replica
+    spilo-role: replica
+  ports:
+    - name: postgresql
+      port: 5432
+      targetPort: 5432

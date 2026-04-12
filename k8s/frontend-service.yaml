@@ -1,0 +1,14 @@
+# Service d'exposition du frontend vers l'extérieur du cluster
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-synkro
+  namespace: synkro
+spec:
+  # LoadBalancer expose le service sur une IP publique via le cloud provider (ou MetalLB on-prem)
+  type: LoadBalancer
+  selector:
+    app: frontend-synkro
+  ports:
+    - port: 80
+      targetPort: 80

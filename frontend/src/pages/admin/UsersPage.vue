@@ -351,9 +351,9 @@ function getInitials(name: string): string {
           <button
             class="btn btn-error"
             @click="handleDelete"
-            :class="{ 'loading': adminStore.loading }"
             :disabled="adminStore.loading"
           >
+            <span v-if="adminStore.loading" class="loading loading-spinner loading-sm"></span>
             Supprimer
           </button>
         </div>

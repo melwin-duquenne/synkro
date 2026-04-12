@@ -1,0 +1,14 @@
+# Service interne ClusterIP pour le backend — accessible uniquement depuis les autres pods du cluster
+# Le frontend Nginx proxifie vers ce service pour les routes /api, /auth et /uploads
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-synkro
+  namespace: synkro
+spec:
+  selector:
+    app: backend-synkro
+  ports:
+    # Port 8000 : correspond au port d'écoute du sidecar Nginx du backend
+    - port: 8000
+      targetPort: 8000

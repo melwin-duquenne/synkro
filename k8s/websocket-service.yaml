@@ -1,0 +1,12 @@
+# Service interne ClusterIP pour le serveur WebSocket — le frontend Nginx proxifie /ws vers ce service
+apiVersion: v1
+kind: Service
+metadata:
+  name: websocket-synkro
+  namespace: synkro
+spec:
+  selector:
+    app: websocket-synkro
+  ports:
+    - port: 3001
+      targetPort: 3001
