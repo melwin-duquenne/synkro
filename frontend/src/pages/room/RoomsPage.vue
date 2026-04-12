@@ -10,6 +10,7 @@ const roomsStore = useRoomsStore()
 const authStore = useAuthStore()
 const showCreateModal = ref(false)
 const setupLoading = ref(false)
+const entrepriseName = ref('')
 
 const hasEntreprise = computed(() => !!authStore.user?.entreprise)
 
@@ -36,10 +37,12 @@ async function handleDelete(id: number) {
 }
 
 async function handleSetupEntreprise() {
+  if (!entrepriseName.value.trim()) return
   setupLoading.value = true
-  const success = await authStore.setupEntreprise()
+  const success = await authStore.setupEntreprise(entrepriseName.value.trim())
   setupLoading.value = false
   if (success) {
+    await authStore.fetchUser()
     roomsStore.fetchRooms()
   }
 }
@@ -65,13 +68,21 @@ async function handleSetupEntreprise() {
         <p class="text-base-content/70 mb-4">
           Vous devez configurer votre entreprise pour créer et accéder aux rooms.
         </p>
-        <div class="card-actions justify-center">
+        <div class="flex flex-col items-center gap-3 w-full max-w-sm mx-auto">
+          <input
+            v-model="entrepriseName"
+            type="text"
+            placeholder="Nom de votre entreprise"
+            class="input input-bordered w-full"
+            required
+            @keyup.enter="handleSetupEntreprise"
+          />
           <button
-            class="btn btn-primary"
+            class="btn btn-primary w-full"
             @click="handleSetupEntreprise"
-            :class="{ 'loading': setupLoading }"
-            :disabled="setupLoading"
+            :disabled="setupLoading || !entrepriseName.trim()"
           >
+            <span v-if="setupLoading" class="loading loading-spinner loading-sm"></span>
             {{ setupLoading ? 'Configuration...' : 'Configurer mon entreprise' }}
           </button>
         </div>

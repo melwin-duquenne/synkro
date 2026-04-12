@@ -344,7 +344,7 @@ export function useWebRTC(roomId: number) {
     if (queuedCandidates) {
       for (const candidate of queuedCandidates) {
         try {
-          await pc.addIceCandidate(new RTCIceCandidate(candidate))
+          await pc.addIceCandidate(candidate)
         } catch (e) {
           console.warn('[WebRTC] Failed to add queued ICE candidate:', e)
         }
@@ -383,7 +383,7 @@ export function useWebRTC(roomId: number) {
     if (!pc) return
 
     try {
-      await pc.setRemoteDescription(new RTCSessionDescription(sdp))
+      await pc.setRemoteDescription(sdp)
       const answer = await pc.createAnswer()
       await pc.setLocalDescription(answer)
 
@@ -404,7 +404,7 @@ export function useWebRTC(roomId: number) {
 
     if (pc && pc.signalingState === 'have-local-offer') {
       try {
-        await pc.setRemoteDescription(new RTCSessionDescription(sdp))
+        await pc.setRemoteDescription(sdp)
       } catch (e) {
         console.error('[WebRTC] Failed to set remote description:', e)
       }
@@ -417,7 +417,7 @@ export function useWebRTC(roomId: number) {
 
     if (pc && pc.remoteDescription) {
       try {
-        await pc.addIceCandidate(new RTCIceCandidate(candidate))
+        await pc.addIceCandidate(candidate)
       } catch (e) {
         console.warn('[WebRTC] Failed to add ICE candidate:', e)
       }

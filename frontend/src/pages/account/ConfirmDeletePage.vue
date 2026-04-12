@@ -68,10 +68,10 @@ async function handleConfirm() {
 
               <button
                 class="btn btn-error w-full"
-                :class="{ 'loading': authStore.loading }"
                 :disabled="authStore.loading"
                 @click="handleConfirm"
               >
+                <span v-if="authStore.loading" class="loading loading-spinner loading-sm"></span>
                 {{ authStore.loading ? 'Suppression...' : 'Supprimer définitivement mon compte' }}
               </button>
             </div>
