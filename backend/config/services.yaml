@@ -40,10 +40,9 @@ services:
     App\Ai\Provider\MistralProvider:
         tags: ['ai.provider']
 
-    # App\Ai\AiService will be created in Task 5
-    # App\Ai\AiService:
-    #     arguments:
-    #         $providers: !tagged_iterator ai.provider
+    App\Ai\AiService:
+        arguments:
+            $providers: !tagged_iterator ai.provider
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
