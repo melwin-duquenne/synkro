@@ -27,6 +27,7 @@ class AiChatProcessor implements ProcessorInterface
             throw new AccessDeniedHttpException('Authentification requise.');
         }
 
+        /** @var User $user */
         /** @var AiChatInput $data */
         $entreprise = $this->entrepriseContext->getEntreprise();
         $response = $this->aiService->chat($entreprise, $user, $data->message, $data->module);
