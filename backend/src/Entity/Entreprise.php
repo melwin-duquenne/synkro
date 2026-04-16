@@ -51,9 +51,11 @@ class Entreprise
     private Collection $calendarEvents;
 
     #[ORM\Column(type: 'boolean', options: ['default' => false])]
+    #[Groups(['entreprise:read', 'user:read'])]
     private bool $aiEnabled = false;
 
     #[ORM\Column(type: 'string', length: 50, nullable: true)]
+    #[Groups(['entreprise:read', 'user:read'])]
     private ?string $aiProvider = null;
 
     #[ORM\Column(type: 'text', nullable: true)]
@@ -189,12 +191,36 @@ class Entreprise
         return $this->calendarEvents;
     }
 
-    public function isAiEnabled(): bool { return $this->aiEnabled; }
-    public function setAiEnabled(bool $aiEnabled): self { $this->aiEnabled = $aiEnabled; return $this; }
+    public function isAiEnabled(): bool
+    {
+        return $this->aiEnabled;
+    }
 
-    public function getAiProvider(): ?string { return $this->aiProvider; }
-    public function setAiProvider(?string $aiProvider): self { $this->aiProvider = $aiProvider; return $this; }
+    public function setAiEnabled(bool $aiEnabled): self
+    {
+        $this->aiEnabled = $aiEnabled;
+        return $this;
+    }
 
-    public function getAiApiKey(): ?string { return $this->aiApiKey; }
-    public function setAiApiKey(?string $aiApiKey): self { $this->aiApiKey = $aiApiKey; return $this; }
+    public function getAiProvider(): ?string
+    {
+        return $this->aiProvider;
+    }
+
+    public function setAiProvider(?string $aiProvider): self
+    {
+        $this->aiProvider = $aiProvider;
+        return $this;
+    }
+
+    public function getAiApiKey(): ?string
+    {
+        return $this->aiApiKey;
+    }
+
+    public function setAiApiKey(?string $aiApiKey): self
+    {
+        $this->aiApiKey = $aiApiKey;
+        return $this;
+    }
 }
