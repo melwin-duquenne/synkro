@@ -50,6 +50,15 @@ class Entreprise
     #[ORM\OneToMany(mappedBy: 'entreprise', targetEntity: CalendarEvent::class)]
     private Collection $calendarEvents;
 
+    #[ORM\Column(type: 'boolean', options: ['default' => false])]
+    private bool $aiEnabled = false;
+
+    #[ORM\Column(type: 'string', length: 50, nullable: true)]
+    private ?string $aiProvider = null;
+
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $aiApiKey = null;
+
     public function __construct()
     {
         $this->users = new ArrayCollection();
@@ -179,4 +188,13 @@ class Entreprise
     {
         return $this->calendarEvents;
     }
+
+    public function isAiEnabled(): bool { return $this->aiEnabled; }
+    public function setAiEnabled(bool $aiEnabled): self { $this->aiEnabled = $aiEnabled; return $this; }
+
+    public function getAiProvider(): ?string { return $this->aiProvider; }
+    public function setAiProvider(?string $aiProvider): self { $this->aiProvider = $aiProvider; return $this; }
+
+    public function getAiApiKey(): ?string { return $this->aiApiKey; }
+    public function setAiApiKey(?string $aiApiKey): self { $this->aiApiKey = $aiApiKey; return $this; }
 }

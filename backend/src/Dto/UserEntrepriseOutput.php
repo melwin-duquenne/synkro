@@ -10,6 +10,8 @@ final class UserEntrepriseOutput
     public string $name;
     public string $role;
     public string $slug;
+    public bool $aiEnabled = false;
+    public ?string $aiProvider = null;
 
     public static function fromMembership(UserEntreprise $membership): self
     {
@@ -18,6 +20,8 @@ final class UserEntrepriseOutput
         $output->name = $membership->getEntreprise()->getName();
         $output->role = $membership->getRole();
         $output->slug = $membership->getEntreprise()->getSlug() ?? '';
+        $output->aiEnabled = $membership->getEntreprise()->isAiEnabled();
+        $output->aiProvider = $membership->getEntreprise()->getAiProvider();
         return $output;
     }
 }
