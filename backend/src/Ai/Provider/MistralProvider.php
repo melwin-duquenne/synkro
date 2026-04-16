@@ -3,6 +3,7 @@
 namespace App\Ai\Provider;
 
 use App\Ai\AiProviderInterface;
+use App\Ai\AiResponse;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class MistralProvider implements AiProviderInterface
@@ -12,7 +13,7 @@ class MistralProvider implements AiProviderInterface
 
     public function __construct(private HttpClientInterface $httpClient) {}
 
-    public function chat(string $systemPrompt, string $userMessage, string $apiKey): string
+    public function chat(string $systemPrompt, string $userMessage, string $apiKey): AiResponse
     {
         $response = $this->httpClient->request('POST', self::API_URL, [
             'headers' => [
@@ -36,7 +37,12 @@ class MistralProvider implements AiProviderInterface
             throw new \RuntimeException('Réponse Mistral invalide ou vide');
         }
 
-        return $data['choices'][0]['message']['content'];
+        $tokensUsed = $data['usage']['total_tokens'] ?? 0;
+
+        return new AiResponse(
+            response: $data['choices'][0]['message']['content'],
+            tokensUsed: $tokensUsed
+        );
     }
 
     public function getProviderName(): string
