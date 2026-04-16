@@ -12,7 +12,7 @@ const showCreateModal = ref(false)
 const setupLoading = ref(false)
 const entrepriseName = ref('')
 
-const hasEntreprise = computed(() => !!authStore.user?.entreprise)
+const hasEntreprise = computed(() => (authStore.user?.entreprises?.length ?? 0) > 0)
 
 // Filter out invalid rooms (missing required data)
 const validRooms = computed(() => {
@@ -111,7 +111,7 @@ async function handleSetupEntreprise() {
       >
         <div class="card-body">
           <div class="flex justify-between items-start">
-            <router-link :to="`/room/${room.id}`" class="card-title hover:text-primary">
+            <router-link :to="{ name: 'room', params: { entrepriseSlug: $route.params.entrepriseSlug, id: room.id } }" class="card-title hover:text-primary">
               {{ room.name }}
             </router-link>
             <div class="dropdown dropdown-end">
@@ -151,7 +151,7 @@ async function handleSetupEntreprise() {
           </div>
 
           <div class="card-actions justify-end mt-4">
-            <router-link :to="`/room/${room.id}`" class="btn btn-primary btn-sm">
+            <router-link :to="{ name: 'room', params: { entrepriseSlug: $route.params.entrepriseSlug, id: room.id } }" class="btn btn-primary btn-sm">
               Ouvrir
             </router-link>
           </div>

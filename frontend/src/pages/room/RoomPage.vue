@@ -136,7 +136,7 @@ onMounted(async () => {
     <div v-else-if="!room" class="flex justify-center items-center h-full">
       <div class="text-center">
         <h2 class="text-2xl font-bold mb-2">Room introuvable</h2>
-        <router-link to="/rooms" class="btn btn-primary">Retour aux rooms</router-link>
+        <router-link :to="{ name: 'rooms', params: { entrepriseSlug: $route.params.entrepriseSlug } }" class="btn btn-primary">Retour aux rooms</router-link>
       </div>
     </div>
 

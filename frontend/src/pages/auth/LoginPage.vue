@@ -14,8 +14,9 @@ const password = ref('')
 async function handleSubmit() {
   const success = await authStore.login({ email: email.value, password: password.value })
   if (success) {
-    const redirect = route.query.redirect as string || '/dashboard'
-    router.push(redirect)
+    const slug = authStore.getFirstEntrepriseSlug()
+    const redirect = route.query.redirect as string
+    router.push(redirect || (slug ? { name: 'dashboard', params: { entrepriseSlug: slug } } : '/'))
   }
 }
 </script>

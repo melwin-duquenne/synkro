@@ -4,22 +4,22 @@ namespace App\State;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
-use App\Dto\Entreprise\EntrepriseOutput;
-use App\Dto\Entreprise\UpdateEntrepriseInput;
+use App\Dto\Account\CreateEntrepriseInput;
+use App\Dto\EntrepriseSimpleOutput;
+use App\Entity\Entreprise;
 use App\Entity\User;
 use App\Exception\ErrorMessage;
-use App\Service\EntrepriseContext;
 use App\Service\SlugGenerator;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 
-class EntrepriseProcessor implements ProcessorInterface
+class CreateEntrepriseProcessor implements ProcessorInterface
 {
     public function __construct(
-        private Security $security,
         private EntityManagerInterface $entityManager,
-        private EntrepriseContext $entrepriseContext,
+        private Security $security,
         private SlugGenerator $slugGenerator
     ) {}
 
@@ -31,20 +31,21 @@ class EntrepriseProcessor implements ProcessorInterface
             throw new AccessDeniedHttpException(ErrorMessage::AUTH_REQUIRED);
         }
 
-        $entreprise = $this->entrepriseContext->getEntreprise();
-
-        if ($this->entrepriseContext->getRoleInCurrent() !== User::ROLE_ADMIN) {
-            throw new AccessDeniedHttpException(ErrorMessage::ADMIN_REQUIRED);
+        if (!$data instanceof CreateEntrepriseInput) {
+            throw new BadRequestHttpException(ErrorMessage::INVALID_DATA);
         }
 
-        if (!$data instanceof UpdateEntrepriseInput) {
-            throw new \InvalidArgumentException(ErrorMessage::INVALID_DATA);
-        }
-
+        $entreprise = new Entreprise();
         $entreprise->setName($data->name);
-        $entreprise->setSlug($this->slugGenerator->generate($data->name, $entreprise->getId()));
+        $entreprise->setSlug($this->slugGenerator->generate($data->name));
+        $entreprise->setDomain($data->domain);
+
+        $this->entityManager->persist($entreprise);
+
+        $user->addToEntreprise($entreprise, User::ROLE_ADMIN);
+
         $this->entityManager->flush();
 
-        return EntrepriseOutput::fromEntity($entreprise);
+        return EntrepriseSimpleOutput::fromEntity($entreprise);
     }
 }

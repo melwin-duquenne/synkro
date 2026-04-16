@@ -1,14 +1,21 @@
 // User types
 export type UserRole = 'user' | 'editor' | 'owner' | 'admin'
 
+export interface UserEntreprise {
+  id: number
+  name: string
+  role: UserRole
+  slug: string
+}
+
 export interface User {
   id: number
   email: string
   displayName: string
   role: UserRole
   avatarUrl?: string | null
-  entreprise: Entreprise | null
   team: Team | null
+  entreprises: UserEntreprise[]
   createdAt?: string
 }
 

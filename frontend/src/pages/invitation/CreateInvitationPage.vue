@@ -13,7 +13,7 @@
           </div>
 
           <div class="card-actions justify-end">
-            <router-link to="/dashboard" class="btn btn-ghost">Retour au dashboard</router-link>
+            <router-link :to="{ name: 'dashboard', params: { entrepriseSlug: $route.params.entrepriseSlug } }" class="btn btn-ghost">Retour au dashboard</router-link>
           </div>
         </div>
       </div>

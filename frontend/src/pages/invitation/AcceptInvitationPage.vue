@@ -2,14 +2,17 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useInvitationStore } from '@/stores/invitation'
+import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
 const router = useRouter()
 const invitationStore = useInvitationStore()
+const authStore = useAuthStore()
 
 const status = ref<'loading' | 'success' | 'login_required' | 'error'>('loading')
 const message = ref('')
 const entrepriseName = ref('')
+const entrepriseSlug = ref('')
 const invitationEmail = ref('')
 
 onMounted(async () => {
@@ -32,9 +35,11 @@ onMounted(async () => {
   if (result.data?.accepted) {
     status.value = 'success'
     message.value = result.data.message
+    entrepriseSlug.value = result.data?.entrepriseSlug || ''
   } else {
     status.value = 'login_required'
     entrepriseName.value = result.data?.entrepriseName || ''
+    entrepriseSlug.value = result.data?.entrepriseSlug || ''
     invitationEmail.value = result.data?.email || ''
     message.value = result.data?.message || ''
   }
@@ -50,7 +55,8 @@ function goToRegister() {
 }
 
 function goToDashboard() {
-  router.push({ name: 'dashboard' })
+  const slug = entrepriseSlug.value || authStore.getFirstEntrepriseSlug()
+  router.push(slug ? { name: 'dashboard', params: { entrepriseSlug: slug } } : '/')
 }
 </script>
 

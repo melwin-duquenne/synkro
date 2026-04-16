@@ -9,6 +9,7 @@ use App\Dto\Room\RoomOutput;
 use App\Entity\Room;
 use App\Entity\User;
 use App\Security\RoomAccessChecker;
+use App\Service\EntrepriseContext;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
@@ -19,7 +20,8 @@ class RoomProvider implements ProviderInterface
     public function __construct(
         private EntityManagerInterface $entityManager,
         private Security $security,
-        private RoomAccessChecker $accessChecker
+        private RoomAccessChecker $accessChecker,
+        private EntrepriseContext $entrepriseContext
     ) {}
 
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): object|array|null
@@ -38,11 +40,8 @@ class RoomProvider implements ProviderInterface
 
     private function getCollection(User $user): array
     {
-        $entreprise = $user->getEntreprise();
-
-        if (!$entreprise) {
-            return [];
-        }
+        $entreprise = $this->entrepriseContext->getEntreprise();
+        $roleInEntreprise = $this->entrepriseContext->getRoleInCurrent();
 
         $qb = $this->entityManager->createQueryBuilder();
         $qb->select('DISTINCT r')
@@ -53,7 +52,7 @@ class RoomProvider implements ProviderInterface
             ->setParameter('entreprise', $entreprise);
 
         // Admin sees all rooms in the enterprise
-        if ($user->getRole() === User::ROLE_ADMIN) {
+        if ($roleInEntreprise === User::ROLE_ADMIN) {
             // No additional filter needed
         } else {
             // Others see: enterprise rooms OR rooms they created OR rooms they have permission to

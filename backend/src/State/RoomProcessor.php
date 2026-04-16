@@ -8,6 +8,7 @@ use ApiPlatform\Metadata\Patch;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\State\ProcessorInterface;
 use App\Entity\User;
+use App\Service\EntrepriseContext;
 use App\UseCase\Room\CreateRoomUseCase;
 use App\UseCase\Room\DeleteRoomUseCase;
 use App\UseCase\Room\ReorderRoomModulesUseCase;
@@ -20,6 +21,7 @@ class RoomProcessor implements ProcessorInterface
 {
     public function __construct(
         private Security $security,
+        private EntrepriseContext $entrepriseContext,
         private CreateRoomUseCase $createRoomUseCase,
         private UpdateRoomUseCase $updateRoomUseCase,
         private DeleteRoomUseCase $deleteRoomUseCase,
@@ -39,7 +41,8 @@ class RoomProcessor implements ProcessorInterface
         }
 
         if ($operation instanceof Post) {
-            return $this->createRoomUseCase->execute($data, $user);
+            $entreprise = $this->entrepriseContext->getEntreprise();
+            return $this->createRoomUseCase->execute($data, $user, $entreprise);
         }
 
         if ($operation instanceof Patch) {

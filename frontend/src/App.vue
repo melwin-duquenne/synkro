@@ -10,17 +10,18 @@ const authStore = useAuthStore()
 const route = useRoute()
 
 const currentLayout = computed(() => {
-  // Si on est sur la landing page
   if (route.meta.layout === 'landing') {
     return LandingLayout
   }
-  // Si connecté → MainLayout, sinon → AuthLayout
   return authStore.isAuthenticated ? MainLayout : AuthLayout
 })
+
+// Clé unique par entreprise : force le remontage des composants au changement d'entreprise
+const routerViewKey = computed(() => route.params.entrepriseSlug as string || route.name as string)
 </script>
 
 <template>
   <component :is="currentLayout">
-    <RouterView />
+    <RouterView :key="routerViewKey" />
   </component>
 </template>

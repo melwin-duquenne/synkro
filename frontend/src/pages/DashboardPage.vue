@@ -121,7 +121,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useDashboard } from '@/composables/useDashboard'
 import { isAtLeast } from '@/utils/permissions'
@@ -138,6 +138,8 @@ import SelectRoomForTaskModal from '@/components/dashboard/SelectRoomForTaskModa
 import EventDetailModal from '@/components/dashboard/EventDetailModal.vue'
 
 const router = useRouter()
+const route = useRoute()
+const entrepriseSlug = computed(() => route.params.entrepriseSlug as string)
 const authStore = useAuthStore()
 const { dashboardData, loading, error, fetchDashboardData } = useDashboard()
 
@@ -191,11 +193,11 @@ onMounted(() => {
 })
 
 const handleCreateRoom = () => {
-  router.push('/rooms?create=true')
+  router.push({ name: 'rooms', params: { entrepriseSlug: entrepriseSlug.value }, query: { create: 'true' } })
 }
 
 const handleCreateEvent = () => {
-  router.push('/calendar?create=true')
+  router.push({ name: 'calendar', params: { entrepriseSlug: entrepriseSlug.value }, query: { create: 'true' } })
 }
 
 const handleCreateTask = () => {
@@ -208,7 +210,7 @@ const handleRoomSelected = (room: { id: number }) => {
 }
 
 const handleInviteMembers = () => {
-  router.push('/admin/users')
+  router.push({ name: 'admin-users', params: { entrepriseSlug: entrepriseSlug.value } })
 }
 
 const handleEventClick = (event: DashboardEvent) => {

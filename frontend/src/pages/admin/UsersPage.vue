@@ -57,8 +57,8 @@ const pendingInvitations = computed(() => {
 onMounted(() => {
   adminStore.fetchUsers()
   invitationStore.fetchInvitations()
-  if (authStore.user?.entreprise) {
-    entrepriseName.value = authStore.user.entreprise.name
+  if (authStore.currentEntreprise) {
+    entrepriseName.value = authStore.currentEntreprise.name
   }
 })
 
@@ -112,12 +112,12 @@ async function handleCancelInvitation(id: number) {
 
 function startEditEntreprise() {
   editingEntreprise.value = true
-  entrepriseName.value = authStore.user?.entreprise?.name || ''
+  entrepriseName.value = authStore.currentEntreprise?.name || ''
 }
 
 function cancelEditEntreprise() {
   editingEntreprise.value = false
-  entrepriseName.value = authStore.user?.entreprise?.name || ''
+  entrepriseName.value = authStore.currentEntreprise?.name || ''
   entrepriseError.value = null
 }
 
@@ -145,7 +145,7 @@ function getInitials(name: string): string {
     <h1 class="text-2xl font-bold mb-6">Gestion de l'entreprise</h1>
 
     <!-- Entreprise name section -->
-    <div v-if="authStore.user?.entreprise" class="card bg-base-100 shadow-xl mb-6">
+    <div v-if="authStore.currentEntreprise" class="card bg-base-100 shadow-xl mb-6">
       <div class="card-body">
         <h2 class="card-title text-lg">Nom de l'entreprise</h2>
 
@@ -157,7 +157,7 @@ function getInitials(name: string): string {
         </div>
 
         <div v-if="!editingEntreprise" class="flex items-center gap-4 mt-2">
-          <span class="text-lg font-semibold">{{ authStore.user.entreprise.name }}</span>
+          <span class="text-lg font-semibold">{{ authStore.currentEntreprise?.name }}</span>
           <button class="btn btn-sm btn-outline" @click="startEditEntreprise">
             Renommer
           </button>
