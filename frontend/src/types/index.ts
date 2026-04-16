@@ -7,8 +7,11 @@ export interface UserEntreprise {
   role: UserRole
   slug: string
   aiEnabled: boolean
+  aiMode: 'byok' | 'platform'
   aiProvider: string | null
   aiApiKeyConfigured: boolean
+  aiTokensUsed: number
+  aiTokensLimit: number | null
 }
 
 export interface User {
