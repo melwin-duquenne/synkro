@@ -2,6 +2,7 @@
 
 namespace App\UseCase\Invitation;
 
+use App\Entity\Entreprise;
 use App\Entity\Invitation;
 use App\Entity\User;
 use App\Exception\ErrorMessage;
@@ -15,14 +16,14 @@ class CancelInvitationUseCase
         private EntityManagerInterface $entityManager
     ) {}
 
-    public function execute(int $id, User $admin): null
+    public function execute(int $id, User $admin, Entreprise $entreprise): null
     {
         $invitation = $this->entityManager->getRepository(Invitation::class)->find($id);
         if (!$invitation) {
             throw new NotFoundHttpException(ErrorMessage::INVITATION_NOT_FOUND);
         }
 
-        if ($invitation->getEntreprise()->getId() !== $admin->getEntreprise()?->getId()) {
+        if ($invitation->getEntreprise()->getId() !== $entreprise->getId()) {
             throw new AccessDeniedHttpException(ErrorMessage::INVITATION_WRONG_ENTREPRISE);
         }
 

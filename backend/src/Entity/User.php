@@ -51,11 +51,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[Groups(['user:read', 'user:write'])]
     private ?string $role = 'user';
 
-    #[ORM\ManyToOne(targetEntity: Entreprise::class, inversedBy: 'users')]
-    #[ORM\JoinColumn(nullable: true)]
-    #[Groups(['user:read', 'user:write'])]
-    private ?Entreprise $entreprise = null;
-
     #[ORM\ManyToOne(targetEntity: Team::class, inversedBy: 'users')]
     #[ORM\JoinColumn(nullable: true)]
     #[Groups(['user:read', 'user:write'])]
@@ -110,6 +105,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\OneToMany(mappedBy: 'user', targetEntity: FileResource::class)]
     private Collection $files;
 
+    #[ORM\OneToMany(mappedBy: 'user', targetEntity: UserEntreprise::class, cascade: ['persist', 'remove'])]
+    private Collection $userEntreprises;
+
     public function __construct()
     {
         $this->createdRooms = new ArrayCollection();
@@ -118,6 +116,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->calendarEvents = new ArrayCollection();
         $this->roomPermissions = new ArrayCollection();
         $this->files = new ArrayCollection();
+        $this->userEntreprises = new ArrayCollection();
         $this->createdAt = new \DateTime();
     }
 
@@ -167,17 +166,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setRole(string $role): self
     {
         $this->role = $role;
-        return $this;
-    }
-
-    public function getEntreprise(): ?Entreprise
-    {
-        return $this->entreprise;
-    }
-
-    public function setEntreprise(?Entreprise $entreprise): self
-    {
-        $this->entreprise = $entreprise;
         return $this;
     }
 
@@ -288,10 +276,74 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this->files;
     }
 
+    public function getUserEntreprises(): Collection
+    {
+        return $this->userEntreprises;
+    }
+
+    public function addToEntreprise(Entreprise $entreprise, string $role): self
+    {
+        foreach ($this->userEntreprises as $ue) {
+            if ($ue->getEntreprise() === $entreprise) {
+                $ue->setRole($role);
+                return $this;
+            }
+        }
+
+        $ue = new UserEntreprise();
+        $ue->setUser($this);
+        $ue->setEntreprise($entreprise);
+        $ue->setRole($role);
+        $this->userEntreprises->add($ue);
+        return $this;
+    }
+
+    public function removeFromEntreprise(Entreprise $entreprise): self
+    {
+        foreach ($this->userEntreprises as $ue) {
+            if ($ue->getEntreprise() === $entreprise) {
+                $this->userEntreprises->removeElement($ue);
+                return $this;
+            }
+        }
+        return $this;
+    }
+
+    public function hasEntreprise(Entreprise $entreprise): bool
+    {
+        foreach ($this->userEntreprises as $ue) {
+            if ($ue->getEntreprise()->getId() === $entreprise->getId()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public function getRoleInEntreprise(Entreprise $entreprise): ?string
+    {
+        foreach ($this->userEntreprises as $ue) {
+            if ($ue->getEntreprise()->getId() === $entreprise->getId()) {
+                return $ue->getRole();
+            }
+        }
+        return null;
+    }
+
     public function isAtLeast(string $role): bool
     {
         $userLevel = array_search($this->role, self::ROLE_HIERARCHY);
         $requiredLevel = array_search($role, self::ROLE_HIERARCHY);
+        if ($userLevel === false || $requiredLevel === false) {
+            return false;
+        }
+        return $userLevel >= $requiredLevel;
+    }
+
+    public function isAtLeastInEntreprise(Entreprise $entreprise, string $minRole): bool
+    {
+        $role = $this->getRoleInEntreprise($entreprise) ?? self::ROLE_USER;
+        $userLevel = array_search($role, self::ROLE_HIERARCHY);
+        $requiredLevel = array_search($minRole, self::ROLE_HIERARCHY);
         if ($userLevel === false || $requiredLevel === false) {
             return false;
         }

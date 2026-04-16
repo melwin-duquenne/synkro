@@ -17,7 +17,8 @@ async function handleSubmit() {
     displayName: displayName.value
   })
   if (success) {
-    router.push('/dashboard')
+    const slug = authStore.getFirstEntrepriseSlug()
+    router.push(slug ? { name: 'dashboard', params: { entrepriseSlug: slug } } : '/')
   }
 }
 </script>

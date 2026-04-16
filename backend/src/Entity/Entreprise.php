@@ -26,7 +26,11 @@ class Entreprise
     #[Groups(['entreprise:read', 'entreprise:write', 'user:read', 'team:read'])]
     private ?string $name = null;
 
-    #[ORM\Column(type: 'string', length: 255)]
+    #[ORM\Column(type: 'string', length: 255, unique: true, nullable: true)]
+    #[Groups(['entreprise:read', 'user:read'])]
+    private ?string $slug = null;
+
+    #[ORM\Column(type: 'string', length: 255, nullable: true)]
     #[Groups(['entreprise:read', 'entreprise:write'])]
     private ?string $domain = null;
 
@@ -71,12 +75,23 @@ class Entreprise
         return $this;
     }
 
+    public function getSlug(): ?string
+    {
+        return $this->slug;
+    }
+
+    public function setSlug(string $slug): self
+    {
+        $this->slug = $slug;
+        return $this;
+    }
+
     public function getDomain(): ?string
     {
         return $this->domain;
     }
 
-    public function setDomain(string $domain): self
+    public function setDomain(?string $domain): self
     {
         $this->domain = $domain;
         return $this;
@@ -102,18 +117,13 @@ class Entreprise
     {
         if (!$this->users->contains($user)) {
             $this->users->add($user);
-            $user->setEntreprise($this);
         }
         return $this;
     }
 
     public function removeUser(User $user): self
     {
-        if ($this->users->removeElement($user)) {
-            if ($user->getEntreprise() === $this) {
-                $user->setEntreprise(null);
-            }
-        }
+        $this->users->removeElement($user);
         return $this;
     }
 

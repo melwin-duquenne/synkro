@@ -1,8 +1,12 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { useRouter, useRoute } from 'vue-router'
 
 const authStore = useAuthStore()
+const router = useRouter()
+const route = useRoute()
+const currentSlug = computed(() => route.params.entrepriseSlug as string | undefined)
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || ''
 
@@ -12,6 +16,37 @@ const editing = ref(false)
 const success = ref<string | null>(null)
 const avatarInput = ref<HTMLInputElement | null>(null)
 const deleteRequested = ref(false)
+
+// Create entreprise modal
+const newEntrepriseName = ref('')
+const newEntrepriseDomain = ref('')
+const creatingEntreprise = ref(false)
+
+function openCreateEntrepriseModal() {
+  newEntrepriseName.value = ''
+  newEntrepriseDomain.value = ''
+  ;(document.getElementById('create-entreprise-modal') as HTMLDialogElement)?.showModal()
+}
+
+function closeCreateEntrepriseModal() {
+  ;(document.getElementById('create-entreprise-modal') as HTMLDialogElement)?.close()
+}
+
+async function handleCreateEntreprise() {
+  if (!newEntrepriseName.value.trim()) return
+  creatingEntreprise.value = true
+  const slug = await authStore.createEntreprise(newEntrepriseName.value.trim(), newEntrepriseDomain.value.trim() || undefined)
+  creatingEntreprise.value = false
+  if (slug) {
+    closeCreateEntrepriseModal()
+    router.push({ name: 'dashboard', params: { entrepriseSlug: slug } })
+  }
+}
+
+function handleSwitchEntreprise(slug: string) {
+  if (slug === currentSlug.value) return
+  router.push({ name: 'dashboard', params: { entrepriseSlug: slug } })
+}
 
 function openDeleteModal() {
   ;(document.getElementById('delete-account-modal') as HTMLDialogElement)?.showModal()
@@ -178,9 +213,9 @@ async function handleDeleteAvatar() {
             </span>
           </div>
 
-          <div v-if="authStore.user?.entreprise">
-            <label class="label"><span class="label-text font-semibold">Entreprise</span></label>
-            <p class="text-lg">{{ authStore.user.entreprise.name }}</p>
+          <div v-if="authStore.currentEntreprise">
+            <label class="label"><span class="label-text font-semibold">Entreprise active</span></label>
+            <p class="text-lg">{{ authStore.currentEntreprise.name }}</p>
           </div>
 
           <div v-if="authStore.user?.team">
@@ -229,6 +264,85 @@ async function handleDeleteAvatar() {
         </form>
       </div>
     </div>
+
+    <!-- Mes entreprises -->
+    <div class="card bg-base-100 shadow-xl mt-6">
+      <div class="card-body">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="card-title">Mes entreprises</h2>
+          <button class="btn btn-primary btn-sm" @click="openCreateEntrepriseModal">+ Créer une entreprise</button>
+        </div>
+
+        <div v-if="!authStore.user?.entreprises?.length" class="text-base-content/60 text-sm">
+          Vous n'appartenez à aucune entreprise.
+        </div>
+
+        <ul v-else class="space-y-2">
+          <li
+            v-for="ue in authStore.user.entreprises"
+            :key="ue.id"
+            class="flex items-center justify-between p-3 rounded-lg bg-base-200"
+          >
+            <div class="flex items-center gap-3">
+              <span class="font-medium">{{ ue.name }}</span>
+              <span class="badge badge-sm badge-ghost">{{ ue.role }}</span>
+              <span v-if="ue.slug === currentSlug" class="badge badge-sm badge-success">Active</span>
+            </div>
+            <button
+              v-if="ue.slug !== currentSlug"
+              class="btn btn-xs btn-outline"
+              @click="handleSwitchEntreprise(ue.slug)"
+            >
+              Aller
+            </button>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Create Entreprise Modal -->
+    <dialog id="create-entreprise-modal" class="modal">
+      <div class="modal-box">
+        <h3 class="font-bold text-lg mb-4">Créer une entreprise</h3>
+        <form @submit.prevent="handleCreateEntreprise" class="space-y-4">
+          <div class="form-control">
+            <label class="label"><span class="label-text">Nom de l'entreprise <span class="text-error">*</span></span></label>
+            <input
+              v-model="newEntrepriseName"
+              type="text"
+              class="input input-bordered w-full"
+              placeholder="Acme Corp"
+              minlength="2"
+              maxlength="255"
+              required
+            />
+          </div>
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text">Domaine</span>
+              <span class="label-text-alt text-base-content/50">optionnel</span>
+            </label>
+            <input
+              v-model="newEntrepriseDomain"
+              type="text"
+              class="input input-bordered w-full"
+              placeholder="company.com"
+              maxlength="255"
+            />
+          </div>
+          <div class="modal-action">
+            <button type="button" class="btn btn-ghost" @click="closeCreateEntrepriseModal">Annuler</button>
+            <button type="submit" class="btn btn-primary" :disabled="creatingEntreprise || !newEntrepriseName.trim()">
+              <span v-if="creatingEntreprise" class="loading loading-spinner loading-sm"></span>
+              Créer
+            </button>
+          </div>
+        </form>
+      </div>
+      <form method="dialog" class="modal-backdrop">
+        <button>close</button>
+      </form>
+    </dialog>
 
     <!-- Danger Zone -->
     <div class="card bg-base-100 shadow-xl mt-6 border border-error/30">

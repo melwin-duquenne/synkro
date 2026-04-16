@@ -34,8 +34,9 @@ onMounted(async () => {
     try {
       // Récupérer les informations utilisateur
       await authStore.fetchUser()
-      // Rediriger vers le dashboard
-      router.push('/dashboard')
+      // Rediriger vers le dashboard de la première entreprise
+      const slug = authStore.getFirstEntrepriseSlug()
+      router.push(slug ? { name: 'dashboard', params: { entrepriseSlug: slug } } : '/')
     } catch (e) {
       console.error('Failed to fetch user:', e)
       router.push('/login?error=fetch_user_failed')

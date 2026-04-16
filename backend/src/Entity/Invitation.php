@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Entity\User;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity]
@@ -29,6 +30,9 @@ class Invitation
 
     #[ORM\Column(type: 'string', length: 20)]
     private string $status = 'pending';
+
+    #[ORM\Column(type: 'string', length: 50)]
+    private string $role = User::ROLE_USER;
 
     #[ORM\Column(type: 'datetime')]
     private ?\DateTimeInterface $createdAt = null;
@@ -114,6 +118,17 @@ class Invitation
     public function setExpiresAt(\DateTimeInterface $expiresAt): self
     {
         $this->expiresAt = $expiresAt;
+        return $this;
+    }
+
+    public function getRole(): string
+    {
+        return $this->role;
+    }
+
+    public function setRole(string $role): self
+    {
+        $this->role = $role;
         return $this;
     }
 

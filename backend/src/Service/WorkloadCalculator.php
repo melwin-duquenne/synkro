@@ -3,6 +3,7 @@
 namespace App\Service;
 
 use App\Entity\CalendarEvent;
+use App\Entity\Entreprise;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -20,12 +21,12 @@ class WorkloadCalculator
     /**
      * Calculate workload for a specific day
      */
-    public function calculateDailyWorkload(User $user, \DateTimeInterface $date): array
+    public function calculateDailyWorkload(User $user, \DateTimeInterface $date, ?Entreprise $entreprise = null): array
     {
         $startOfDay = (clone $date)->setTime(0, 0, 0);
         $endOfDay = (clone $date)->setTime(23, 59, 59);
 
-        $events = $this->getEvents($user, $startOfDay, $endOfDay);
+        $events = $this->getEvents($user, $startOfDay, $endOfDay, $entreprise);
 
         return $this->calculateWorkload($events, 'day');
     }
@@ -33,20 +34,19 @@ class WorkloadCalculator
     /**
      * Calculate workload for current week
      */
-    public function calculateWeeklyWorkload(User $user, \DateTimeInterface $date): array
+    public function calculateWeeklyWorkload(User $user, \DateTimeInterface $date, ?Entreprise $entreprise = null): array
     {
-        // Get Monday of the week
         $weekStart = (clone $date)->modify('monday this week')->setTime(0, 0, 0);
         $weekEnd = (clone $weekStart)->modify('+6 days')->setTime(23, 59, 59);
 
-        $events = $this->getEvents($user, $weekStart, $weekEnd);
+        $events = $this->getEvents($user, $weekStart, $weekEnd, $entreprise);
 
         return $this->calculateWorkload($events, 'week');
     }
 
-    private function getEvents(User $user, \DateTimeInterface $start, \DateTimeInterface $end): array
+    private function getEvents(User $user, \DateTimeInterface $start, \DateTimeInterface $end, ?Entreprise $entreprise = null): array
     {
-        return $this->entityManager
+        $qb = $this->entityManager
             ->getRepository(CalendarEvent::class)
             ->createQueryBuilder('e')
             ->where('e.user = :user')
@@ -54,8 +54,14 @@ class WorkloadCalculator
             ->andWhere('e.endDate >= :start')
             ->setParameter('user', $user)
             ->setParameter('start', $start)
-            ->setParameter('end', $end)
-            ->orderBy('e.startDate', 'ASC')
+            ->setParameter('end', $end);
+
+        if ($entreprise !== null) {
+            $qb->andWhere('e.entreprise = :entreprise')
+               ->setParameter('entreprise', $entreprise);
+        }
+
+        return $qb->orderBy('e.startDate', 'ASC')
             ->getQuery()
             ->getResult();
     }

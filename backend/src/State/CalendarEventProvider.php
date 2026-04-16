@@ -10,6 +10,7 @@ use App\Entity\CalendarEvent;
 use App\Entity\Room;
 use App\Entity\User;
 use App\Security\RoomAccessChecker;
+use App\Service\EntrepriseContext;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -22,7 +23,8 @@ class CalendarEventProvider implements ProviderInterface
         private EntityManagerInterface $entityManager,
         private Security $security,
         private RequestStack $requestStack,
-        private RoomAccessChecker $accessChecker
+        private RoomAccessChecker $accessChecker,
+        private EntrepriseContext $entrepriseContext
     ) {}
 
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): object|array|null
@@ -42,12 +44,13 @@ class CalendarEventProvider implements ProviderInterface
     private function getCollection(User $user, array $uriVariables, array $context): array
     {
         $request = $this->requestStack->getCurrentRequest();
+        $entreprise = $this->entrepriseContext->getEntreprise();
         $qb = $this->entityManager->createQueryBuilder();
 
         $qb->select('e')
             ->from(CalendarEvent::class, 'e')
             ->where('e.entreprise = :entreprise')
-            ->setParameter('entreprise', $user->getEntreprise());
+            ->setParameter('entreprise', $entreprise);
 
         // Filter by room (from URI or query param)
         $roomId = $uriVariables['roomId'] ?? $request?->query->get('roomId');
@@ -118,8 +121,8 @@ class CalendarEventProvider implements ProviderInterface
             throw new NotFoundHttpException('Ressource introuvable');
         }
 
-        // Check access
-        if ($event->getEntreprise()->getId() !== $user->getEntreprise()?->getId()) {
+        // Check access — user must be member of the event's enterprise
+        if (!$user->hasEntreprise($event->getEntreprise())) {
             throw new AccessDeniedHttpException('Accès refusé');
         }
 
