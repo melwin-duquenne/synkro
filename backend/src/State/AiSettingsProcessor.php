@@ -44,6 +44,9 @@ class AiSettingsProcessor implements ProcessorInterface
         if ($data->aiEnabled !== null) {
             $entreprise->setAiEnabled($data->aiEnabled);
         }
+        if ($data->aiMode !== null) {
+            $entreprise->setAiMode($data->aiMode);
+        }
         if ($data->aiProvider !== null) {
             $entreprise->setAiProvider($data->aiProvider);
         }
