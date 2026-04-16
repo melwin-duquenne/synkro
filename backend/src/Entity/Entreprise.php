@@ -61,6 +61,21 @@ class Entreprise
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $aiApiKey = null;
 
+    #[ORM\Column(type: 'string', length: 20, options: ['default' => 'byok'])]
+    #[Groups(['entreprise:read', 'user:read'])]
+    private string $aiMode = 'byok';
+
+    #[ORM\Column(type: 'integer', options: ['default' => 0])]
+    #[Groups(['entreprise:read', 'user:read'])]
+    private int $aiTokensUsed = 0;
+
+    #[ORM\Column(type: 'integer', nullable: true)]
+    #[Groups(['entreprise:read', 'user:read'])]
+    private ?int $aiTokensLimit = null;
+
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $aiTokensResetAt = null;
+
     public function __construct()
     {
         $this->users = new ArrayCollection();
@@ -222,5 +237,57 @@ class Entreprise
     {
         $this->aiApiKey = $aiApiKey;
         return $this;
+    }
+
+    public function getAiMode(): string
+    {
+        return $this->aiMode;
+    }
+
+    public function setAiMode(string $aiMode): self
+    {
+        $this->aiMode = $aiMode;
+        return $this;
+    }
+
+    public function getAiTokensUsed(): int
+    {
+        return $this->aiTokensUsed;
+    }
+
+    public function setAiTokensUsed(int $aiTokensUsed): self
+    {
+        $this->aiTokensUsed = $aiTokensUsed;
+        return $this;
+    }
+
+    public function getAiTokensLimit(): ?int
+    {
+        return $this->aiTokensLimit;
+    }
+
+    public function setAiTokensLimit(?int $aiTokensLimit): self
+    {
+        $this->aiTokensLimit = $aiTokensLimit;
+        return $this;
+    }
+
+    public function getAiTokensResetAt(): ?\DateTimeImmutable
+    {
+        return $this->aiTokensResetAt;
+    }
+
+    public function setAiTokensResetAt(?\DateTimeImmutable $aiTokensResetAt): self
+    {
+        $this->aiTokensResetAt = $aiTokensResetAt;
+        return $this;
+    }
+
+    public function hasReachedTokenLimit(): bool
+    {
+        if ($this->aiTokensLimit === null) {
+            return false;
+        }
+        return $this->aiTokensUsed >= $this->aiTokensLimit;
     }
 }
