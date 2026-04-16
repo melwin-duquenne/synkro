@@ -17,9 +17,11 @@ use App\Dto\Account\RequestResetPasswordInput;
 use App\Dto\Account\ResetPasswordInput;
 use App\Dto\Account\UpdateProfileInput;
 use App\Dto\EntrepriseSimpleOutput;
+use App\Dto\Entreprise\AiSettingsInput;
 use App\Dto\Entreprise\EntrepriseOutput;
 use App\Dto\Entreprise\UpdateEntrepriseInput;
 use App\State\AdminUserProcessor;
+use App\State\AiSettingsProcessor;
 use App\State\AdminUsersProvider;
 use App\State\AvatarProcessor;
 use App\State\CreateEntrepriseProcessor;
@@ -102,6 +104,13 @@ use App\State\ResetPasswordProcessor;
             output: EntrepriseOutput::class,
             processor: EntrepriseProcessor::class,
             name: 'account_entreprise_update'
+        ),
+        new Patch(
+            uriTemplate: '/account/entreprise/ai',
+            input: AiSettingsInput::class,
+            output: EntrepriseOutput::class,
+            processor: AiSettingsProcessor::class,
+            name: 'account_entreprise_ai_settings'
         ),
 
         // Admin
