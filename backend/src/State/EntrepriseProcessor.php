@@ -8,6 +8,7 @@ use App\Dto\Entreprise\EntrepriseOutput;
 use App\Dto\Entreprise\UpdateEntrepriseInput;
 use App\Entity\User;
 use App\Exception\ErrorMessage;
+use App\Service\EncryptionService;
 use App\Service\EntrepriseContext;
 use App\Service\SlugGenerator;
 use Doctrine\ORM\EntityManagerInterface;
@@ -20,7 +21,8 @@ class EntrepriseProcessor implements ProcessorInterface
         private Security $security,
         private EntityManagerInterface $entityManager,
         private EntrepriseContext $entrepriseContext,
-        private SlugGenerator $slugGenerator
+        private SlugGenerator $slugGenerator,
+        private EncryptionService $encryptionService
     ) {}
 
     public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): mixed
@@ -43,6 +45,17 @@ class EntrepriseProcessor implements ProcessorInterface
 
         $entreprise->setName($data->name);
         $entreprise->setSlug($this->slugGenerator->generate($data->name, $entreprise->getId()));
+
+        if (isset($data->aiEnabled)) {
+            $entreprise->setAiEnabled((bool)$data->aiEnabled);
+        }
+        if (isset($data->aiProvider)) {
+            $entreprise->setAiProvider($data->aiProvider);
+        }
+        if (isset($data->aiApiKey) && $data->aiApiKey !== '') {
+            $entreprise->setAiApiKey($this->encryptionService->encrypt($data->aiApiKey));
+        }
+
         $this->entityManager->flush();
 
         return EntrepriseOutput::fromEntity($entreprise);
