@@ -41,8 +41,12 @@ async function saveSettings() {
     })
 
     if (!response.ok) {
-      const data = await response.json()
-      throw new Error(data.detail || 'Erreur lors de la sauvegarde')
+      let detail = 'Erreur lors de la sauvegarde'
+      try {
+        const data = await response.json()
+        detail = data.detail || data['hydra:description'] || detail
+      } catch { /* corps non-JSON, conserver le message par défaut */ }
+      throw new Error(detail)
     }
 
     await authStore.fetchUser()
@@ -92,7 +96,7 @@ async function saveSettings() {
             <label class="label">
               <span class="label-text font-medium">Clé API</span>
               <span class="label-text-alt text-base-content/50">
-                {{ authStore.currentEntreprise?.aiEnabled ? 'Une clé est déjà configurée' : 'Aucune clé' }}
+                {{ authStore.currentEntreprise?.aiApiKeyConfigured ? 'Une clé est déjà configurée' : 'Aucune clé configurée' }}
               </span>
             </label>
             <input

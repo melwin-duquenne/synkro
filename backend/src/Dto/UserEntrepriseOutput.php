@@ -12,6 +12,7 @@ final class UserEntrepriseOutput
     public string $slug;
     public bool $aiEnabled = false;
     public ?string $aiProvider = null;
+    public bool $aiApiKeyConfigured = false;
 
     public static function fromMembership(UserEntreprise $membership): self
     {
@@ -22,6 +23,7 @@ final class UserEntrepriseOutput
         $output->slug = $membership->getEntreprise()->getSlug() ?? '';
         $output->aiEnabled = $membership->getEntreprise()->isAiEnabled();
         $output->aiProvider = $membership->getEntreprise()->getAiProvider();
+        $output->aiApiKeyConfigured = $membership->getEntreprise()->getAiApiKey() !== null;
         return $output;
     }
 }

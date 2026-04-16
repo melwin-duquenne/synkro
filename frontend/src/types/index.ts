@@ -6,6 +6,9 @@ export interface UserEntreprise {
   name: string
   role: UserRole
   slug: string
+  aiEnabled: boolean
+  aiProvider: string | null
+  aiApiKeyConfigured: boolean
 }
 
 export interface User {
