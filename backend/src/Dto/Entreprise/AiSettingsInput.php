@@ -4,16 +4,17 @@ namespace App\Dto\Entreprise;
 
 use Symfony\Component\Validator\Constraints as Assert;
 
-final class UpdateEntrepriseInput
+class AiSettingsInput
 {
-    #[Assert\NotBlank(message: 'Le nom est requis')]
-    #[Assert\Length(max: 255)]
-    public string $name;
-
     public ?bool $aiEnabled = null;
 
+    #[Assert\Choice(choices: ['byok', 'platform'])]
+    public ?string $aiMode = null;
+
+    #[Assert\Choice(choices: ['mistral'])]
     #[Assert\Length(max: 50)]
     public ?string $aiProvider = null;
 
+    #[Assert\Length(max: 512)]
     public ?string $aiApiKey = null;
 }

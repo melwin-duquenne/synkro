@@ -4,24 +4,22 @@ namespace App\State;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
+use App\Dto\Entreprise\AiSettingsInput;
 use App\Dto\Entreprise\EntrepriseOutput;
-use App\Dto\Entreprise\UpdateEntrepriseInput;
 use App\Entity\User;
 use App\Exception\ErrorMessage;
 use App\Service\EncryptionService;
 use App\Service\EntrepriseContext;
-use App\Service\SlugGenerator;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
-class EntrepriseProcessor implements ProcessorInterface
+class AiSettingsProcessor implements ProcessorInterface
 {
     public function __construct(
         private Security $security,
         private EntityManagerInterface $entityManager,
         private EntrepriseContext $entrepriseContext,
-        private SlugGenerator $slugGenerator,
         private EncryptionService $encryptionService
     ) {}
 
@@ -39,20 +37,20 @@ class EntrepriseProcessor implements ProcessorInterface
             throw new AccessDeniedHttpException(ErrorMessage::ADMIN_REQUIRED);
         }
 
-        if (!$data instanceof UpdateEntrepriseInput) {
+        if (!$data instanceof AiSettingsInput) {
             throw new \InvalidArgumentException(ErrorMessage::INVALID_DATA);
         }
 
-        $entreprise->setName($data->name);
-        $entreprise->setSlug($this->slugGenerator->generate($data->name, $entreprise->getId()));
-
-        if (isset($data->aiEnabled)) {
-            $entreprise->setAiEnabled((bool)$data->aiEnabled);
+        if ($data->aiEnabled !== null) {
+            $entreprise->setAiEnabled($data->aiEnabled);
         }
-        if (isset($data->aiProvider)) {
+        if ($data->aiMode !== null) {
+            $entreprise->setAiMode($data->aiMode);
+        }
+        if ($data->aiProvider !== null) {
             $entreprise->setAiProvider($data->aiProvider);
         }
-        if (isset($data->aiApiKey) && $data->aiApiKey !== '') {
+        if ($data->aiApiKey !== null && $data->aiApiKey !== '') {
             $entreprise->setAiApiKey($this->encryptionService->encrypt($data->aiApiKey));
         }
 

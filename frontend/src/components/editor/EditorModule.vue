@@ -9,6 +9,7 @@ import TextAlign from '@tiptap/extension-text-align'
 import * as Y from 'yjs'
 import { WebsocketProvider } from 'y-websocket'
 import { useAuthStore } from '@/stores/auth'
+import AiChatPanel from '@/components/ai/AiChatPanel.vue'
 
 const props = defineProps<{
   roomId: number
@@ -29,6 +30,18 @@ const saving = ref(false)
 const lastSaved = ref<Date | null>(null)
 const exportingPdf = ref(false)
 const isConnected = ref(false)
+const showAiPanel = ref(false)
+const selectedText = ref('')
+const selectionRange = ref<{ from: number; to: number } | null>(null)
+const aiRequestHadDocContent = ref(false)
+const toastMessage = ref<string | null>(null)
+let toastTimeout: ReturnType<typeof setTimeout> | null = null
+
+function showToast(msg: string) {
+  toastMessage.value = msg
+  if (toastTimeout) clearTimeout(toastTimeout)
+  toastTimeout = setTimeout(() => { toastMessage.value = null }, 3000)
+}
 
 const editor = shallowRef<Editor | null>(null)
 
@@ -225,6 +238,37 @@ async function exportToPdf() {
   } finally {
     exportingPdf.value = false
   }
+}
+
+function openAiPanel() {
+  if (editor.value) {
+    const { from, to } = editor.value.state.selection
+    if (from !== to) {
+      selectedText.value = editor.value.state.doc.textBetween(from, to)
+      selectionRange.value = { from, to }
+    } else {
+      selectedText.value = ''
+      selectionRange.value = null
+    }
+    aiRequestHadDocContent.value = !editor.value?.isEmpty
+  }
+  showAiPanel.value = !showAiPanel.value
+}
+
+function insertAiResponse(text: string) {
+  if (!editor.value) return
+  if (selectionRange.value) {
+    const { from, to } = selectionRange.value
+    editor.value.chain().focus().deleteRange({ from, to }).insertContentAt(from, text).run()
+  } else if (aiRequestHadDocContent.value) {
+    editor.value.chain().focus().clearContent().insertContent(text).run()
+  } else {
+    editor.value.chain().focus().insertContent(text).run()
+  }
+  selectionRange.value = null
+  aiRequestHadDocContent.value = false
+  showAiPanel.value = false
+  showToast('Modification appliquée — Ctrl+Z pour annuler')
 }
 
 function formatLastSaved(date: Date | null): string {
@@ -470,6 +514,20 @@ watch(() => props.roomId, (newId, oldId) => {
           PDF
         </button>
 
+        <!-- AI assistant -->
+        <button
+          type="button"
+          class="btn btn-sm gap-1"
+          :class="showAiPanel ? 'btn-primary' : 'btn-ghost'"
+          @click="openAiPanel"
+          title="Assistant IA"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+          IA
+        </button>
+
         <div class="divider divider-horizontal mx-0.5 h-6"></div>
 
         <!-- Connection status -->
@@ -494,6 +552,24 @@ watch(() => props.roomId, (newId, oldId) => {
       <EditorContent v-if="editor" :editor="editor" class="h-full" />
       <div v-else class="flex items-center justify-center h-full">
         <span class="loading loading-spinner loading-lg"></span>
+      </div>
+    </div>
+
+    <!-- AI panel -->
+    <AiChatPanel
+      v-if="showAiPanel"
+      module="text_editor"
+      placeholder="Écris un paragraphe sur... / Compacte ce texte / Corrige les fautes..."
+      :selected-text="selectedText"
+      :document-content="editor?.getText() ?? ''"
+      @insert="insertAiResponse"
+      class="m-3"
+    />
+
+    <!-- Toast notification -->
+    <div v-if="toastMessage" class="toast toast-bottom toast-end z-50">
+      <div class="alert alert-success text-sm py-2">
+        <span>{{ toastMessage }}</span>
       </div>
     </div>
   </div>

@@ -80,6 +80,11 @@ function handleLogout() {
             </li>
             <li><router-link :to="{ name: 'profile', params: { entrepriseSlug: currentSlug } }">Profil</router-link></li>
             <li v-if="isAdmin"><router-link :to="{ name: 'admin-users', params: { entrepriseSlug: currentSlug } }">Gestion utilisateurs</router-link></li>
+            <li v-if="isAdmin">
+              <router-link :to="{ name: 'admin-ai-settings', params: { entrepriseSlug: currentSlug } }">
+                Paramètres IA
+              </router-link>
+            </li>
             <li><a @click="handleLogout">Déconnexion</a></li>
           </ul>
         </div>
