@@ -1,5 +1,53 @@
 # Architecture Kubernetes — Synkro
 
+## Vue simplifiée
+
+```mermaid
+graph TB
+    Browser([Navigateur]) -->|HTTP| LB["LoadBalancer\n195.15.195.73 :80"]
+
+    LB --> FE
+
+    subgraph synkro["Namespace : synkro"]
+
+        subgraph app["Application"]
+            FE["Frontend — nginx\n× 3 replicas"]
+            BE["Backend — Symfony + PHP-FPM\n× 3 replicas"]
+            WS["WebSocket — Node.js\n× 1 replica"]
+        end
+
+        subgraph db["Base de données — Patroni HA"]
+            PG0[("patroni-0\nLeader")]
+            PG1[("patroni-1\nReplica")]
+            PG2[("patroni-2\nReplica")]
+            PG0 -->|réplication streaming| PG1 & PG2
+        end
+
+        subgraph monitoring["Monitoring"]
+            PROM["Prometheus\nscrape 15s"]
+            GRAF["Grafana\ndashboards"]
+            PROM --> GRAF
+        end
+
+        FE -->|/api /auth /uploads| BE
+        FE -->|/ws| WS
+        BE -->|écriture| PG0
+        app & db -->|métriques| PROM
+    end
+
+    subgraph gk["Namespace : gatekeeper-system"]
+        GK["OPA GateKeeper\nadmission webhook"]
+    end
+
+    GK -. "audit chaque déploiement" .-> synkro
+
+    Admin([Administrateur]) -->|kubectl port-forward :3000| GRAF
+```
+
+---
+
+## Vue complète
+
 ```mermaid
 graph TB
     %% ─── EXTERNE ───────────────────────────────────────────────

@@ -98,6 +98,12 @@ const router = createRouter({
           name: 'admin-users',
           component: () => import('@/pages/admin/UsersPage.vue'),
           meta: { requiresAdmin: true }
+        },
+        {
+          path: 'admin/ai-settings',
+          name: 'admin-ai-settings',
+          component: () => import('@/pages/admin/AiSettingsPage.vue'),
+          meta: { requiresAdmin: true }
         }
       ]
     },
