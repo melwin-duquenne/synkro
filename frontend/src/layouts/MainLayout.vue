@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter, useRoute } from 'vue-router'
+import AiFloatingChat from '@/components/ai/AiFloatingChat.vue'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -95,5 +96,7 @@ function handleLogout() {
     <main class="container mx-auto p-4">
       <slot />
     </main>
+
+    <AiFloatingChat />
   </div>
 </template>
