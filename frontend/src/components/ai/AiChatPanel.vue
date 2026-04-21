@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useAi } from '@/composables/useAi'
 
 const props = defineProps<{
   module?: string
   placeholder?: string
   selectedText?: string
+  documentContent?: string
 }>()
 
 const emit = defineEmits<{
@@ -17,20 +18,21 @@ const { chat, loading, error, isAvailable } = useAi()
 const prompt = ref('')
 const response = ref<string | null>(null)
 
+const hasSelection = computed(() => !!props.selectedText?.trim())
+
 async function handleSend() {
   if (!prompt.value.trim()) return
 
-  const fullPrompt = props.selectedText
-    ? `Contexte sélectionné :\n"${props.selectedText}"\n\nDemande : ${prompt.value}`
-    : prompt.value
+  let fullPrompt = prompt.value
+  if (hasSelection.value) {
+    fullPrompt = `Texte sélectionné dans le document :\n"""\n${props.selectedText}\n"""\n\nDemande : ${prompt.value}\n\nRetourne uniquement le texte modifié/demandé, sans explication ni commentaire.`
+  } else if (props.documentContent?.trim()) {
+    fullPrompt = `Contenu actuel du document :\n"""\n${props.documentContent}\n"""\n\nDemande : ${prompt.value}`
+  }
 
   response.value = await chat(fullPrompt, props.module ?? 'general')
-}
-
-function handleInsert() {
   if (response.value) {
     emit('insert', response.value)
-    response.value = null
     prompt.value = ''
   }
 }
@@ -45,8 +47,11 @@ function handleInsert() {
       Assistant IA
     </div>
 
-    <div v-if="selectedText" class="text-xs text-base-content/50 bg-base-100 rounded p-2 line-clamp-2">
-      Contexte : "{{ selectedText }}"
+    <div v-if="hasSelection" class="text-xs text-base-content/50 bg-base-100 rounded p-2 line-clamp-2">
+      Sélection : "{{ selectedText }}" — la réponse <strong>remplacera</strong> le texte sélectionné.
+    </div>
+    <div v-else-if="documentContent?.trim()" class="text-xs text-base-content/50 bg-base-100 rounded p-2">
+      L'IA a connaissance du contenu du document.
     </div>
 
     <textarea
@@ -59,24 +64,14 @@ function handleInsert() {
 
     <div v-if="error" class="text-error text-xs">{{ error }}</div>
 
-    <div v-if="response" class="bg-base-100 rounded p-3 text-sm whitespace-pre-wrap max-h-48 overflow-y-auto">
-      {{ response }}
+    <div v-if="response" class="bg-base-100 rounded p-3 text-sm whitespace-pre-wrap max-h-48 overflow-y-auto border border-success/30">
+      <div class="text-xs text-success font-medium mb-1">Appliqué dans le document ✓</div>
+      <div class="text-base-content/70">{{ response }}</div>
     </div>
 
-    <div class="flex gap-2 justify-end">
-      <button
-        v-if="response"
-        class="btn btn-sm btn-outline"
-        @click="response = null; prompt = ''"
-      >
-        Effacer
-      </button>
-      <button
-        v-if="response"
-        class="btn btn-sm btn-success"
-        @click="handleInsert"
-      >
-        Insérer dans le document
+    <div class="flex justify-end gap-2">
+      <button v-if="response" class="btn btn-sm btn-ghost" @click="response = null">
+        Nouvelle demande
       </button>
       <button
         class="btn btn-sm btn-primary"

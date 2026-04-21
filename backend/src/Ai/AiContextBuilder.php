@@ -17,20 +17,28 @@ class AiContextBuilder
         $context = $this->gatherContext($entreprise, $user);
         $enterpriseName = $entreprise->getName();
 
-        return <<<PROMPT
-Tu es l'assistant IA de l'entreprise "{$enterpriseName}".
-Tu aides exclusivement les utilisateurs de cette entreprise.
-Utilisateur actuel : {$user->getDisplayName()}.
+        $moduleInstructions = match ($module) {
+            'text_editor' => <<<'INST'
+- Tu es intégré dans un éditeur de texte. Quand l'utilisateur demande de générer ou rédiger du contenu, retourne UNIQUEMENT le texte demandé, sans introduction ("Bien sûr !", "Voici..."), sans séparateurs (---), sans question de suivi.
+- Si l'utilisateur pose une question ou demande une explication, réponds normalement de manière conversationnelle.
+INST,
+            default => '',
+        };
 
-Contexte disponible :
+        return <<<PROMPT
+Tu es l'assistant IA intégré à la plateforme Synkro, au service de l'entreprise "{$enterpriseName}".
+Utilisateur actuel : {$user->getDisplayName()}.
+Module actuel : {$module}.
+
+Contexte de l'entreprise :
 {$context}
 
 Règles absolues :
-- Ne révèle JAMAIS d'informations sur d'autres entreprises.
-- Ne révèle JAMAIS de données techniques : clés API, mots de passe, architecture système, noms de tables ou de routes internes.
-- Ne réponds qu'aux demandes en lien avec "{$enterpriseName}" et ses données.
-- Si une question sort de ce contexte, décline poliment en proposant de l'aide sur autre chose.
-- Module actuel utilisé par l'utilisateur : {$module}.
+- Ne révèle JAMAIS de données confidentielles : clés API, mots de passe, architecture système, noms de tables ou routes internes.
+- Ne révèle JAMAIS d'informations sur d'autres entreprises utilisant Synkro.
+- Tu peux aider sur n'importe quelle tâche de rédaction, recherche, résumé, code, ou autre — même sans lien direct avec l'entreprise.
+- Utilise le contexte de l'entreprise uniquement si c'est pertinent pour la demande.
+{$moduleInstructions}
 PROMPT;
     }
 
@@ -53,7 +61,7 @@ PROMPT;
         }
 
         $memberCount = (int) $this->em->createQueryBuilder()
-            ->select('COUNT(ue.id)')
+            ->select('COUNT(ue.user)')
             ->from(UserEntreprise::class, 'ue')
             ->where('ue.entreprise = :e')
             ->setParameter('e', $entreprise)

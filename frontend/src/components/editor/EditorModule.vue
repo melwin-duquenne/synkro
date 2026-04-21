@@ -32,6 +32,16 @@ const exportingPdf = ref(false)
 const isConnected = ref(false)
 const showAiPanel = ref(false)
 const selectedText = ref('')
+const selectionRange = ref<{ from: number; to: number } | null>(null)
+const aiRequestHadDocContent = ref(false)
+const toastMessage = ref<string | null>(null)
+let toastTimeout: ReturnType<typeof setTimeout> | null = null
+
+function showToast(msg: string) {
+  toastMessage.value = msg
+  if (toastTimeout) clearTimeout(toastTimeout)
+  toastTimeout = setTimeout(() => { toastMessage.value = null }, 3000)
+}
 
 const editor = shallowRef<Editor | null>(null)
 
@@ -233,22 +243,32 @@ async function exportToPdf() {
 function openAiPanel() {
   if (editor.value) {
     const { from, to } = editor.value.state.selection
-    selectedText.value = from !== to
-      ? editor.value.state.doc.textBetween(from, to)
-      : ''
+    if (from !== to) {
+      selectedText.value = editor.value.state.doc.textBetween(from, to)
+      selectionRange.value = { from, to }
+    } else {
+      selectedText.value = ''
+      selectionRange.value = null
+    }
+    aiRequestHadDocContent.value = !editor.value?.isEmpty
   }
   showAiPanel.value = !showAiPanel.value
 }
 
 function insertAiResponse(text: string) {
   if (!editor.value) return
-  const { from, to } = editor.value.state.selection
-  if (from !== to) {
-    editor.value.chain().focus().deleteSelection().insertContent(text).run()
+  if (selectionRange.value) {
+    const { from, to } = selectionRange.value
+    editor.value.chain().focus().deleteRange({ from, to }).insertContentAt(from, text).run()
+  } else if (aiRequestHadDocContent.value) {
+    editor.value.chain().focus().clearContent().insertContent(text).run()
   } else {
     editor.value.chain().focus().insertContent(text).run()
   }
+  selectionRange.value = null
+  aiRequestHadDocContent.value = false
   showAiPanel.value = false
+  showToast('Modification appliquée — Ctrl+Z pour annuler')
 }
 
 function formatLastSaved(date: Date | null): string {
@@ -539,11 +559,19 @@ watch(() => props.roomId, (newId, oldId) => {
     <AiChatPanel
       v-if="showAiPanel"
       module="text_editor"
-      placeholder="Écris un paragraphe sur... / Améliore ce texte / Corrige les fautes..."
+      placeholder="Écris un paragraphe sur... / Compacte ce texte / Corrige les fautes..."
       :selected-text="selectedText"
+      :document-content="editor?.getText() ?? ''"
       @insert="insertAiResponse"
       class="m-3"
     />
+
+    <!-- Toast notification -->
+    <div v-if="toastMessage" class="toast toast-bottom toast-end z-50">
+      <div class="alert alert-success text-sm py-2">
+        <span>{{ toastMessage }}</span>
+      </div>
+    </div>
   </div>
 </template>
 
