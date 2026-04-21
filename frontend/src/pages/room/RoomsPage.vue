@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
-import { useRoute } from 'vue-router'
-import { useRoomsStore } from '@/stores/rooms'
-import { useAuthStore } from '@/stores/auth'
-import CreateRoomModal from '@/components/room/CreateRoomModal.vue'
+import { ref, onMounted, computed } from "vue";
+import { useRoute } from "vue-router";
+import { useRoomsStore } from "@/stores/rooms";
+import { useAuthStore } from "@/stores/auth";
+import CreateRoomModal from "@/components/room/CreateRoomModal.vue";
 
 const route = useRoute()
 const roomsStore = useRoomsStore()
@@ -16,23 +16,23 @@ const hasEntreprise = computed(() => (authStore.user?.entreprises?.length ?? 0) 
 
 // Filter out invalid rooms (missing required data)
 const validRooms = computed(() => {
-  return roomsStore.rooms.filter(room => room && room.id && room.name)
-})
+  return roomsStore.rooms.filter((room) => room && room.id && room.name);
+});
 
 onMounted(() => {
   if (hasEntreprise.value) {
-    roomsStore.fetchRooms()
+    roomsStore.fetchRooms();
   }
 
   // Ouvrir automatiquement le modal si on vient du dashboard
-  if (route.query.create === 'true') {
-    showCreateModal.value = true
+  if (route.query.create === "true") {
+    showCreateModal.value = true;
   }
-})
+});
 
 async function handleDelete(id: number) {
-  if (confirm('Êtes-vous sûr de vouloir supprimer cette room ?')) {
-    await roomsStore.deleteRoom(id)
+  if (confirm("Êtes-vous sûr de vouloir supprimer cette room ?")) {
+    await roomsStore.deleteRoom(id);
   }
 }
 
@@ -49,11 +49,11 @@ async function handleSetupEntreprise() {
 </script>
 
 <template>
-  <div class="space-y-6">
-    <div class="flex items-center justify-between">
-      <h1 class="text-3xl font-bold">Rooms</h1>
+  <div class="space-y-6 min-h-screen">
+    <div class="flex items-center justify-between flex-wrap gap-4">
+      <h1 class="text-4xl font-bold text-[#e0e0e0]">Rooms</h1>
       <button
-        class="btn btn-primary"
+        class="btn btn-primary border-0 bg-[#4115df] hover:bg-[#6a3fe8] text-white"
         @click="showCreateModal = true"
         :disabled="!hasEntreprise"
       >
@@ -62,11 +62,17 @@ async function handleSetupEntreprise() {
     </div>
 
     <!-- No entreprise warning -->
-    <div v-if="!hasEntreprise" class="card bg-warning/10 border border-warning shadow-xl">
-      <div class="card-body text-center py-12">
-        <h2 class="text-xl font-semibold mb-2">Configuration requise</h2>
-        <p class="text-base-content/70 mb-4">
-          Vous devez configurer votre entreprise pour créer et accéder aux rooms.
+    <div
+      v-if="!hasEntreprise"
+      class="dashboard-card bg-[#0a1628] border border-[#4115df]/20 rounded-lg p-6"
+    >
+      <div class="text-center py-12">
+        <h2 class="text-xl font-semibold mb-2 text-[#e0e0e0]">
+          Configuration requise
+        </h2>
+        <p class="text-[#b0b0b0] mb-6">
+          Vous devez configurer votre entreprise pour créer et accéder aux
+          rooms.
         </p>
         <div class="flex flex-col items-center gap-3 w-full max-w-sm mx-auto">
           <input
@@ -93,21 +99,31 @@ async function handleSetupEntreprise() {
       <span class="loading loading-spinner loading-lg"></span>
     </div>
 
-    <div v-else-if="validRooms.length === 0" class="card bg-base-100 shadow-xl">
-      <div class="card-body text-center py-12">
-        <h2 class="text-xl font-semibold mb-2">Aucune room</h2>
-        <p class="text-base-content/70 mb-4">Créez votre première room pour commencer à collaborer</p>
-        <div class="card-actions justify-center">
-          <button class="btn btn-primary" @click="showCreateModal = true">Créer une room</button>
+    <div
+      v-else-if="validRooms.length === 0"
+      class="dashboard-card bg-[#0a1628] rounded-lg p-8"
+    >
+      <div class="text-center py-12">
+        <h2 class="text-xl font-semibold mb-2 text-[#e0e0e0]">Aucune room</h2>
+        <p class="text-[#b0b0b0] mb-6">
+          Créez votre première room pour commencer à collaborer
+        </p>
+        <div class="flex justify-center">
+          <button
+            class="btn btn-primary border-0 bg-[#4115df] hover:bg-[#6a3fe8] text-white"
+            @click="showCreateModal = true"
+          >
+            Créer une room
+          </button>
         </div>
       </div>
     </div>
 
-    <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <div
         v-for="room in validRooms"
         :key="room.id"
-        class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow"
+        class="dashboard-card bg-[#0a1628] rounded-lg p-6 hover:shadow-xl transition-all duration-300 hover:bg-[#1a3a52]/20 border border-transparent hover:border-[#4115df]/30"
       >
         <div class="card-body">
           <div class="flex justify-between items-start">
@@ -115,38 +131,77 @@ async function handleSetupEntreprise() {
               {{ room.name }}
             </router-link>
             <div class="dropdown dropdown-end">
-              <div tabindex="0" role="button" class="btn btn-ghost btn-xs">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-5 h-5 stroke-current">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
+              <div
+                tabindex="0"
+                role="button"
+                class="btn btn-ghost btn-sm rounded-lg hover:bg-[#1a3a52]"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  class="w-5 h-5 stroke-[#e0e0e0]"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
+                  ></path>
                 </svg>
               </div>
-              <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-32">
-                <li><a @click="handleDelete(room.id)" class="text-error">Supprimer</a></li>
+              <ul
+                tabindex="0"
+                class="dropdown-content z-[1] menu p-2 shadow-lg bg-[#0a1628] rounded-lg w-40 border border-gray-600"
+              >
+                <li>
+                  <a
+                    @click="handleDelete(room.id)"
+                    class="text-red-400 hover:bg-red-400/10"
+                    >Supprimer</a
+                  >
+                </li>
               </ul>
             </div>
           </div>
 
-          <div class="flex items-center gap-2 mt-1">
+          <div class="flex items-center gap-2 flex-wrap">
             <span
-              class="badge badge-sm"
-              :class="room.visibility === 'private' ? 'badge-warning' : 'badge-success'"
+              class="px-3 py-1 rounded-full text-xs font-medium"
+              :class="
+                room.visibility === 'private'
+                  ? 'bg-[#4115df]/20 text-[#4115df]'
+                  : 'bg-[#2d7a3f]/20 text-[#6fdd9f]'
+              "
             >
-              {{ room.visibility === 'private' ? 'Privée' : 'Entreprise' }}
+              {{
+                room.visibility === "private" ? "🔒 Privée" : "🌐 Entreprise"
+              }}
             </span>
-            <span v-if="room.isTemporary" class="badge badge-sm badge-ghost">Temporaire</span>
+            <span
+              v-if="room.isTemporary"
+              class="px-3 py-1 rounded-full text-xs font-medium bg-[#1a3a52] text-[#8ab4f8]"
+              >⏱️ Temporaire</span
+            >
           </div>
 
-          <p class="text-sm text-base-content/60 mt-2">
-            Par {{ room.creator?.displayName || 'Inconnu' }}
+          <p class="text-sm text-[#b0b0b0]">
+            Créée par
+            <span class="text-[#4115df]">{{
+              room.creator?.displayName || "Inconnu"
+            }}</span>
           </p>
 
-          <div v-if="room.moduleRooms?.length" class="flex flex-wrap gap-1 mt-3">
+          <div
+            v-if="room.moduleRooms?.length"
+            class="flex flex-wrap gap-2 pt-2"
+          >
             <span
               v-for="mr in room.moduleRooms"
               :key="mr.id"
-              class="badge badge-outline badge-sm"
+              class="px-2 py-1 rounded-md text-xs bg-[#1a3a52] text-[#8ab4f8] border border-[#4115df]/30"
             >
-              {{ mr.module?.name || mr.module?.code || 'Module' }}
+              {{ mr.module?.name || mr.module?.code || "Module" }}
             </span>
           </div>
 
@@ -163,3 +218,17 @@ async function handleSetupEntreprise() {
     <CreateRoomModal :open="showCreateModal" @close="showCreateModal = false" />
   </div>
 </template>
+
+<style scoped>
+.dashboard-card {
+  border: 1px solid rgba(65, 21, 223, 0.1);
+  background-color: #0a1628;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+.dashboard-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+</style>

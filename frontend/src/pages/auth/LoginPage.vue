@@ -1,18 +1,21 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
-import GoogleLogin from '@/components/GoogleLogin.vue'
+import { ref } from "vue";
+import { useRouter, useRoute } from "vue-router";
+import { useAuthStore } from "@/stores/auth";
+import GoogleLogin from "@/components/GoogleLogin.vue";
 
-const router = useRouter()
-const route = useRoute()
-const authStore = useAuthStore()
+const router = useRouter();
+const route = useRoute();
+const authStore = useAuthStore();
 
-const email = ref('')
-const password = ref('')
+const email = ref("");
+const password = ref("");
 
 async function handleSubmit() {
-  const success = await authStore.login({ email: email.value, password: password.value })
+  const success = await authStore.login({
+    email: email.value,
+    password: password.value,
+  });
   if (success) {
     const slug = authStore.getFirstEntrepriseSlug()
     const redirect = route.query.redirect as string
@@ -58,7 +61,9 @@ async function handleSubmit() {
         </div>
 
         <div class="text-right">
-          <router-link to="/forgot-password" class="link link-sm link-primary">Mot de passe oublié ?</router-link>
+          <router-link to="/forgot-password" class="link link-sm link-primary"
+            >Mot de passe oublié ?</router-link
+          >
         </div>
 
         <button
@@ -77,7 +82,9 @@ async function handleSubmit() {
 
       <p class="text-center">
         Pas encore de compte ?
-        <router-link to="/register" class="link link-primary">Créer un compte</router-link>
+        <router-link to="/register" class="link link-primary"
+          >Créer un compte</router-link
+        >
       </p>
     </div>
   </div>

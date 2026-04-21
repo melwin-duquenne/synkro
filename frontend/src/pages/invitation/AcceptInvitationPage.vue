@@ -16,20 +16,21 @@ const entrepriseSlug = ref('')
 const invitationEmail = ref('')
 
 onMounted(async () => {
-  const token = route.query.token as string
+  const token = route.query.token as string;
 
   if (!token) {
-    status.value = 'error'
-    message.value = 'Token d\'invitation manquant'
-    return
+    status.value = "error";
+    message.value = "Token d'invitation manquant";
+    return;
   }
 
-  const result = await invitationStore.acceptInvitation(token)
+  const result = await invitationStore.acceptInvitation(token);
 
   if (!result.success) {
-    status.value = 'error'
-    message.value = invitationStore.error || 'Erreur lors de l\'acceptation de l\'invitation'
-    return
+    status.value = "error";
+    message.value =
+      invitationStore.error || "Erreur lors de l'acceptation de l'invitation";
+    return;
   }
 
   if (result.data?.accepted) {
@@ -43,15 +44,18 @@ onMounted(async () => {
     invitationEmail.value = result.data?.email || ''
     message.value = result.data?.message || ''
   }
-})
+});
 
 function goToLogin() {
-  const token = route.query.token as string
-  router.push({ name: 'login', query: { redirect: `/invitation/accept?token=${token}` } })
+  const token = route.query.token as string;
+  router.push({
+    name: "login",
+    query: { redirect: `/invitation/accept?token=${token}` },
+  });
 }
 
 function goToRegister() {
-  router.push({ name: 'register' })
+  router.push({ name: "register" });
 }
 
 function goToDashboard() {
@@ -73,22 +77,35 @@ function goToDashboard() {
         <!-- Success -->
         <div v-else-if="status === 'success'">
           <div class="text-5xl mb-4">&#10003;</div>
-          <h2 class="card-title justify-center text-xl mb-2">Invitation acceptée</h2>
+          <h2 class="card-title justify-center text-xl mb-2">
+            Invitation acceptée
+          </h2>
           <p class="text-base-content/70 mb-6">{{ message }}</p>
-          <button class="btn btn-primary w-full" @click="goToDashboard">
+          <button
+            class="btn btn-primary w-full bg-white text-black border-0"
+            @click="goToDashboard"
+          >
             Aller au tableau de bord
           </button>
         </div>
 
         <!-- Login required -->
         <div v-else-if="status === 'login_required'">
-          <h2 class="card-title justify-center text-xl mb-2">Rejoindre {{ entrepriseName }}</h2>
+          <h2 class="card-title justify-center text-xl mb-2">
+            Rejoindre {{ entrepriseName }}
+          </h2>
           <p class="text-base-content/70 mb-6">{{ message }}</p>
           <div class="flex flex-col gap-3">
-            <button class="btn btn-primary w-full" @click="goToLogin">
+            <button
+              class="btn btn-primary w-full bg-white text-black border-0"
+              @click="goToLogin"
+            >
               Se connecter
             </button>
-            <button class="btn btn-outline w-full" @click="goToRegister">
+            <button
+              class="btn btn-outline w-full bg-white text-black border-0"
+              @click="goToRegister"
+            >
               Créer un compte
             </button>
           </div>
@@ -99,7 +116,10 @@ function goToDashboard() {
           <div class="text-5xl mb-4 text-error">&#10007;</div>
           <h2 class="card-title justify-center text-xl mb-2">Erreur</h2>
           <p class="text-error mb-6">{{ message }}</p>
-          <button class="btn btn-ghost w-full" @click="router.push('/')">
+          <button
+            class="btn btn-ghost w-full bg-white text-black border-0"
+            @click="router.push('/')"
+          >
             Retour à l'accueil
           </button>
         </div>

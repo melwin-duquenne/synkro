@@ -8,14 +8,14 @@ const authStore = useAuthStore()
 const router = useRouter()
 const route = useRoute()
 
-const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || ''
+const API_BASE = import.meta.env.VITE_API_URL?.replace("/api", "") || "";
 
 const avatarUrl = computed(() => {
   if (authStore.user?.avatarUrl) {
-    return `${API_BASE}${authStore.user.avatarUrl}`
+    return `${API_BASE}${authStore.user.avatarUrl}`;
   }
-  return null
-})
+  return null;
+});
 
 const currentSlug = computed(() => route.params.entrepriseSlug as string | undefined)
 const isAdmin = computed(() => authStore.currentEntreprise?.role === 'admin')
@@ -27,8 +27,8 @@ function handleSwitchEntreprise(slug: string) {
 }
 
 function handleLogout() {
-  authStore.logout()
-  router.push('/login')
+  authStore.logout();
+  router.push("/login");
 }
 </script>
 
@@ -74,10 +74,28 @@ function handleLogout() {
               <span v-else>{{ authStore.user?.displayName?.charAt(0)?.toUpperCase() || 'U' }}</span>
             </div>
           </div>
-          <ul tabindex="0" class="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-52">
-            <li class="menu-title">
-              <span>{{ authStore.user?.displayName }}</span>
-              <span class="text-xs opacity-60">{{ authStore.user?.email }}</span>
+          <ul
+            tabindex="0"
+            class="dropdown-content z-50 p-2 shadow-lg menu menu-sm bg-[#0a1628] rounded-lg w-56 border border-gray-600"
+          >
+            <li>
+              <router-link
+                to="/profile"
+                class="text-[#e0e0e0] hover:bg-[#1a3a52]"
+                >Profil</router-link
+              >
+            </li>
+            <li v-if="isAdmin">
+              <router-link
+                to="/admin/users"
+                class="text-[#e0e0e0] hover:bg-[#1a3a52]"
+                >Gestion utilisateurs</router-link
+              >
+            </li>
+            <li>
+              <a @click="handleLogout" class="text-[#e0e0e0] hover:bg-[#1a3a52]"
+                >Déconnexion</a
+              >
             </li>
             <li><router-link :to="{ name: 'profile', params: { entrepriseSlug: currentSlug } }">Profil</router-link></li>
             <li v-if="isAdmin"><router-link :to="{ name: 'admin-users', params: { entrepriseSlug: currentSlug } }">Gestion utilisateurs</router-link></li>
@@ -90,13 +108,72 @@ function handleLogout() {
           </ul>
         </div>
       </div>
-    </div>
+    </aside>
 
-    <!-- Main content -->
-    <main class="container mx-auto p-4">
-      <slot />
+    <!-- Main content area -->
+    <main class="flex-1 ml-64 container mx-auto p-8">
+      <slot></slot>
     </main>
 
     <AiFloatingChat />
   </div>
 </template>
+
+<style scoped>
+.dashboard-bg {
+  background-color: #050d1a;
+  position: relative;
+}
+
+.dashboard-bg::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: transparent;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.sidebar {
+  z-index: 40;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sidebar :deep(.menu) {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+.sidebar :deep(.menu li) {
+  width: 100%;
+  margin: 0;
+}
+
+.sidebar :deep(.menu a) {
+  transition: all 0.3s ease;
+  color: #e0e0e0;
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  margin: 0.5rem 0;
+}
+
+.sidebar :deep(.menu a:hover) {
+  background-color: rgba(26, 58, 82, 0.5);
+  color: #ffffff;
+  border-radius: 0.5rem;
+}
+
+.sidebar :deep(.menu a.active-link) {
+  background-color: #05091a;
+  color: #ffffff;
+  border-radius: 0.5rem;
+}
+</style>

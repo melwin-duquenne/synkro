@@ -1,21 +1,21 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
+import { ref } from "vue";
+import { useRouter } from "vue-router";
+import { useAuthStore } from "@/stores/auth";
 
-const router = useRouter()
-const authStore = useAuthStore()
+const router = useRouter();
+const authStore = useAuthStore();
 
-const email = ref('')
-const password = ref('')
-const displayName = ref('')
+const email = ref("");
+const password = ref("");
+const displayName = ref("");
 
 async function handleSubmit() {
   const success = await authStore.register({
     email: email.value,
     password: password.value,
-    displayName: displayName.value
-  })
+    displayName: displayName.value,
+  });
   if (success) {
     const slug = authStore.getFirstEntrepriseSlug()
     router.push(slug ? { name: 'dashboard', params: { entrepriseSlug: slug } } : '/')
@@ -87,7 +87,9 @@ async function handleSubmit() {
 
       <p class="text-center">
         Déjà un compte ?
-        <router-link to="/login" class="link link-primary">Se connecter</router-link>
+        <router-link to="/login" class="link link-primary"
+          >Se connecter</router-link
+        >
       </p>
     </div>
   </div>

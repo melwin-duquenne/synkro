@@ -1,128 +1,135 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
-import * as Y from 'yjs'
-import { WebsocketProvider } from 'y-websocket'
-import { useAuthStore } from '@/stores/auth'
+import { ref, onMounted, onUnmounted, nextTick, watch } from "vue";
+import * as Y from "yjs";
+import { WebsocketProvider } from "y-websocket";
+import { useAuthStore } from "@/stores/auth";
 
 const props = defineProps<{
-  roomId: number
-  floating?: boolean
-}>()
+  roomId: number;
+  floating?: boolean;
+}>();
 
 interface ChatMessage {
-  id: string
-  userId: number
-  userName: string
-  content: string
-  timestamp: number
+  id: string;
+  userId: number;
+  userName: string;
+  content: string;
+  timestamp: number;
 }
 
-const authStore = useAuthStore()
-const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:3001'
+const authStore = useAuthStore();
+const WS_URL = import.meta.env.VITE_WS_URL || "ws://localhost:3001";
 
-const messages = ref<ChatMessage[]>([])
-const newMessage = ref('')
-const messagesContainer = ref<HTMLElement | null>(null)
-const connected = ref(false)
-const isOpen = ref(false)
-const unreadCount = ref(0)
+const messages = ref<ChatMessage[]>([]);
+const newMessage = ref("");
+const messagesContainer = ref<HTMLElement | null>(null);
+const connected = ref(false);
+const isOpen = ref(false);
+const unreadCount = ref(0);
 
-let ydoc: Y.Doc | null = null
-let provider: WebsocketProvider | null = null
-let yMessages: Y.Array<ChatMessage> | null = null
+let ydoc: Y.Doc | null = null;
+let provider: WebsocketProvider | null = null;
+let yMessages: Y.Array<ChatMessage> | null = null;
 
 function scrollToBottom() {
   nextTick(() => {
     if (messagesContainer.value) {
-      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
     }
-  })
+  });
 }
 
 function sendMessage() {
-  if (!newMessage.value.trim() || !yMessages || !authStore.user) return
+  if (!newMessage.value.trim() || !yMessages || !authStore.user) return;
 
   const message: ChatMessage = {
     id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     userId: authStore.user.id,
     userName: authStore.user.displayName,
     content: newMessage.value.trim(),
-    timestamp: Date.now()
-  }
+    timestamp: Date.now(),
+  };
 
-  yMessages.push([message])
-  newMessage.value = ''
+  yMessages.push([message]);
+  newMessage.value = "";
 }
 
 function formatTime(timestamp: number): string {
-  return new Date(timestamp).toLocaleTimeString('fr-FR', {
-    hour: '2-digit',
-    minute: '2-digit'
-  })
+  return new Date(timestamp).toLocaleTimeString("fr-FR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function connectToRoom() {
   if (ydoc) {
-    provider?.disconnect()
-    provider?.destroy()
-    ydoc.destroy()
+    provider?.disconnect();
+    provider?.destroy();
+    ydoc.destroy();
   }
 
-  ydoc = new Y.Doc()
-  provider = new WebsocketProvider(WS_URL, `room-${props.roomId}-chat`, ydoc)
+  ydoc = new Y.Doc();
+  provider = new WebsocketProvider(WS_URL, `room-${props.roomId}-chat`, ydoc);
 
-  provider.on('status', (event: { status: string }) => {
-    connected.value = event.status === 'connected'
-  })
+  provider.on("status", (event: { status: string }) => {
+    connected.value = event.status === "connected";
+  });
 
-  yMessages = ydoc.getArray<ChatMessage>('messages')
+  yMessages = ydoc.getArray<ChatMessage>("messages");
 
   // Sync messages
-  messages.value = yMessages.toArray()
+  messages.value = yMessages.toArray();
 
   yMessages.observe(() => {
     if (yMessages) {
-      const oldLength = messages.value.length
-      messages.value = yMessages.toArray()
-      
+      const oldLength = messages.value.length;
+      messages.value = yMessages.toArray();
+
       // Incrémenter les non-lus si le chat est fermé et que ce n'est pas notre message
-      if (props.floating && !isOpen.value && messages.value.length > oldLength) {
-        const lastMessage = messages.value[messages.value.length - 1]
+      if (
+        props.floating &&
+        !isOpen.value &&
+        messages.value.length > oldLength
+      ) {
+        const lastMessage = messages.value[messages.value.length - 1];
         if (lastMessage && lastMessage.userId !== authStore.user?.id) {
-          unreadCount.value++
+          unreadCount.value++;
         }
       }
-      
-      scrollToBottom()
+
+      scrollToBottom();
     }
-  })
+  });
 }
 
 function toggleChat() {
-  isOpen.value = !isOpen.value
+  isOpen.value = !isOpen.value;
   if (isOpen.value) {
-    unreadCount.value = 0
-    scrollToBottom()
+    unreadCount.value = 0;
+    scrollToBottom();
   }
 }
 
 onMounted(() => {
-  connectToRoom()
-})
+  connectToRoom();
+});
 
 onUnmounted(() => {
   if (provider) {
-    provider.disconnect()
-    provider.destroy()
+    provider.disconnect();
+    provider.destroy();
   }
   if (ydoc) {
-    ydoc.destroy()
+    ydoc.destroy();
   }
-})
+});
 
-watch(() => props.roomId, () => {
-  connectToRoom()
-})
+watch(
+  () => props.roomId,
+  () => {
+    connectToRoom();
+  },
+);
 </script>
 
 <template>
@@ -132,27 +139,52 @@ watch(() => props.roomId, () => {
     <button
       v-if="!isOpen"
       @click="toggleChat"
-      class="btn btn-circle btn-primary btn-lg shadow-lg relative"
+      class="w-14 h-14 rounded-full shadow-lg relative bg-[#4115df] text-white hover:bg-[#6a3fe8] flex items-center justify-center transition-colors"
     >
-      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+      <svg
+        class="w-6 h-6"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+        />
       </svg>
       <!-- Badge non-lus -->
-      <span v-if="unreadCount > 0" class="absolute -top-2 -right-2 badge badge-error badge-sm">
-        {{ unreadCount > 9 ? '9+' : unreadCount }}
+      <span
+        v-if="unreadCount > 0"
+        class="absolute -top-2 -right-2 badge badge-md bg-red-500 text-white border-0"
+      >
+        {{ unreadCount > 9 ? "9+" : unreadCount }}
       </span>
     </button>
 
     <!-- Fenêtre de chat -->
     <div
       v-else
-      class="chat-window bg-base-100 shadow-2xl rounded-lg border border-base-300 w-80 sm:w-96 h-[500px] flex flex-col"
+      class="chat-window bg-[#0a1628] shadow-2xl rounded-lg border border-gray-600 w-80 sm:w-96 h-[500px] flex flex-col"
     >
       <!-- Header -->
-      <div class="p-3 border-b border-base-300 flex items-center justify-between bg-primary text-primary-content rounded-t-lg">
+      <div
+        class="p-3 border-b border-gray-600 flex items-center justify-between bg-[#1a3a52] text-[#e0e0e0] rounded-t-lg"
+      >
         <div class="flex items-center gap-2">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          <svg
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+            />
           </svg>
           <h3 class="font-semibold">Chat</h3>
         </div>
@@ -160,25 +192,54 @@ watch(() => props.roomId, () => {
           <div class="flex items-center gap-1">
             <span
               class="w-2 h-2 rounded-full"
-              :class="connected ? 'bg-success' : 'bg-error'"
+              :class="connected ? 'bg-[#6fdd9f]' : 'bg-[#ef5350]'"
             ></span>
             <span class="text-xs opacity-80">
-              {{ connected ? 'Connecté' : 'Déconnecté' }}
+              {{ connected ? "Connecté" : "Déconnecté" }}
             </span>
           </div>
-          <button @click="toggleChat" class="btn btn-ghost btn-xs btn-circle">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          <button
+            @click="toggleChat"
+            class="btn btn-ghost btn-xs btn-circle hover:bg-[#2a4a62]"
+          >
+            <svg
+              class="w-4 h-4 text-[#b0b0b0] hover:text-[#e0e0e0]"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
       </div>
 
       <!-- Messages -->
-      <div ref="messagesContainer" class="flex-1 overflow-y-auto p-4 space-y-3 bg-base-200">
-        <div v-if="messages.length === 0" class="text-center text-base-content/50 py-8">
-          <svg class="w-12 h-12 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+      <div
+        ref="messagesContainer"
+        class="flex-1 overflow-y-auto p-4 space-y-3 bg-[#0a1628]"
+      >
+        <div
+          v-if="messages.length === 0"
+          class="text-center text-[#b0b0b0] py-8"
+        >
+          <svg
+            class="w-12 h-12 mx-auto mb-2 opacity-50"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+            />
           </svg>
           <p>Aucun message</p>
           <p class="text-sm">Commencez la conversation !</p>
@@ -187,16 +248,24 @@ watch(() => props.roomId, () => {
         <div
           v-for="msg in messages"
           :key="msg.id"
-          class="chat"
-          :class="msg.userId === authStore.user?.id ? 'chat-end' : 'chat-start'"
+          :class="{
+            'ml-auto': msg.userId === authStore.user?.id,
+            'mr-auto': msg.userId !== authStore.user?.id,
+          }"
+          class="max-w-xs"
         >
-          <div class="chat-header mb-1">
-            <span class="font-medium text-sm">{{ msg.userName }}</span>
-            <time class="text-xs opacity-50 ml-2">{{ formatTime(msg.timestamp) }}</time>
+          <div class="text-xs mb-1 px-2">
+            <span class="font-medium text-[#e0e0e0]">{{ msg.userName }}</span>
+            <span class="text-[#b0b0b0] ml-2">
+              {{ formatTime(msg.timestamp) }}
+            </span>
           </div>
           <div
-            class="chat-bubble text-sm"
-            :class="msg.userId === authStore.user?.id ? 'chat-bubble-primary' : ''"
+            class="px-4 py-2 rounded-lg text-sm text-[#e0e0e0]"
+            :style="{
+              backgroundColor:
+                msg.userId === authStore.user?.id ? '#4115df' : '#1a3a52',
+            }"
           >
             {{ msg.content }}
           </div>
@@ -204,22 +273,32 @@ watch(() => props.roomId, () => {
       </div>
 
       <!-- Input -->
-      <div class="p-3 border-t border-base-300 bg-base-100">
+      <div class="p-3 border-t border-gray-600 bg-[#0a1628]">
         <form @submit.prevent="sendMessage" class="flex gap-2">
           <input
             v-model="newMessage"
             type="text"
             placeholder="Votre message..."
-            class="input input-bordered input-sm flex-1"
+            class="flex-1 px-3 py-2 rounded-lg bg-[#1a3a52] border border-gray-600 text-[#e0e0e0] placeholder-[#b0b0b0] focus:outline-none focus:border-[#4115df] focus:ring-1 focus:ring-[#4115df]/30"
             :disabled="!connected"
           />
           <button
             type="submit"
-            class="btn btn-primary btn-sm"
+            class="px-4 py-2 rounded-lg bg-[#4115df] text-white hover:bg-[#6a3fe8] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             :disabled="!newMessage.trim() || !connected"
           >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            <svg
+              class="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+              />
             </svg>
           </button>
         </form>
@@ -228,24 +307,29 @@ watch(() => props.roomId, () => {
   </div>
 
   <!-- Mode normal (dans la page room) -->
-  <div v-else class="chat-module h-full flex flex-col bg-base-100">
+  <div v-else class="chat-module h-full flex flex-col bg-[#0a1628]">
     <!-- Header -->
-    <div class="p-3 border-b border-base-300 flex items-center justify-between">
+    <div
+      class="p-3 border-b border-gray-600 flex items-center justify-between bg-[#1a3a52] text-[#e0e0e0]"
+    >
       <h3 class="font-semibold">Chat</h3>
       <div class="flex items-center gap-2">
         <span
           class="w-2 h-2 rounded-full"
-          :class="connected ? 'bg-success' : 'bg-error'"
+          :class="connected ? 'bg-[#6fdd9f]' : 'bg-[#ef5350]'"
         ></span>
-        <span class="text-xs text-base-content/60">
-          {{ connected ? 'Connecté' : 'Déconnecté' }}
+        <span class="text-xs text-[#b0b0b0]">
+          {{ connected ? "Connecté" : "Déconnecté" }}
         </span>
       </div>
     </div>
 
     <!-- Messages -->
-    <div ref="messagesContainer" class="flex-1 overflow-y-auto p-4 space-y-3">
-      <div v-if="messages.length === 0" class="text-center text-base-content/50 py-8">
+    <div
+      ref="messagesContainer"
+      class="flex-1 overflow-y-auto p-4 space-y-3 bg-[#0a1628]"
+    >
+      <div v-if="messages.length === 0" class="text-center text-[#b0b0b0] py-8">
         <p>Aucun message</p>
         <p class="text-sm">Commencez la conversation !</p>
       </div>
@@ -253,16 +337,24 @@ watch(() => props.roomId, () => {
       <div
         v-for="msg in messages"
         :key="msg.id"
-        class="chat"
-        :class="msg.userId === authStore.user?.id ? 'chat-end' : 'chat-start'"
+        :class="{
+          'ml-auto': msg.userId === authStore.user?.id,
+          'mr-auto': msg.userId !== authStore.user?.id,
+        }"
+        class="max-w-xs"
       >
-        <div class="chat-header mb-1">
-          <span class="font-medium text-sm">{{ msg.userName }}</span>
-          <time class="text-xs opacity-50 ml-2">{{ formatTime(msg.timestamp) }}</time>
+        <div class="text-xs mb-1 px-2">
+          <span class="font-medium text-[#e0e0e0]">{{ msg.userName }}</span>
+          <span class="text-[#b0b0b0] ml-2">
+            {{ formatTime(msg.timestamp) }}
+          </span>
         </div>
         <div
-          class="chat-bubble"
-          :class="msg.userId === authStore.user?.id ? 'chat-bubble-primary' : ''"
+          class="px-4 py-2 rounded-lg text-sm text-[#e0e0e0]"
+          :style="{
+            backgroundColor:
+              msg.userId === authStore.user?.id ? '#4115df' : '#1a3a52',
+          }"
         >
           {{ msg.content }}
         </div>
@@ -270,18 +362,18 @@ watch(() => props.roomId, () => {
     </div>
 
     <!-- Input -->
-    <div class="p-3 border-t border-base-300">
+    <div class="p-3 border-t border-gray-600 bg-[#0a1628]">
       <form @submit.prevent="sendMessage" class="flex gap-2">
         <input
           v-model="newMessage"
           type="text"
           placeholder="Votre message..."
-          class="input input-bordered flex-1"
+          class="flex-1 px-3 py-2 rounded-lg bg-[#1a3a52] border border-gray-600 text-[#e0e0e0] placeholder-[#b0b0b0] focus:outline-none focus:border-[#4115df] focus:ring-1 focus:ring-[#4115df]/30"
           :disabled="!connected"
         />
         <button
           type="submit"
-          class="btn btn-primary"
+          class="px-4 py-2 rounded-lg bg-[#4115df] text-white hover:bg-[#6a3fe8] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           :disabled="!newMessage.trim() || !connected"
         >
           Envoyer
