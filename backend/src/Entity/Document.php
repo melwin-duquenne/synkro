@@ -4,6 +4,7 @@ namespace App\Entity;
 
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\Link;
 use ApiPlatform\Metadata\Put;
 use App\Dto\Document\DocumentOutput;
 use App\Dto\Document\UpdateDocumentInput;
@@ -20,14 +21,14 @@ use Symfony\Component\Serializer\Attribute\Groups;
             uriTemplate: '/rooms/{roomId}/document',
             provider: DocumentProvider::class,
             output: DocumentOutput::class,
-            uriVariables: ['roomId']
+            uriVariables: ['roomId' => new Link(fromClass: Room::class, toProperty: 'room', identifiers: ['id'])]
         ),
         new Put(
             uriTemplate: '/rooms/{roomId}/document',
             input: UpdateDocumentInput::class,
             output: DocumentOutput::class,
             processor: DocumentProcessor::class,
-            uriVariables: ['roomId']
+            uriVariables: ['roomId' => new Link(fromClass: Room::class, toProperty: 'room', identifiers: ['id'])]
         )
     ],
     normalizationContext: ['groups' => ['document:read']],

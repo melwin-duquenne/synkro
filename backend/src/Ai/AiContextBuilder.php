@@ -22,6 +22,10 @@ class AiContextBuilder
 - Tu es intégré dans un éditeur de texte. Quand l'utilisateur demande de générer ou rédiger du contenu, retourne UNIQUEMENT le texte demandé, sans introduction ("Bien sûr !", "Voici..."), sans séparateurs (---), sans question de suivi.
 - Si l'utilisateur pose une question ou demande une explication, réponds normalement de manière conversationnelle.
 INST,
+            'assistant' => <<<'INST'
+- Tu es un assistant conversationnel. Réponds de manière naturelle, concise et utile.
+- Tu peux aider sur n'importe quel sujet : questions générales, rédaction, explications, etc.
+INST,
             default => '',
         };
 
