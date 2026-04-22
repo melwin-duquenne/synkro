@@ -24,17 +24,20 @@
       <div v-if="availableRooms && availableRooms.length > 0" class="mb-4">
         <div class="form-control">
           <label class="label">
-            <span class="label-text font-semibold">Room</span>
+            <span class="label-text font-semibold text-white">Room</span>
           </label>
           <select
             v-model="selectedRoomId"
-            class="select select-bordered select-sm w-full"
+            class="select border border-white/10 bg-white/5 text-[#e0e0e0] hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-primary/50 w-full rounded-lg"
           >
-            <option :value="null">Toutes les rooms</option>
+            <option :value="null" class="bg-[#0a1628] text-[#e0e0e0]">
+              Toutes les rooms
+            </option>
             <option
               v-for="room in availableRooms"
               :key="room.id"
               :value="room.id"
+              class="bg-[#0a1628] text-[#e0e0e0]"
             >
               {{ room.name }}
             </option>

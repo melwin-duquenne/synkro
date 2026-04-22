@@ -21,7 +21,7 @@
       <div class="grid grid-cols-1 gap-3">
         <!-- Créer une room -->
         <button
-          class="btn btn-primary justify-start gap-3"
+          class="btn btn-primary quick-action-btn gap-3"
           @click="$emit('create-room')"
         >
           <svg
@@ -42,7 +42,7 @@
 
         <!-- Planifier un événement -->
         <button
-          class="btn btn-secondary justify-start gap-3"
+          class="btn btn-ghost quick-action-btn gap-3"
           @click="$emit('create-event')"
         >
           <svg
@@ -63,7 +63,7 @@
 
         <!-- Créer une tâche -->
         <button
-          class="btn btn-accent justify-start gap-3"
+          class="btn btn-ghost quick-action-btn gap-3"
           @click="$emit('create-task')"
         >
           <svg
@@ -85,7 +85,7 @@
         <!-- Inviter des membres / Gestion des utilisateurs (admin seulement) -->
         <button
           v-if="canManageUsers"
-          class="btn btn-outline justify-start gap-3"
+          class="btn btn-ghost quick-action-btn gap-3"
           @click="$emit('invite-members')"
         >
           <svg
@@ -131,22 +131,21 @@ defineEmits<{
 
 <style scoped>
 .dashboard-card {
-  background-color: #0a1628 !important;
-  border: none !important;
-  border-radius: 8px !important;
-  padding: 1.5rem !important;
-  color: #e0e0e0 !important;
+  background-color: #0a1628;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 1.5rem;
+  color: #e0e0e0;
   transition: all 0.3s ease;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .dashboard-card:hover {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-  transform: translateY(-2px);
 }
 
 .dashboard-card h2 {
-  color: #ffffff !important;
+  color: #ffffff;
   margin-bottom: 1.25rem;
   display: flex;
   align-items: center;
@@ -158,28 +157,32 @@ defineEmits<{
   margin-top: 0.5rem;
 }
 
-.dashboard-card button {
-  background-color: #ffffff !important;
-  color: #000000 !important;
-  border: none !important;
-  border-radius: 8px !important;
-  padding: 0.75rem 1rem !important;
-  font-weight: 500;
-  transition: all 0.3s ease;
+.quick-action-btn {
+  width: 100%;
   justify-content: flex-start;
+  padding: 0.8rem 1rem;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  background: rgba(5, 13, 26, 0.35) !important;
+  color: #e0e0e0 !important;
 }
 
-.dashboard-card button:hover {
-  background-color: #f0f0f0 !important;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
+.quick-action-btn:hover {
+  background: rgba(26, 58, 82, 0.5) !important;
+  color: #ffffff !important;
 }
 
-.dashboard-card button:active {
-  transform: translateY(0);
+.quick-action-btn.btn-primary {
+  background: rgba(26, 58, 82, 0.78) !important;
+  border-color: rgba(64, 142, 214, 0.4) !important;
+  color: #ffffff !important;
+}
+
+.quick-action-btn.btn-primary:hover {
+  background: rgba(26, 58, 82, 0.95) !important;
 }
 
 .dashboard-card svg {
   flex-shrink: 0;
+  opacity: 0.95;
 }
 </style>

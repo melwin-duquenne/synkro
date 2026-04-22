@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, computed, shallowRef } from 'vue'
-import { Editor, EditorContent } from '@tiptap/vue-3'
-import StarterKit from '@tiptap/starter-kit'
-import Collaboration from '@tiptap/extension-collaboration'
-import CollaborationCursor from '@tiptap/extension-collaboration-cursor'
-import Underline from '@tiptap/extension-underline'
-import TextAlign from '@tiptap/extension-text-align'
-import * as Y from 'yjs'
-import { WebsocketProvider } from 'y-websocket'
-import { useAuthStore } from '@/stores/auth'
-import AiChatPanel from '@/components/ai/AiChatPanel.vue'
+import { ref, onMounted, onUnmounted, watch, computed, shallowRef } from "vue";
+import { Editor, EditorContent } from "@tiptap/vue-3";
+import StarterKit from "@tiptap/starter-kit";
+import Collaboration from "@tiptap/extension-collaboration";
+import CollaborationCursor from "@tiptap/extension-collaboration-cursor";
+import Underline from "@tiptap/extension-underline";
+import TextAlign from "@tiptap/extension-text-align";
+import * as Y from "yjs";
+import { WebsocketProvider } from "y-websocket";
+import { useAuthStore } from "@/stores/auth";
+import AiChatPanel from "@/components/ai/AiChatPanel.vue";
 
 const props = defineProps<{
   roomId: number;
@@ -34,21 +34,23 @@ const userColor = colors[Math.floor(Math.random() * colors.length)];
 let ydoc: Y.Doc | null = null;
 let provider: WebsocketProvider | null = null;
 
-const saving = ref(false)
-const lastSaved = ref<Date | null>(null)
-const exportingPdf = ref(false)
-const isConnected = ref(false)
-const showAiPanel = ref(false)
-const selectedText = ref('')
-const selectionRange = ref<{ from: number; to: number } | null>(null)
-const aiRequestHadDocContent = ref(false)
-const toastMessage = ref<string | null>(null)
-let toastTimeout: ReturnType<typeof setTimeout> | null = null
+const saving = ref(false);
+const lastSaved = ref<Date | null>(null);
+const exportingPdf = ref(false);
+const isConnected = ref(false);
+const showAiPanel = ref(false);
+const selectedText = ref("");
+const selectionRange = ref<{ from: number; to: number } | null>(null);
+const aiRequestHadDocContent = ref(false);
+const toastMessage = ref<string | null>(null);
+let toastTimeout: ReturnType<typeof setTimeout> | null = null;
 
 function showToast(msg: string) {
-  toastMessage.value = msg
-  if (toastTimeout) clearTimeout(toastTimeout)
-  toastTimeout = setTimeout(() => { toastMessage.value = null }, 3000)
+  toastMessage.value = msg;
+  if (toastTimeout) clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(() => {
+    toastMessage.value = null;
+  }, 3000);
 }
 
 const editor = shallowRef<Editor | null>(null);
@@ -251,64 +253,38 @@ async function exportToPdf() {
 
 function openAiPanel() {
   if (editor.value) {
-    const { from, to } = editor.value.state.selection
+    const { from, to } = editor.value.state.selection;
     if (from !== to) {
-      selectedText.value = editor.value.state.doc.textBetween(from, to)
-      selectionRange.value = { from, to }
+      selectedText.value = editor.value.state.doc.textBetween(from, to);
+      selectionRange.value = { from, to };
     } else {
-      selectedText.value = ''
-      selectionRange.value = null
+      selectedText.value = "";
+      selectionRange.value = null;
     }
-    aiRequestHadDocContent.value = !editor.value?.isEmpty
+    aiRequestHadDocContent.value = !editor.value?.isEmpty;
   }
-  showAiPanel.value = !showAiPanel.value
+  showAiPanel.value = !showAiPanel.value;
 }
 
 function insertAiResponse(text: string) {
-  if (!editor.value) return
+  if (!editor.value) return;
   if (selectionRange.value) {
-    const { from, to } = selectionRange.value
-    editor.value.chain().focus().deleteRange({ from, to }).insertContentAt(from, text).run()
+    const { from, to } = selectionRange.value;
+    editor.value
+      .chain()
+      .focus()
+      .deleteRange({ from, to })
+      .insertContentAt(from, text)
+      .run();
   } else if (aiRequestHadDocContent.value) {
-    editor.value.chain().focus().clearContent().insertContent(text).run()
+    editor.value.chain().focus().clearContent().insertContent(text).run();
   } else {
-    editor.value.chain().focus().insertContent(text).run()
+    editor.value.chain().focus().insertContent(text).run();
   }
-  selectionRange.value = null
-  aiRequestHadDocContent.value = false
-  showAiPanel.value = false
-  showToast('Modification appliquée — Ctrl+Z pour annuler')
-}
-
-function openAiPanel() {
-  if (editor.value) {
-    const { from, to } = editor.value.state.selection
-    if (from !== to) {
-      selectedText.value = editor.value.state.doc.textBetween(from, to)
-      selectionRange.value = { from, to }
-    } else {
-      selectedText.value = ''
-      selectionRange.value = null
-    }
-    aiRequestHadDocContent.value = !editor.value?.isEmpty
-  }
-  showAiPanel.value = !showAiPanel.value
-}
-
-function insertAiResponse(text: string) {
-  if (!editor.value) return
-  if (selectionRange.value) {
-    const { from, to } = selectionRange.value
-    editor.value.chain().focus().deleteRange({ from, to }).insertContentAt(from, text).run()
-  } else if (aiRequestHadDocContent.value) {
-    editor.value.chain().focus().clearContent().insertContent(text).run()
-  } else {
-    editor.value.chain().focus().insertContent(text).run()
-  }
-  selectionRange.value = null
-  aiRequestHadDocContent.value = false
-  showAiPanel.value = false
-  showToast('Modification appliquée — Ctrl+Z pour annuler')
+  selectionRange.value = null;
+  aiRequestHadDocContent.value = false;
+  showAiPanel.value = false;
+  showToast("Modification appliquée — Ctrl+Z pour annuler");
 }
 
 function formatLastSaved(date: Date | null): string {
@@ -591,8 +567,19 @@ watch(
           @click="openAiPanel"
           title="Assistant IA"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-3.5 w-3.5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M13 10V3L4 14h7v7l9-11h-7z"
+            />
           </svg>
           IA
         </button>

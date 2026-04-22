@@ -109,20 +109,20 @@ function handleLeave() {
     <!-- Pre-call lobby -->
     <div
       v-if="callState === 'idle'"
-      class="flex-1 flex flex-col items-center justify-center gap-6 p-8"
+      class="flex-1 flex flex-col items-center justify-center gap-8 p-8 bg-linear-to-br from-[#0a1628] to-[#0f1f35]"
     >
       <div class="text-center">
-        <h2 class="text-2xl font-bold mb-2 text-[#e0e0e0]">
+        <h2 class="text-3xl font-bold mb-3 text-[#e7f0fa]">
           Rejoindre la visioconference
         </h2>
-        <p class="text-[#b0b0b0]">
+        <p class="text-[#8ea4be]">
           Verifiez votre camera et microphone avant de rejoindre
         </p>
       </div>
 
       <!-- Preview -->
       <div
-        class="relative w-80 aspect-video bg-[#1a3a52] rounded-xl overflow-hidden shadow-lg border border-gray-600"
+        class="relative w-80 aspect-video bg-[#1a3a52]/60 rounded-2xl overflow-hidden shadow-2xl border border-white/10"
       >
         <video
           ref="localVideoRef"
@@ -136,7 +136,7 @@ function handleLeave() {
           class="absolute inset-0 flex items-center justify-center bg-[#1a3a52]"
         >
           <div
-            class="flex items-center justify-center w-20 h-20 rounded-full bg-gray-500 text-white text-2xl"
+            class="flex items-center justify-center w-20 h-20 rounded-full bg-[#408ed6]/30 text-[#408ed6] text-2xl font-bold"
           >
             {{ authStore.user?.displayName?.charAt(0) }}
           </div>
@@ -146,10 +146,10 @@ function handleLeave() {
       <!-- Controls preview -->
       <div class="flex gap-4">
         <button
-          class="w-14 h-14 rounded-full flex items-center justify-center transition-colors"
+          class="w-14 h-14 rounded-full flex items-center justify-center transition-all"
           :class="
             localMedia.audioEnabled
-              ? 'bg-[#1a3a52] text-[#b0b0b0] hover:bg-[#2a4a62] hover:text-[#e0e0e0]'
+              ? 'bg-[#408ed6]/20 text-[#408ed6] hover:bg-[#408ed6]/30'
               : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
           "
           @click="toggleAudio"
@@ -192,10 +192,10 @@ function handleLeave() {
         </button>
 
         <button
-          class="w-14 h-14 rounded-full flex items-center justify-center transition-colors"
+          class="w-14 h-14 rounded-full flex items-center justify-center transition-all"
           :class="
             localMedia.videoEnabled
-              ? 'bg-[#1a3a52] text-[#b0b0b0] hover:bg-[#2a4a62] hover:text-[#e0e0e0]'
+              ? 'bg-[#408ed6]/20 text-[#408ed6] hover:bg-[#408ed6]/30'
               : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
           "
           @click="toggleVideo"
@@ -238,7 +238,7 @@ function handleLeave() {
         </button>
 
         <button
-          class="w-14 h-14 rounded-full flex items-center justify-center bg-[#1a3a52] text-[#b0b0b0] hover:bg-[#2a4a62] hover:text-[#e0e0e0] transition-colors"
+          class="w-14 h-14 rounded-full flex items-center justify-center bg-[#408ed6]/20 text-[#408ed6] hover:bg-[#408ed6]/30 transition-all"
           @click="showSettings = true"
           title="Parametres"
         >
@@ -265,7 +265,7 @@ function handleLeave() {
       </div>
 
       <button
-        class="px-6 py-3 rounded-lg bg-[#4115df] text-white hover:bg-[#6a3fe8] transition-colors flex items-center gap-2"
+        class="px-8 py-3 rounded-lg bg-[#408ed6] text-white hover:bg-[#5ba3e8] transition-all font-medium flex items-center gap-2 shadow-lg"
         @click="joinCall"
       >
         <svg
@@ -321,14 +321,16 @@ function handleLeave() {
       </div>
 
       <!-- Call controls bar -->
-      <div class="bg-[#1a3a52] p-4 border-t border-gray-600">
-        <div class="flex items-center justify-center gap-4">
+      <div
+        class="bg-[#0f1f35]/80 backdrop-blur-sm p-4 border-t border-white/10"
+      >
+        <div class="flex items-center justify-center gap-3">
           <!-- Microphone -->
           <button
-            class="w-14 h-14 rounded-full flex items-center justify-center transition-colors"
+            class="w-12 h-12 rounded-full flex items-center justify-center transition-all"
             :class="
               localMedia.audioEnabled
-                ? 'bg-[#0a1628] text-[#b0b0b0] hover:bg-[#2a4a62] hover:text-[#e0e0e0]'
+                ? 'bg-[#408ed6]/20 text-[#408ed6] hover:bg-[#408ed6]/30'
                 : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
             "
             @click="toggleAudio"
@@ -336,7 +338,7 @@ function handleLeave() {
           >
             <svg
               v-if="localMedia.audioEnabled"
-              class="w-6 h-6"
+              class="w-5 h-5"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -350,7 +352,7 @@ function handleLeave() {
             </svg>
             <svg
               v-else
-              class="w-6 h-6"
+              class="w-5 h-5"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -372,10 +374,10 @@ function handleLeave() {
 
           <!-- Camera -->
           <button
-            class="w-14 h-14 rounded-full flex items-center justify-center transition-colors"
+            class="w-12 h-12 rounded-full flex items-center justify-center transition-all"
             :class="
               localMedia.videoEnabled
-                ? 'bg-[#0a1628] text-[#b0b0b0] hover:bg-[#2a4a62] hover:text-[#e0e0e0]'
+                ? 'bg-[#408ed6]/20 text-[#408ed6] hover:bg-[#408ed6]/30'
                 : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
             "
             @click="toggleVideo"
@@ -419,11 +421,11 @@ function handleLeave() {
 
           <!-- Screen share -->
           <button
-            class="w-14 h-14 rounded-full flex items-center justify-center transition-colors"
+            class="w-12 h-12 rounded-full flex items-center justify-center transition-all"
             :class="
               localMedia.screenSharing
                 ? 'bg-[#6fdd9f] text-black hover:bg-[#5ac88f]'
-                : 'bg-[#0a1628] text-[#b0b0b0] hover:bg-[#2a4a62] hover:text-[#e0e0e0]'
+                : 'bg-[#408ed6]/20 text-[#408ed6] hover:bg-[#408ed6]/30'
             "
             @click="
               localMedia.screenSharing ? stopScreenShare() : startScreenShare()
@@ -447,7 +449,7 @@ function handleLeave() {
 
           <!-- Settings -->
           <button
-            class="w-14 h-14 rounded-full flex items-center justify-center bg-[#0a1628] text-[#b0b0b0] hover:bg-[#2a4a62] hover:text-[#e0e0e0] transition-colors"
+            class="w-12 h-12 rounded-full flex items-center justify-center bg-[#408ed6]/20 text-[#408ed6] hover:bg-[#408ed6]/30 transition-all"
             @click="showSettings = true"
             title="Parametres"
           >
@@ -495,7 +497,7 @@ function handleLeave() {
         </div>
 
         <!-- Participant count -->
-        <div class="text-center mt-2 text-sm text-[#b0b0b0]">
+        <div class="text-center mt-3 text-sm text-[#8ea4be]">
           {{ participantCount }} participant{{
             participantCount > 1 ? "s" : ""
           }}
@@ -546,18 +548,20 @@ function handleLeave() {
 
     <!-- Settings modal -->
     <dialog class="modal" :class="{ 'modal-open': showSettings }">
-      <div class="modal-box bg-[#0a1628] border border-gray-600">
-        <h3 class="font-bold text-lg mb-4 text-[#e0e0e0]">
+      <div
+        class="modal-box bg-[#0f1f35]/80 backdrop-blur-sm border border-white/10 rounded-2xl shadow-2xl"
+      >
+        <h3 class="font-bold text-lg mb-4 text-[#e7f0fa]">
           Parametres audio/video
         </h3>
 
         <div class="mb-4">
-          <label class="block text-[#e0e0e0] text-sm font-medium mb-2">
+          <label class="block text-[#dbe6f2] text-sm font-medium mb-2">
             Microphone
           </label>
           <select
             v-model="selectedAudioInput"
-            class="w-full px-3 py-2 rounded-lg bg-[#1a3a52] border border-gray-600 text-[#e0e0e0] focus:outline-none focus:border-[#4115df] focus:ring-1 focus:ring-[#4115df]/30"
+            class="w-full px-3 py-2 rounded-lg bg-[#0a1628]/50 border border-white/10 text-[#e0e0e0] focus:outline-none focus:ring-2 focus:ring-[#408ed6] focus:border-transparent transition-all"
           >
             <option
               v-for="device in audioInputDevices"
@@ -570,12 +574,12 @@ function handleLeave() {
         </div>
 
         <div class="mb-4">
-          <label class="block text-[#e0e0e0] text-sm font-medium mb-2">
+          <label class="block text-[#dbe6f2] text-sm font-medium mb-2">
             Camera
           </label>
           <select
             v-model="selectedVideoInput"
-            class="w-full px-3 py-2 rounded-lg bg-[#1a3a52] border border-gray-600 text-[#e0e0e0] focus:outline-none focus:border-[#4115df] focus:ring-1 focus:ring-[#4115df]/30"
+            class="w-full px-3 py-2 rounded-lg bg-[#0a1628]/50 border border-white/10 text-[#e0e0e0] focus:outline-none focus:ring-2 focus:ring-[#408ed6] focus:border-transparent transition-all"
           >
             <option
               v-for="device in videoInputDevices"
@@ -589,7 +593,7 @@ function handleLeave() {
 
         <div class="flex gap-2 justify-end">
           <button
-            class="px-4 py-2 rounded-lg bg-[#1a3a52] text-[#b0b0b0] hover:bg-[#2a4a62] transition-colors"
+            class="px-4 py-2 rounded-lg bg-[#1a3a52]/60 border border-white/10 text-[#dbe6f2] hover:bg-[#1a3a52] hover:border-[#408ed6]/50 transition-all"
             @click="showSettings = false"
           >
             Fermer

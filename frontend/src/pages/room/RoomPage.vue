@@ -144,24 +144,33 @@ onMounted(async () => {
     <div v-else-if="!room" class="flex justify-center items-center h-full">
       <div class="text-center">
         <h2 class="text-2xl font-bold mb-2">Room introuvable</h2>
-        <router-link :to="{ name: 'rooms', params: { entrepriseSlug: $route.params.entrepriseSlug } }" class="btn btn-primary">Retour aux rooms</router-link>
+        <router-link
+          :to="{
+            name: 'rooms',
+            params: { entrepriseSlug: $route.params.entrepriseSlug },
+          }"
+          class="btn btn-primary"
+          >Retour aux rooms</router-link
+        >
       </div>
     </div>
 
     <div v-else class="flex flex-col h-full">
       <!-- Room Header -->
-      <div class="flex items-center justify-between mb-4 px-4">
+      <div
+        class="flex items-center justify-between mb-4 px-4 pb-3 border-b border-white/10"
+      >
         <div>
-          <h1 class="text-3xl font-bold text-[#e0e0e0]">{{ room.name }}</h1>
-          <p class="text-[#b0b0b0] mt-1">
+          <h1 class="text-3xl font-bold text-[#e7f0fa]">{{ room.name }}</h1>
+          <p class="text-[#8ea4be] mt-1">
             Créée par
-            <span class="text-[#4115df]">{{ room.creator?.displayName }}</span>
+            <span class="text-[#408ed6]">{{ room.creator?.displayName }}</span>
           </p>
         </div>
         <div class="flex items-center gap-2 flex-wrap">
           <button
             v-if="canEditRoom"
-            class="btn btn-sm btn-ghost rounded-lg hover:bg-[#1a3a52]"
+            class="btn btn-sm bg-[#1a3a52]/50 border-white/10 text-[#dbe6f2] hover:bg-[#1a3a52] hover:border-[#408ed6]/50 rounded-lg"
             @click="showSettings = true"
             title="Parametres de la room"
           >
@@ -188,7 +197,7 @@ onMounted(async () => {
             <span class="hidden sm:inline">Parametres</span>
           </button>
           <button
-            class="btn btn-sm btn-ghost rounded-lg hover:bg-[#1a3a52]"
+            class="btn btn-sm bg-[#1a3a52]/50 border-white/10 text-[#dbe6f2] hover:bg-[#1a3a52] hover:border-[#408ed6]/50 rounded-lg"
             @click="showModuleOrder = true"
             title="Reorganiser les modules"
           >
@@ -209,7 +218,7 @@ onMounted(async () => {
             <span class="hidden sm:inline">Ordre</span>
           </button>
           <button
-            class="btn btn-sm btn-ghost rounded-lg hover:bg-[#1a3a52]"
+            class="btn btn-sm bg-[#1a3a52]/50 border-white/10 text-[#dbe6f2] hover:bg-[#1a3a52] hover:border-[#408ed6]/50 rounded-lg"
             @click="showLayoutSelector = true"
             title="Changer la disposition"
           >
@@ -245,16 +254,16 @@ onMounted(async () => {
       <!-- Tabs Layout -->
       <template v-if="layoutType === 'tabs'">
         <div
-          class="tabs tabs-boxed mb-4 overflow-x-auto bg-transparent"
+          class="tabs tabs-boxed mb-4 overflow-x-auto bg-transparent border-b border-white/10"
           style="background-color: transparent"
         >
           <a
             v-for="mr in sortedModuleRooms"
             :key="mr.id"
-            class="tab text-[#b0b0b0] hover:text-[#e0e0e0] border-0 border-b-2 border-transparent hover:border-[#4115df]"
+            class="tab text-[#8ea4be] hover:text-[#e7f0fa] border-0 border-b-2 border-transparent hover:border-[#408ed6] transition-colors"
             :class="{
               'tab-active': activeModule === mr.module.code,
-              '!border-b-[#4115df] !text-[#4115df]':
+              '!border-b-[#408ed6] !text-[#408ed6]':
                 activeModule === mr.module.code,
             }"
             @click="activeModule = mr.module.code"
@@ -264,7 +273,7 @@ onMounted(async () => {
         </div>
 
         <div
-          class="flex-1 bg-[#0a1628] rounded-lg overflow-hidden shadow-lg border border-[#4115df]/10"
+          class="flex-1 bg-[#0a1628] rounded-xl overflow-hidden shadow-lg border border-white/10"
         >
           <component
             :is="getModuleComponent(activeModule)"
@@ -283,10 +292,10 @@ onMounted(async () => {
         <div
           v-for="mr in sortedModuleRooms"
           :key="mr.id"
-          class="bg-[#0a1628] rounded-lg overflow-hidden shadow-lg flex flex-col h-[400px] sm:h-auto border border-[#4115df]/10"
+          class="bg-[#0a1628] rounded-xl overflow-hidden shadow-lg flex flex-col h-[400px] sm:h-auto border border-white/10"
         >
           <div
-            class="bg-[#1a3a52] px-4 py-2 font-semibold border-b border-[#4115df]/20 flex-shrink-0 text-[#4115df]"
+            class="bg-[#1a3a52]/60 px-4 py-2 font-semibold border-b border-white/10 flex-shrink-0 text-[#dbe6f2]"
           >
             {{ mr.module.name }}
           </div>
@@ -308,11 +317,11 @@ onMounted(async () => {
         <div
           v-for="mr in sortedModuleRooms"
           :key="mr.id"
-          class="flex-1 bg-[#0a1628] rounded-lg overflow-hidden shadow-lg flex flex-col border border-[#4115df]/10"
+          class="flex-1 bg-[#0a1628] rounded-xl overflow-hidden shadow-lg flex flex-col border border-white/10"
           style="min-height: 0; flex-basis: 0"
         >
           <div
-            class="bg-base-200 px-4 py-2 font-semibold border-b border-base-300 flex-shrink-0"
+            class="bg-[#1a3a52]/60 px-4 py-2 font-semibold border-b border-white/10 flex-shrink-0 text-[#dbe6f2]"
           >
             {{ mr.module.name }}
           </div>
@@ -334,11 +343,11 @@ onMounted(async () => {
         <div
           v-for="mr in sortedModuleRooms"
           :key="mr.id"
-          class="bg-base-100 rounded-lg overflow-hidden shadow-lg flex flex-col h-[400px] sm:h-auto"
+          class="bg-[#0a1628] rounded-xl overflow-hidden shadow-lg flex flex-col h-[400px] sm:h-auto border border-white/10"
           style="min-height: 0; min-width: 0; flex-basis: 0"
         >
           <div
-            class="bg-base-200 px-4 py-2 font-semibold border-b border-base-300 flex-shrink-0"
+            class="bg-[#1a3a52]/60 px-4 py-2 font-semibold border-b border-white/10 flex-shrink-0 text-[#dbe6f2]"
           >
             {{ mr.module.name }}
           </div>
@@ -359,10 +368,10 @@ onMounted(async () => {
       >
         <div
           v-if="sortedModuleRooms[0]"
-          class="flex-none w-full sm:w-1/3 bg-base-100 rounded-lg overflow-hidden shadow-lg flex flex-col min-h-[300px] sm:min-h-0"
+          class="flex-none w-full sm:w-1/3 bg-[#0a1628] rounded-xl overflow-hidden shadow-lg flex flex-col min-h-[300px] sm:min-h-0 border border-white/10"
         >
           <div
-            class="bg-base-200 px-3 sm:px-4 py-2 font-semibold text-sm sm:text-base border-b border-base-300 flex-shrink-0"
+            class="bg-[#1a3a52]/60 px-3 sm:px-4 py-2 font-semibold text-sm sm:text-base border-b border-white/10 flex-shrink-0 text-[#dbe6f2]"
           >
             {{ sortedModuleRooms[0].module.name }}
           </div>
@@ -381,11 +390,11 @@ onMounted(async () => {
           <div
             v-for="mr in sortedModuleRooms.slice(1, 3)"
             :key="mr.id"
-            class="flex-1 bg-base-100 rounded-lg overflow-hidden shadow-lg flex flex-col"
+            class="flex-1 bg-[#0a1628] rounded-xl overflow-hidden shadow-lg flex flex-col border border-white/10"
             style="min-height: 0; flex-basis: 0"
           >
             <div
-              class="bg-base-200 px-4 py-2 font-semibold border-b border-base-300 flex-shrink-0"
+              class="bg-[#1a3a52]/60 px-4 py-2 font-semibold border-b border-white/10 flex-shrink-0 text-[#dbe6f2]"
             >
               {{ mr.module.name }}
             </div>
@@ -412,11 +421,11 @@ onMounted(async () => {
           <div
             v-for="mr in sortedModuleRooms.slice(0, 2)"
             :key="mr.id"
-            class="flex-1 bg-base-100 rounded-lg overflow-hidden shadow-lg flex flex-col"
+            class="flex-1 bg-[#0a1628] rounded-xl overflow-hidden shadow-lg flex flex-col border border-white/10"
             style="min-height: 0; flex-basis: 0"
           >
             <div
-              class="bg-base-200 px-4 py-2 font-semibold border-b border-base-300 flex-shrink-0"
+              class="bg-[#1a3a52]/60 px-4 py-2 font-semibold border-b border-white/10 flex-shrink-0 text-[#dbe6f2]"
             >
               {{ mr.module.name }}
             </div>
@@ -431,10 +440,10 @@ onMounted(async () => {
         </div>
         <div
           v-if="sortedModuleRooms[2]"
-          class="flex-none w-full sm:w-1/3 bg-base-100 rounded-lg overflow-hidden shadow-lg flex flex-col min-h-[300px] sm:min-h-0"
+          class="flex-none w-full sm:w-1/3 bg-[#0a1628] rounded-xl overflow-hidden shadow-lg flex flex-col min-h-[300px] sm:min-h-0 border border-white/10"
         >
           <div
-            class="bg-base-200 px-3 sm:px-4 py-2 font-semibold text-sm sm:text-base border-b border-base-300 flex-shrink-0"
+            class="bg-[#1a3a52]/60 px-3 sm:px-4 py-2 font-semibold text-sm sm:text-base border-b border-white/10 flex-shrink-0 text-[#dbe6f2]"
           >
             {{ sortedModuleRooms[2].module.name }}
           </div>
@@ -455,10 +464,10 @@ onMounted(async () => {
       >
         <div
           v-if="sortedModuleRooms[0]"
-          class="flex-1 bg-base-100 rounded-lg overflow-hidden shadow-lg flex flex-col min-h-[300px] lg:min-h-0"
+          class="flex-1 bg-[#0a1628] rounded-xl overflow-hidden shadow-lg flex flex-col min-h-[300px] lg:min-h-0 border border-white/10"
         >
           <div
-            class="bg-base-200 px-3 sm:px-4 py-2 font-semibold text-sm sm:text-base border-b border-base-300 flex-shrink-0"
+            class="bg-[#1a3a52]/60 px-3 sm:px-4 py-2 font-semibold text-sm sm:text-base border-b border-white/10 flex-shrink-0 text-[#dbe6f2]"
           >
             {{ sortedModuleRooms[0].module.name }}
           </div>
@@ -477,11 +486,11 @@ onMounted(async () => {
           <div
             v-for="mr in sortedModuleRooms.slice(1, 4)"
             :key="mr.id"
-            class="flex-1 bg-base-100 rounded-lg overflow-hidden shadow-lg flex flex-col"
+            class="flex-1 bg-[#0a1628] rounded-xl overflow-hidden shadow-lg flex flex-col border border-white/10"
             style="min-height: 0; flex-basis: 0"
           >
             <div
-              class="bg-base-200 px-4 py-2 font-semibold text-sm border-b border-base-300 flex-shrink-0"
+              class="bg-[#1a3a52]/60 px-4 py-2 font-semibold text-sm border-b border-white/10 flex-shrink-0 text-[#dbe6f2]"
             >
               {{ mr.module.name }}
             </div>

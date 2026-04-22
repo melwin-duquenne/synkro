@@ -222,18 +222,18 @@ onMounted(() => {
     >
       <div>
         <h1 class="text-3xl font-bold text-white mb-2">Mon Calendrier</h1>
-        <p class="text-gray-300">Vos événements personnels</p>
+        <p class="text-gray-400">Vos événements personnels</p>
       </div>
 
       <!-- Compact Workload Indicator -->
-      <div class="flex items-center gap-4">
+      <div class="flex items-center gap-4 flex-wrap">
         <div
           v-if="
             (dailyWorkload || weeklyWorkload) && !dailyLoading && !weeklyLoading
           "
           class="flex items-center gap-3"
         >
-          <span class="text-sm font-medium text-gray-300"
+          <span class="text-sm font-medium text-gray-400"
             >Charge de travail :</span
           >
 
@@ -242,26 +242,38 @@ onMounted(() => {
             v-if="dailyWorkload"
             @click="showWorkloadDetail = true"
             :class="[
-              'badge badge-lg gap-2 cursor-pointer hover:brightness-110 transition-all',
+              'group min-w-40 rounded-xl border px-3 py-2 text-left transition-all hover:bg-white/10',
               dailyWorkload.status === 'normal'
-                ? 'badge-success'
+                ? 'bg-emerald-500/10 border-emerald-500/30'
                 : dailyWorkload.status === 'busy'
-                  ? 'badge-warning'
-                  : 'badge-error',
+                  ? 'bg-amber-500/10 border-amber-500/30'
+                  : 'bg-red-500/10 border-red-500/30',
             ]"
             :title="`Aujourd'hui: ${dailyWorkload.totalHours}h / ${dailyWorkload.standardHours}h`"
           >
-            <span class="text-lg">
-              {{
-                dailyWorkload.status === "normal"
-                  ? "🟢"
-                  : dailyWorkload.status === "busy"
-                    ? "🟡"
-                    : "🔴"
-              }}
-            </span>
-            <span class="font-semibold">{{ dailyWorkload.percentage }}%</span>
-            <span class="text-xs opacity-70">jour</span>
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] uppercase tracking-wide text-gray-400"
+                >Aujourd'hui</span
+              >
+              <span class="text-lg leading-none">
+                {{
+                  dailyWorkload.status === "normal"
+                    ? "🟢"
+                    : dailyWorkload.status === "busy"
+                      ? "🟡"
+                      : "🔴"
+                }}
+              </span>
+            </div>
+            <div class="mt-1 flex items-end justify-between gap-2">
+              <span class="text-xl font-bold tabular-nums text-white"
+                >{{ dailyWorkload.percentage }}%</span
+              >
+              <span class="text-[11px] text-gray-400"
+                >{{ dailyWorkload.totalHours }}h /
+                {{ dailyWorkload.standardHours }}h</span
+              >
+            </div>
           </button>
 
           <!-- Weekly Badge -->
@@ -269,26 +281,38 @@ onMounted(() => {
             v-if="weeklyWorkload"
             @click="showWorkloadDetail = true"
             :class="[
-              'badge badge-lg gap-2 cursor-pointer hover:brightness-110 transition-all',
+              'group min-w-40 rounded-xl border px-3 py-2 text-left transition-all hover:bg-white/10',
               weeklyWorkload.status === 'normal'
-                ? 'badge-success'
+                ? 'bg-emerald-500/10 border-emerald-500/30'
                 : weeklyWorkload.status === 'busy'
-                  ? 'badge-warning'
-                  : 'badge-error',
+                  ? 'bg-amber-500/10 border-amber-500/30'
+                  : 'bg-red-500/10 border-red-500/30',
             ]"
             :title="`Cette semaine: ${weeklyWorkload.totalHours}h / ${weeklyWorkload.standardHours}h`"
           >
-            <span class="text-lg">
-              {{
-                weeklyWorkload.status === "normal"
-                  ? "🟢"
-                  : weeklyWorkload.status === "busy"
-                    ? "🟡"
-                    : "🔴"
-              }}
-            </span>
-            <span class="font-semibold">{{ weeklyWorkload.percentage }}%</span>
-            <span class="text-xs opacity-70">sem.</span>
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] uppercase tracking-wide text-gray-400"
+                >Semaine</span
+              >
+              <span class="text-lg leading-none">
+                {{
+                  weeklyWorkload.status === "normal"
+                    ? "🟢"
+                    : weeklyWorkload.status === "busy"
+                      ? "🟡"
+                      : "🔴"
+                }}
+              </span>
+            </div>
+            <div class="mt-1 flex items-end justify-between gap-2">
+              <span class="text-xl font-bold tabular-nums text-white"
+                >{{ weeklyWorkload.percentage }}%</span
+              >
+              <span class="text-[11px] text-gray-400"
+                >{{ weeklyWorkload.totalHours }}h /
+                {{ weeklyWorkload.standardHours }}h</span
+              >
+            </div>
           </button>
         </div>
 
@@ -296,7 +320,7 @@ onMounted(() => {
           v-else-if="dailyLoading || weeklyLoading"
           class="flex items-center gap-3"
         >
-          <span class="text-sm font-medium text-gray-300"
+          <span class="text-sm font-medium text-gray-400"
             >Charge de travail</span
           >
           <div class="skeleton h-8 w-24"></div>
@@ -304,7 +328,7 @@ onMounted(() => {
         </div>
 
         <button
-          class="btn btn-primary bg-white text-black border-0"
+          class="btn btn-primary px-6"
           @click="openCreateModal(new Date())"
         >
           + Nouvel événement
@@ -315,19 +339,19 @@ onMounted(() => {
     <div class="dashboard-card">
       <div>
         <!-- Month Navigation & Filters -->
-        <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center justify-between mb-6 flex-wrap gap-4">
           <div class="flex items-center gap-4">
             <h2 class="text-xl font-semibold capitalize text-white">
               {{ monthName }}
             </h2>
             <div class="flex gap-1">
               <button
-                class="btn btn-ghost btn-sm btn-square bg-white text-black border-0"
+                class="btn btn-ghost btn-sm btn-square border border-white/10 hover:bg-white/10"
                 @click="previousMonth"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  class="h-4 w-4"
+                  class="h-4 w-4 text-[#e0e0e0]"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -341,18 +365,18 @@ onMounted(() => {
                 </svg>
               </button>
               <button
-                class="btn btn-ghost btn-sm bg-white text-black border-0"
+                class="btn btn-ghost btn-sm border border-white/10 text-[#e0e0e0] hover:bg-white/10"
                 @click="goToToday"
               >
                 Aujourd'hui
               </button>
               <button
-                class="btn btn-ghost btn-sm btn-square bg-white text-black border-0"
+                class="btn btn-ghost btn-sm btn-square border border-white/10 hover:bg-white/10"
                 @click="nextMonth"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  class="h-4 w-4"
+                  class="h-4 w-4 text-[#e0e0e0]"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -370,13 +394,16 @@ onMounted(() => {
 
           <select
             v-model="filterEventType"
-            class="select select-sm select-bordered bg-[#001a3f] border-gray-500 text-white"
+            class="select border border-white/10 bg-white/5 text-[#e0e0e0] hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500/50 rounded-lg"
           >
-            <option :value="null">Tous les types</option>
+            <option :value="null" class="bg-[#0a1628] text-[#e0e0e0]">
+              Tous les types
+            </option>
             <option
               v-for="type in eventTypes"
               :key="type.value"
               :value="type.value"
+              class="bg-[#0a1628] text-[#e0e0e0]"
             >
               {{ type.label }}
             </option>
@@ -391,45 +418,48 @@ onMounted(() => {
         <!-- Calendar Grid -->
         <div v-else>
           <!-- Day headers -->
-          <div class="grid grid-cols-7 border-b border-gray-600 mb-1">
+          <div class="grid grid-cols-7 border-b border-white/10 mb-2">
             <div
               v-for="day in ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']"
               :key="day"
-              class="p-2 text-center text-sm font-medium text-gray-300"
+              class="p-3 text-center text-sm font-semibold text-gray-400"
             >
               {{ day }}
             </div>
           </div>
 
           <!-- Calendar days -->
-          <div class="grid grid-cols-7 grid-rows-6">
+          <div
+            class="grid grid-cols-7 grid-rows-6 gap-px bg-white/5 p-px rounded-lg overflow-hidden"
+          >
             <div
               v-for="(day, index) in daysInMonth"
               :key="index"
-              class="border border-gray-600 p-1 min-h-[100px] cursor-pointer hover:bg-[#1a3a52] transition-colors"
+              class="bg-[#1a2a3a] border border-white/5 p-2 min-h-24 cursor-pointer hover:bg-white/10 transition-colors"
               :class="{
-                'bg-[#001a3f]': !day.isCurrentMonth,
-                'bg-[#1a3a52]/20': isToday(day.date),
+                'bg-white/5 opacity-50': !day.isCurrentMonth,
+                'bg-blue-500/20 border border-blue-500/50': isToday(day.date),
               }"
               @click="openCreateModal(day.date)"
             >
               <!-- Day number -->
               <div
-                class="text-sm font-medium mb-1"
+                class="text-sm font-medium mb-2"
                 :class="{
-                  'text-gray-500': !day.isCurrentMonth,
-                  'text-white font-bold': isToday(day.date),
+                  'text-gray-600': !day.isCurrentMonth,
+                  'text-blue-400 font-bold': isToday(day.date),
+                  'text-white': day.isCurrentMonth && !isToday(day.date),
                 }"
               >
                 {{ day.date.getDate() }}
               </div>
 
               <!-- Events for this day -->
-              <div class="space-y-0.5 overflow-hidden">
+              <div class="space-y-1 overflow-hidden">
                 <div
                   v-for="event in getEventsForDate(day.date).slice(0, 3)"
                   :key="event.id"
-                  class="text-xs px-1 py-0.5 rounded truncate text-white cursor-pointer hover:opacity-80"
+                  class="text-xs px-2 py-1 rounded truncate text-white cursor-pointer hover:opacity-80 transition-opacity"
                   :class="getEventColor(event)"
                   :style="event.color ? { backgroundColor: event.color } : {}"
                   @click.stop="openEditModal(event)"
@@ -438,7 +468,7 @@ onMounted(() => {
                 </div>
                 <div
                   v-if="getEventsForDate(day.date).length > 3"
-                  class="text-xs text-primary pl-1 cursor-pointer hover:underline"
+                  class="text-xs text-blue-400 pl-1 cursor-pointer hover:underline font-medium"
                   @click.stop="openDayDetail(day.date)"
                 >
                   +{{ getEventsForDate(day.date).length - 3 }} autres
@@ -453,7 +483,7 @@ onMounted(() => {
     <!-- Legend -->
     <div class="dashboard-card">
       <div class="py-4">
-        <div class="flex items-center gap-6">
+        <div class="flex items-center gap-6 flex-wrap">
           <span class="font-medium text-white">Types :</span>
           <div
             v-for="type in eventTypes"
@@ -461,7 +491,7 @@ onMounted(() => {
             class="flex items-center gap-2"
           >
             <div :class="[type.color, 'w-3 h-3 rounded']"></div>
-            <span class="text-sm text-gray-300">{{ type.label }}</span>
+            <span class="text-sm text-gray-400">{{ type.label }}</span>
           </div>
         </div>
       </div>
@@ -469,7 +499,9 @@ onMounted(() => {
 
     <!-- Day Detail Modal -->
     <dialog class="modal" :class="{ 'modal-open': showDayDetail }">
-      <div class="modal-box max-w-lg bg-[#0a1628] border-none shadow-2xl">
+      <div
+        class="modal-box max-w-lg bg-[#0a1628] border border-white/10 shadow-2xl rounded-xl"
+      >
         <h3 class="font-bold text-lg mb-4 capitalize text-white">
           {{ dayDetailDate ? formatDayDetailDate(dayDetailDate) : "" }}
         </h3>
@@ -477,18 +509,18 @@ onMounted(() => {
           <div
             v-for="event in dayDetailEvents"
             :key="event.id"
-            class="flex items-center gap-3 p-3 rounded-lg hover:bg-[#1a3a52] cursor-pointer transition-colors"
+            class="flex items-center gap-3 p-3 rounded-lg hover:bg-white/10 cursor-pointer transition-colors border border-white/5"
             @click="openEditModal(event)"
           >
             <div
-              class="w-3 h-3 rounded-full flex-shrink-0"
+              class="w-3 h-3 rounded-full shrink-0"
               :class="getEventColor(event)"
             ></div>
             <div class="flex-1 min-w-0">
               <div class="font-medium text-sm truncate text-white">
                 {{ event.title }}
               </div>
-              <div class="text-xs text-gray-400">
+              <div class="text-xs text-gray-500">
                 <template v-if="event.isAllDay">Journée entière</template>
                 <template v-else
                   >{{ formatTime(event.startDate) }} -
@@ -499,14 +531,14 @@ onMounted(() => {
           </div>
           <div
             v-if="dayDetailEvents.length === 0"
-            class="text-center text-gray-400 py-4"
+            class="text-center text-gray-500 py-4"
           >
             Aucun événement
           </div>
         </div>
-        <div class="modal-action">
+        <div class="modal-action gap-3">
           <button
-            class="btn btn-sm btn-primary bg-white text-black border-0"
+            class="btn btn-sm btn-primary"
             @click="
               showDayDetail = false;
               openCreateModal(dayDetailDate!);
@@ -515,7 +547,7 @@ onMounted(() => {
             + Nouvel événement
           </button>
           <button
-            class="btn btn-sm bg-white text-black border-0"
+            class="btn btn-sm border border-white/10 text-[#e0e0e0] hover:bg-white/10"
             @click="showDayDetail = false"
           >
             Fermer
@@ -544,7 +576,9 @@ onMounted(() => {
 
     <!-- Workload Detail Modal -->
     <dialog :class="['modal', { 'modal-open': showWorkloadDetail }]">
-      <div class="modal-box max-w-4xl bg-[#0a1628] border-none shadow-2xl">
+      <div
+        class="modal-box max-w-4xl bg-[#0a1628] border border-white/10 shadow-2xl rounded-xl"
+      >
         <h3 class="font-bold text-lg mb-4 text-white">
           📊 Charge de travail détaillée
         </h3>
@@ -573,9 +607,9 @@ onMounted(() => {
           </div>
         </div>
 
-        <div class="modal-action">
+        <div class="modal-action gap-3">
           <button
-            class="btn btn-sm bg-white text-black border-0"
+            class="btn btn-sm border border-white/10 text-[#e0e0e0] hover:bg-white/10"
             @click="showWorkloadDetail = false"
           >
             Fermer
@@ -591,11 +625,11 @@ onMounted(() => {
 
 <style scoped>
 .dashboard-card {
-  background-color: #0a1628 !important;
-  border: none !important;
-  border-radius: 8px !important;
-  padding: 1.5rem !important;
-  color: #e0e0e0 !important;
+  background-color: #0a1628;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 1.5rem;
+  color: #e0e0e0;
   transition: all 0.3s ease;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
@@ -606,36 +640,21 @@ onMounted(() => {
 }
 
 .modal-box {
-  background-color: #0a1628 !important;
-  border: none !important;
-  color: #e0e0e0 !important;
-  border-radius: 8px !important;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4) !important;
+  background-color: #0a1628;
+  color: #e0e0e0;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
 }
 
 .modal-box h3 {
-  color: #ffffff !important;
+  color: #ffffff;
 }
 
 .modal-box h4 {
-  color: #ffffff !important;
+  color: #ffffff;
 }
 
 .modal-backdrop {
-  background-color: rgba(0, 0, 0, 0.6) !important;
-}
-
-/* Calendar grid event styling */
-:deep(.text-xs.px-1.py-0\.5) {
-  color: #ffffff !important;
-}
-
-/* Additional text color overrides for modal content */
-:deep(.modal-box .text-gray-300) {
-  color: #b0b0b0 !important;
-}
-
-:deep(.modal-box .text-gray-400) {
-  color: #808080 !important;
+  background-color: rgba(0, 0, 0, 0.6);
 }
 </style>
