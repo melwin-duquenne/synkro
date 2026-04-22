@@ -1,23 +1,36 @@
 <template>
-  <div class="card bg-base-100 shadow-xl">
-    <div class="card-body">
+  <div class="dashboard-card">
+    <div>
       <h2 class="card-title">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+        <svg
+          class="w-6 h-6"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+          />
         </svg>
         Disponibilité de l'équipe
       </h2>
-      
+
       <!-- État vide -->
-      <div v-if="!teamAvailability || teamAvailability.length === 0" class="text-center py-8 text-base-content/60">
+      <div
+        v-if="!teamAvailability || teamAvailability.length === 0"
+        class="text-center py-8 text-base-content/60"
+      >
         <p>Aucune information d'équipe disponible.</p>
       </div>
-      
+
       <div v-else class="space-y-3">
-        <div 
-          v-for="member in teamAvailability" 
+        <div
+          v-for="member in teamAvailability"
           :key="member.id"
-          class="flex items-center gap-3 p-3 rounded-lg hover:bg-base-200 transition-colors"
+          class="flex items-center gap-3 p-3 rounded-lg hover:bg-[#1a3a52] transition-colors"
         >
           <!-- Avatar -->
           <div class="avatar">
@@ -29,7 +42,7 @@
               </div>
             </div>
           </div>
-          
+
           <!-- Info -->
           <div class="flex-1 min-w-0">
             <div class="font-medium truncate">{{ member.name }}</div>
@@ -44,12 +57,14 @@
               </span>
             </div>
           </div>
-          
+
           <!-- Indicateur de charge -->
-          <div class="radial-progress text-xs" 
-               :class="getWorkloadProgressClass(member.workload)"
-               :style="`--value:${Math.min(member.workload, 100)}; --size:3rem;`"
-               role="progressbar">
+          <div
+            class="radial-progress text-xs"
+            :class="getWorkloadProgressClass(member.workload)"
+            :style="`--value:${Math.min(member.workload, 100)}; --size:3rem;`"
+            role="progressbar"
+          >
             {{ Math.round(member.workload) }}%
           </div>
         </div>
@@ -62,63 +77,84 @@
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || ''
 
 interface TeamMember {
-  id: number
-  name: string
-  email: string
-  avatar: string | null
-  workload: number
-  status: 'available' | 'busy' | 'absent'
+  id: number;
+  name: string;
+  email: string;
+  avatar: string | null;
+  workload: number;
+  status: "available" | "busy" | "absent";
 }
 
 defineProps<{
-  teamAvailability?: TeamMember[]
-}>()
+  teamAvailability?: TeamMember[];
+}>();
 
 const getInitials = (name: string): string => {
   return name
-    .split(' ')
-    .map(n => n[0])
-    .join('')
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
     .toUpperCase()
-    .substring(0, 2)
-}
+    .substring(0, 2);
+};
 
 const getStatusIcon = (status: string): string => {
   const icons: Record<string, string> = {
-    available: '<span class="inline-block w-2 h-2 rounded-full bg-success"></span>',
+    available:
+      '<span class="inline-block w-2 h-2 rounded-full bg-success"></span>',
     busy: '<span class="inline-block w-2 h-2 rounded-full bg-error"></span>',
-    absent: '<span class="inline-block w-2 h-2 rounded-full bg-base-300"></span>'
-  }
-  return icons[status] || '<span class="inline-block w-2 h-2 rounded-full bg-base-300"></span>'
-}
+    absent:
+      '<span class="inline-block w-2 h-2 rounded-full bg-[#667c99]"></span>',
+  };
+  return (
+    icons[status] ||
+    '<span class="inline-block w-2 h-2 rounded-full bg-[#667c99]"></span>'
+  );
+};
 
 const getStatusLabel = (status: string): string => {
   const labels: Record<string, string> = {
-    available: 'Disponible',
-    busy: 'Occupé',
-    absent: 'Absent'
-  }
-  return labels[status] || status
-}
+    available: "Disponible",
+    busy: "Occupé",
+    absent: "Absent",
+  };
+  return labels[status] || status;
+};
 
 const getStatusRingClass = (status: string): string => {
   const classes: Record<string, string> = {
-    available: 'ring-success',
-    busy: 'ring-error',
-    absent: 'ring-base-300'
-  }
-  return classes[status] || 'ring-base-300'
-}
+    available: "ring-success",
+    busy: "ring-error",
+    absent: "ring-base-300",
+  };
+  return classes[status] || "ring-base-300";
+};
 
 const getWorkloadColorClass = (workload: number): string => {
-  if (workload > 100) return 'text-error font-bold'
-  if (workload >= 80) return 'text-warning'
-  return 'text-success'
-}
+  if (workload > 100) return "text-error font-bold";
+  if (workload >= 80) return "text-warning";
+  return "text-success";
+};
 
 const getWorkloadProgressClass = (workload: number): string => {
-  if (workload > 100) return 'text-error'
-  if (workload >= 80) return 'text-warning'
-  return 'text-success'
-}
+  if (workload > 100) return "text-error";
+  if (workload >= 80) return "text-warning";
+  return "text-success";
+};
 </script>
+
+<style scoped>
+.dashboard-card {
+  background-color: #0a1628;
+  border: none;
+  border-radius: 8px;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.dashboard-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  transform: translateY(-2px);
+}
+</style>

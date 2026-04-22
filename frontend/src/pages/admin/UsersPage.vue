@@ -1,58 +1,63 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
-import { useAdminStore } from '@/stores/admin'
-import { useAuthStore } from '@/stores/auth'
-import { useInvitationStore } from '@/stores/invitation'
-import { canAssignRole, isAtLeast } from '@/utils/permissions'
-import type { UserRole } from '@/types'
+import { ref, onMounted, computed } from "vue";
+import { useAdminStore } from "@/stores/admin";
+import { useAuthStore } from "@/stores/auth";
+import { useInvitationStore } from "@/stores/invitation";
+import { canAssignRole, isAtLeast } from "@/utils/permissions";
+import type { UserRole } from "@/types";
 
-const adminStore = useAdminStore()
-const authStore = useAuthStore()
-const invitationStore = useInvitationStore()
+const adminStore = useAdminStore();
+const authStore = useAuthStore();
+const invitationStore = useInvitationStore();
 
 const roleLabels: Record<UserRole, string> = {
-  user: 'Utilisateur',
-  editor: 'Editeur',
-  owner: 'Proprietaire',
-  admin: 'Administrateur'
-}
+  user: "Utilisateur",
+  editor: "Editeur",
+  owner: "Proprietaire",
+  admin: "Administrateur",
+};
 
-const allRoles: UserRole[] = ['user', 'editor', 'owner', 'admin']
+const allRoles: UserRole[] = ["user", "editor", "owner", "admin"];
 
 function canChangeToRole(targetRole: UserRole): boolean {
-  if (!authStore.user) return false
-  return canAssignRole(authStore.user.role, targetRole)
+  if (!authStore.user) return false;
+  return canAssignRole(authStore.user.role, targetRole);
 }
 
-const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || ''
+const API_BASE = import.meta.env.VITE_API_URL?.replace("/api", "") || "";
 
-const deleteConfirmId = ref<number | null>(null)
-const deleteConfirmName = ref('')
-const success = ref<string | null>(null)
+const deleteConfirmId = ref<number | null>(null);
+const deleteConfirmName = ref("");
+const success = ref<string | null>(null);
 
 // Invitation form
-const invitationEmail = ref('')
-const invitationSuccess = ref<string | null>(null)
+const invitationEmail = ref("");
+const invitationSuccess = ref<string | null>(null);
 
 // Entreprise rename
-const editingEntreprise = ref(false)
-const entrepriseName = ref('')
-const entrepriseSuccess = ref<string | null>(null)
-const entrepriseError = ref<string | null>(null)
+const editingEntreprise = ref(false);
+const entrepriseName = ref("");
+const entrepriseSuccess = ref<string | null>(null);
+const entrepriseError = ref<string | null>(null);
 
 const sortedUsers = computed(() => {
-  const roleOrder: Record<string, number> = { admin: 0, owner: 1, editor: 2, user: 3 }
+  const roleOrder: Record<string, number> = {
+    admin: 0,
+    owner: 1,
+    editor: 2,
+    user: 3,
+  };
   return [...adminStore.users].sort((a, b) => {
-    const roleA = roleOrder[a.role] ?? 99
-    const roleB = roleOrder[b.role] ?? 99
-    if (roleA !== roleB) return roleA - roleB
-    return a.displayName.localeCompare(b.displayName)
-  })
-})
+    const roleA = roleOrder[a.role] ?? 99;
+    const roleB = roleOrder[b.role] ?? 99;
+    if (roleA !== roleB) return roleA - roleB;
+    return a.displayName.localeCompare(b.displayName);
+  });
+});
 
 const pendingInvitations = computed(() => {
-  return invitationStore.invitations.filter(i => i.status === 'pending')
-})
+  return invitationStore.invitations.filter((i) => i.status === "pending");
+});
 
 onMounted(() => {
   adminStore.fetchUsers()
@@ -60,53 +65,53 @@ onMounted(() => {
   if (authStore.currentEntreprise) {
     entrepriseName.value = authStore.currentEntreprise.name
   }
-})
+});
 
 async function handleRoleChange(userId: number, newRole: string) {
-  success.value = null
-  const ok = await adminStore.updateUser(userId, { role: newRole })
+  success.value = null;
+  const ok = await adminStore.updateUser(userId, { role: newRole });
   if (ok) {
-    success.value = 'Rôle mis à jour'
+    success.value = "Rôle mis à jour";
   }
 }
 
 function confirmDelete(userId: number, displayName: string) {
-  deleteConfirmId.value = userId
-  deleteConfirmName.value = displayName
-  const modal = document.getElementById('delete-modal') as HTMLDialogElement
-  modal?.showModal()
+  deleteConfirmId.value = userId;
+  deleteConfirmName.value = displayName;
+  const modal = document.getElementById("delete-modal") as HTMLDialogElement;
+  modal?.showModal();
 }
 
 async function handleDelete() {
-  if (!deleteConfirmId.value) return
-  success.value = null
+  if (!deleteConfirmId.value) return;
+  success.value = null;
 
-  const ok = await adminStore.deleteUser(deleteConfirmId.value)
+  const ok = await adminStore.deleteUser(deleteConfirmId.value);
   if (ok) {
-    success.value = `Utilisateur "${deleteConfirmName.value}" supprimé`
+    success.value = `Utilisateur "${deleteConfirmName.value}" supprimé`;
   }
 
-  deleteConfirmId.value = null
-  const modal = document.getElementById('delete-modal') as HTMLDialogElement
-  modal?.close()
+  deleteConfirmId.value = null;
+  const modal = document.getElementById("delete-modal") as HTMLDialogElement;
+  modal?.close();
 }
 
 async function handleSendInvitation() {
-  if (!invitationEmail.value.trim()) return
-  invitationSuccess.value = null
+  if (!invitationEmail.value.trim()) return;
+  invitationSuccess.value = null;
 
-  const ok = await invitationStore.sendInvitation(invitationEmail.value.trim())
+  const ok = await invitationStore.sendInvitation(invitationEmail.value.trim());
   if (ok) {
-    invitationSuccess.value = `Invitation envoyée à ${invitationEmail.value}`
-    invitationEmail.value = ''
+    invitationSuccess.value = `Invitation envoyée à ${invitationEmail.value}`;
+    invitationEmail.value = "";
   }
 }
 
 async function handleCancelInvitation(id: number) {
-  invitationSuccess.value = null
-  const ok = await invitationStore.cancelInvitation(id)
+  invitationSuccess.value = null;
+  const ok = await invitationStore.cancelInvitation(id);
   if (ok) {
-    invitationSuccess.value = 'Invitation annulée'
+    invitationSuccess.value = "Invitation annulée";
   }
 }
 
@@ -122,21 +127,21 @@ function cancelEditEntreprise() {
 }
 
 async function handleRenameEntreprise() {
-  if (!entrepriseName.value.trim()) return
-  entrepriseSuccess.value = null
-  entrepriseError.value = null
+  if (!entrepriseName.value.trim()) return;
+  entrepriseSuccess.value = null;
+  entrepriseError.value = null;
 
-  const ok = await authStore.updateEntrepriseName(entrepriseName.value.trim())
+  const ok = await authStore.updateEntrepriseName(entrepriseName.value.trim());
   if (ok) {
-    entrepriseSuccess.value = 'Nom de l\'entreprise mis à jour'
-    editingEntreprise.value = false
+    entrepriseSuccess.value = "Nom de l'entreprise mis à jour";
+    editingEntreprise.value = false;
   } else {
-    entrepriseError.value = authStore.error || 'Erreur lors de la mise à jour'
+    entrepriseError.value = authStore.error || "Erreur lors de la mise à jour";
   }
 }
 
 function getInitials(name: string): string {
-  return name.charAt(0).toUpperCase()
+  return name.charAt(0).toUpperCase();
 }
 </script>
 
@@ -163,7 +168,11 @@ function getInitials(name: string): string {
           </button>
         </div>
 
-        <form v-else @submit.prevent="handleRenameEntreprise" class="flex items-end gap-3 mt-2">
+        <form
+          v-else
+          @submit.prevent="handleRenameEntreprise"
+          class="flex items-end gap-3 mt-2"
+        >
           <div class="form-control flex-1">
             <input
               v-model="entrepriseName"
@@ -174,11 +183,22 @@ function getInitials(name: string): string {
               maxlength="255"
             />
           </div>
-          <button type="submit" class="btn btn-primary" :disabled="authStore.loading">
-            <span v-if="authStore.loading" class="loading loading-spinner loading-sm"></span>
+          <button
+            type="submit"
+            class="btn btn-primary bg-white text-black border-0"
+            :disabled="authStore.loading"
+          >
+            <span
+              v-if="authStore.loading"
+              class="loading loading-spinner loading-sm"
+            ></span>
             Enregistrer
           </button>
-          <button type="button" class="btn btn-ghost" @click="cancelEditEntreprise">
+          <button
+            type="button"
+            class="btn btn-ghost bg-white text-black border-0"
+            @click="cancelEditEntreprise"
+          >
             Annuler
           </button>
         </form>
@@ -197,7 +217,10 @@ function getInitials(name: string): string {
           <span>{{ invitationStore.error }}</span>
         </div>
 
-        <form @submit.prevent="handleSendInvitation" class="flex items-end gap-3 mt-2">
+        <form
+          @submit.prevent="handleSendInvitation"
+          class="flex items-end gap-3 mt-2"
+        >
           <div class="form-control flex-1">
             <input
               v-model="invitationEmail"
@@ -207,8 +230,15 @@ function getInitials(name: string): string {
               required
             />
           </div>
-          <button type="submit" class="btn btn-primary" :disabled="invitationStore.loading">
-            <span v-if="invitationStore.loading" class="loading loading-spinner loading-sm"></span>
+          <button
+            type="submit"
+            class="btn btn-primary bg-white text-black border-0"
+            :disabled="invitationStore.loading"
+          >
+            <span
+              v-if="invitationStore.loading"
+              class="loading loading-spinner loading-sm"
+            ></span>
             Inviter
           </button>
         </form>
@@ -230,10 +260,12 @@ function getInitials(name: string): string {
                 <tr v-for="inv in pendingInvitations" :key="inv.id">
                   <td>{{ inv.email }}</td>
                   <td>{{ inv.invitedBy.displayName }}</td>
-                  <td>{{ new Date(inv.expiresAt).toLocaleDateString('fr-FR') }}</td>
+                  <td>
+                    {{ new Date(inv.expiresAt).toLocaleDateString("fr-FR") }}
+                  </td>
                   <td>
                     <button
-                      class="btn btn-error btn-xs btn-outline"
+                      class="btn btn-error btn-xs btn-outline bg-white text-black"
                       @click="handleCancelInvitation(inv.id)"
                       :disabled="invitationStore.loading"
                     >
@@ -259,7 +291,10 @@ function getInitials(name: string): string {
       <span>{{ adminStore.error }}</span>
     </div>
 
-    <div v-if="adminStore.loading && adminStore.users.length === 0" class="flex justify-center py-12">
+    <div
+      v-if="adminStore.loading && adminStore.users.length === 0"
+      class="flex justify-center py-12"
+    >
       <span class="loading loading-spinner loading-lg"></span>
     </div>
 
@@ -283,26 +318,45 @@ function getInitials(name: string): string {
                   <div class="flex items-center gap-3">
                     <div class="avatar">
                       <div class="w-10 rounded-full">
-                        <img v-if="u.avatarUrl" :src="`${API_BASE}${u.avatarUrl}`" :alt="u.displayName" />
-                        <div v-else class="bg-primary text-primary-content w-full h-full flex items-center justify-center">
+                        <img
+                          v-if="u.avatarUrl"
+                          :src="`${API_BASE}${u.avatarUrl}`"
+                          :alt="u.displayName"
+                        />
+                        <div
+                          v-else
+                          class="bg-primary text-primary-content w-full h-full flex items-center justify-center"
+                        >
                           {{ getInitials(u.displayName) }}
                         </div>
                       </div>
                     </div>
                     <div>
                       <div class="font-bold">{{ u.displayName }}</div>
-                      <span v-if="u.id === authStore.user?.id" class="badge badge-ghost badge-xs">Vous</span>
+                      <span
+                        v-if="u.id === authStore.user?.id"
+                        class="badge badge-ghost badge-xs"
+                        >Vous</span
+                      >
                     </div>
                   </div>
                 </td>
                 <td>{{ u.email }}</td>
-                <td>{{ u.team?.name || '—' }}</td>
+                <td>{{ u.team?.name || "—" }}</td>
                 <td>
                   <select
                     class="select select-bordered select-sm"
                     :value="u.role"
-                    @change="handleRoleChange(u.id, ($event.target as HTMLSelectElement).value)"
-                    :disabled="u.id === authStore.user?.id || !isAtLeast(authStore.user?.role || 'user', 'owner')"
+                    @change="
+                      handleRoleChange(
+                        u.id,
+                        ($event.target as HTMLSelectElement).value,
+                      )
+                    "
+                    :disabled="
+                      u.id === authStore.user?.id ||
+                      !isAtLeast(authStore.user?.role || 'user', 'owner')
+                    "
                   >
                     <option
                       v-for="role in allRoles"
@@ -314,10 +368,10 @@ function getInitials(name: string): string {
                     </option>
                   </select>
                 </td>
-                <td>{{ new Date(u.createdAt).toLocaleDateString('fr-FR') }}</td>
+                <td>{{ new Date(u.createdAt).toLocaleDateString("fr-FR") }}</td>
                 <td>
                   <button
-                    class="btn btn-error btn-sm btn-outline"
+                    class="btn btn-error btn-sm btn-outline bg-white text-black"
                     @click="confirmDelete(u.id, u.displayName)"
                     :disabled="u.id === authStore.user?.id"
                     title="Supprimer"
@@ -330,7 +384,10 @@ function getInitials(name: string): string {
           </table>
         </div>
 
-        <div v-if="sortedUsers.length === 0 && !adminStore.loading" class="text-center py-8 text-base-content/50">
+        <div
+          v-if="sortedUsers.length === 0 && !adminStore.loading"
+          class="text-center py-8 text-base-content/50"
+        >
           Aucun utilisateur trouve
         </div>
       </div>
@@ -341,15 +398,18 @@ function getInitials(name: string): string {
       <div class="modal-box">
         <h3 class="font-bold text-lg">Confirmer la suppression</h3>
         <p class="py-4">
-          Etes-vous sur de vouloir supprimer l'utilisateur <strong>{{ deleteConfirmName }}</strong> ?
-          Cette action est irreversible.
+          Etes-vous sur de vouloir supprimer l'utilisateur
+          <strong>{{ deleteConfirmName }}</strong> ? Cette action est
+          irreversible.
         </p>
         <div class="modal-action">
           <form method="dialog">
-            <button class="btn btn-ghost">Annuler</button>
+            <button class="btn btn-ghost bg-white text-black border-0">
+              Annuler
+            </button>
           </form>
           <button
-            class="btn btn-error"
+            class="btn btn-error bg-white text-black border-0"
             @click="handleDelete"
             :disabled="adminStore.loading"
           >

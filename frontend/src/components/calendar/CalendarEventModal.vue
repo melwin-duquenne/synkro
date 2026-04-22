@@ -1,155 +1,167 @@
 <script setup lang="ts">
-import { ref, watch, computed, onMounted } from 'vue'
-import { useCalendarStore } from '@/stores/calendar'
-import type { CalendarEvent, EventType } from '@/types'
+import { ref, watch, computed, onMounted } from "vue";
+import { useCalendarStore } from "@/stores/calendar";
+import type { CalendarEvent, EventType } from "@/types";
 
 const props = defineProps<{
-  open: boolean
-  roomId: number
-  event: CalendarEvent | null
-  initialDate: Date | null
-}>()
+  open: boolean;
+  roomId: number;
+  event: CalendarEvent | null;
+  initialDate: Date | null;
+}>();
 
 const emit = defineEmits<{
-  close: []
-  saved: []
-  deleted: []
-}>()
+  close: [];
+  saved: [];
+  deleted: [];
+}>();
 
-const calendarStore = useCalendarStore()
+const calendarStore = useCalendarStore();
 
-const title = ref('')
-const description = ref('')
-const eventType = ref<EventType>('other')
-const startDate = ref('')
-const startTime = ref('09:00')
-const endDate = ref('')
-const endTime = ref('10:00')
-const isAllDay = ref(false)
-const location = ref('')
-const isPrivate = ref(false)
-const loading = ref(false)
-const selectedParticipantIds = ref<number[]>([])
-const participantSearch = ref('')
+const title = ref("");
+const description = ref("");
+const eventType = ref<EventType>("other");
+const startDate = ref("");
+const startTime = ref("09:00");
+const endDate = ref("");
+const endTime = ref("10:00");
+const isAllDay = ref(false);
+const location = ref("");
+const isPrivate = ref(false);
+const loading = ref(false);
+const selectedParticipantIds = ref<number[]>([]);
+const participantSearch = ref("");
 
-const isEditMode = computed(() => !!props.event)
+const isEditMode = computed(() => !!props.event);
 
 // Only show participants for room events
-const showParticipants = computed(() => props.roomId > 0)
+const showParticipants = computed(() => props.roomId > 0);
 
 const eventTypes: { value: EventType; label: string }[] = [
-  { value: 'meeting', label: 'Réunion' },
-  { value: 'absence', label: 'Absence' },
-  { value: 'blocked', label: 'Bloqué' },
-  { value: 'reminder', label: 'Rappel' },
-  { value: 'other', label: 'Autre' }
-]
-
+  { value: "meeting", label: "Réunion" },
+  { value: "absence", label: "Absence" },
+  { value: "blocked", label: "Bloqué" },
+  { value: "reminder", label: "Rappel" },
+  { value: "other", label: "Autre" },
+];
 
 const filteredUsers = computed(() => {
-  const search = participantSearch.value.toLowerCase()
-  return calendarStore.enterpriseUsers.filter(user =>
-    user.displayName.toLowerCase().includes(search) ||
-    user.email.toLowerCase().includes(search)
-  )
-})
+  const search = participantSearch.value.toLowerCase();
+  return calendarStore.enterpriseUsers.filter(
+    (user) =>
+      user.displayName.toLowerCase().includes(search) ||
+      user.email.toLowerCase().includes(search),
+  );
+});
 
 const selectedParticipants = computed(() => {
-  return calendarStore.enterpriseUsers.filter(u =>
-    selectedParticipantIds.value.includes(u.id)
-  )
-})
+  return calendarStore.enterpriseUsers.filter((u) =>
+    selectedParticipantIds.value.includes(u.id),
+  );
+});
 
 function formatDateForInput(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
-function parseDateTimeString(dateTimeStr: string): { date: string; time: string } {
+function parseDateTimeString(dateTimeStr: string): {
+  date: string;
+  time: string;
+} {
   // Parse la chaîne ISO sans conversion de timezone
-  const parts = dateTimeStr.split('T')
-  const date = parts[0] || ''
-  const time = parts[1] ? parts[1].substring(0, 5) : '00:00'
-  return { date, time }
+  const parts = dateTimeStr.split("T");
+  const date = parts[0] || "";
+  const time = parts[1] ? parts[1].substring(0, 5) : "00:00";
+  return { date, time };
 }
 
-watch(() => props.open, (isOpen) => {
-  if (isOpen) {
-    // Load users when modal opens
-    if (showParticipants.value && calendarStore.enterpriseUsers.length === 0) {
-      calendarStore.fetchEnterpriseUsers()
-    }
+watch(
+  () => props.open,
+  (isOpen) => {
+    if (isOpen) {
+      // Load users when modal opens
+      if (
+        showParticipants.value &&
+        calendarStore.enterpriseUsers.length === 0
+      ) {
+        calendarStore.fetchEnterpriseUsers();
+      }
 
-    if (props.event) {
-      // Edit mode
-      title.value = props.event.title
-      description.value = props.event.description || ''
-      eventType.value = props.event.eventType
-      isAllDay.value = props.event.isAllDay
-      location.value = props.event.location || ''
-      isPrivate.value = props.event.isPrivate
-      selectedParticipantIds.value = props.event.participants?.map(p => p.userId) || []
+      if (props.event) {
+        // Edit mode
+        title.value = props.event.title;
+        description.value = props.event.description || "";
+        eventType.value = props.event.eventType;
+        isAllDay.value = props.event.isAllDay;
+        location.value = props.event.location || "";
+        isPrivate.value = props.event.isPrivate;
+        selectedParticipantIds.value =
+          props.event.participants?.map((p) => p.userId) || [];
 
-      const startParsed = parseDateTimeString(props.event.startDate)
-      const endParsed = parseDateTimeString(props.event.endDate)
-      startDate.value = startParsed.date
-      startTime.value = startParsed.time
-      endDate.value = endParsed.date
-      endTime.value = endParsed.time
-    } else if (props.initialDate) {
-      // Create mode with initial date
-      resetForm()
-      startDate.value = formatDateForInput(props.initialDate)
-      endDate.value = formatDateForInput(props.initialDate)
-    } else {
-      resetForm()
+        const startParsed = parseDateTimeString(props.event.startDate);
+        const endParsed = parseDateTimeString(props.event.endDate);
+        startDate.value = startParsed.date;
+        startTime.value = startParsed.time;
+        endDate.value = endParsed.date;
+        endTime.value = endParsed.time;
+      } else if (props.initialDate) {
+        // Create mode with initial date
+        resetForm();
+        startDate.value = formatDateForInput(props.initialDate);
+        endDate.value = formatDateForInput(props.initialDate);
+      } else {
+        resetForm();
+      }
     }
-  }
-})
+  },
+);
 
 function resetForm() {
-  const today = new Date()
-  title.value = ''
-  description.value = ''
-  eventType.value = 'other'
-  startDate.value = formatDateForInput(today)
-  startTime.value = '09:00'
-  endDate.value = formatDateForInput(today)
-  endTime.value = '10:00'
-  isAllDay.value = false
-  location.value = ''
-  isPrivate.value = false
-  selectedParticipantIds.value = []
-  participantSearch.value = ''
+  const today = new Date();
+  title.value = "";
+  description.value = "";
+  eventType.value = "other";
+  startDate.value = formatDateForInput(today);
+  startTime.value = "09:00";
+  endDate.value = formatDateForInput(today);
+  endTime.value = "10:00";
+  isAllDay.value = false;
+  location.value = "";
+  isPrivate.value = false;
+  selectedParticipantIds.value = [];
+  participantSearch.value = "";
 }
 
 function toggleParticipant(userId: number) {
-  const index = selectedParticipantIds.value.indexOf(userId)
+  const index = selectedParticipantIds.value.indexOf(userId);
   if (index === -1) {
-    selectedParticipantIds.value.push(userId)
+    selectedParticipantIds.value.push(userId);
   } else {
-    selectedParticipantIds.value.splice(index, 1)
+    selectedParticipantIds.value.splice(index, 1);
   }
 }
 
 function removeParticipant(userId: number) {
-  selectedParticipantIds.value = selectedParticipantIds.value.filter(id => id !== userId)
+  selectedParticipantIds.value = selectedParticipantIds.value.filter(
+    (id) => id !== userId,
+  );
 }
 
 async function handleSubmit() {
-  if (!title.value.trim()) return
+  if (!title.value.trim()) return;
 
-  loading.value = true
+  loading.value = true;
 
   const startDateTime = isAllDay.value
     ? `${startDate.value}T08:00:00`
-    : `${startDate.value}T${startTime.value}:00`
+    : `${startDate.value}T${startTime.value}:00`;
 
   const endDateTime = isAllDay.value
     ? `${endDate.value}T19:00:00`
-    : `${endDate.value}T${endTime.value}:00`
+    : `${endDate.value}T${endTime.value}:00`;
 
   const data = {
     title: title.value,
@@ -161,65 +173,67 @@ async function handleSubmit() {
     location: location.value || undefined,
     isPrivate: isPrivate.value,
     roomId: props.roomId > 0 ? props.roomId : null,
-    participantIds: showParticipants.value ? selectedParticipantIds.value : []
-  }
+    participantIds: showParticipants.value ? selectedParticipantIds.value : [],
+  };
 
-  let success: boolean
+  let success: boolean;
 
   if (props.event) {
-    const result = await calendarStore.updateEvent(props.event.id, data)
-    success = !!result
+    const result = await calendarStore.updateEvent(props.event.id, data);
+    success = !!result;
   } else {
-    const result = await calendarStore.createEvent(data)
-    success = !!result
+    const result = await calendarStore.createEvent(data);
+    success = !!result;
   }
 
-  loading.value = false
+  loading.value = false;
 
   if (success) {
-    emit('saved')
+    emit("saved");
   }
 }
 
 async function handleDelete() {
-  if (!props.event) return
+  if (!props.event) return;
 
-  if (!confirm('Supprimer cet événement ?')) return
+  if (!confirm("Supprimer cet événement ?")) return;
 
-  loading.value = true
-  const success = await calendarStore.deleteEvent(props.event.id)
-  loading.value = false
+  loading.value = true;
+  const success = await calendarStore.deleteEvent(props.event.id);
+  loading.value = false;
 
   if (success) {
-    emit('deleted')
+    emit("deleted");
   }
 }
 
 onMounted(() => {
   if (showParticipants.value) {
-    calendarStore.fetchEnterpriseUsers()
+    calendarStore.fetchEnterpriseUsers();
   }
-})
+});
 </script>
 
 <template>
   <dialog class="modal" :class="{ 'modal-open': open }">
-    <div class="modal-box max-w-2xl max-h-[90vh] overflow-y-auto">
-      <h3 class="font-bold text-lg mb-4">
-        {{ isEditMode ? 'Modifier l\'événement' : 'Nouvel événement' }}
+    <div
+      class="modal-box max-w-2xl max-h-[90vh] overflow-y-auto bg-[#0a1628] border-none shadow-2xl"
+    >
+      <h3 class="font-bold text-lg mb-4 text-white">
+        {{ isEditMode ? "Modifier l'événement" : "Nouvel événement" }}
       </h3>
 
       <form @submit.prevent="handleSubmit" class="space-y-4">
         <!-- Title -->
         <div class="form-control">
           <label class="label">
-            <span class="label-text">Titre *</span>
+            <span class="label-text text-white">Titre *</span>
           </label>
           <input
             v-model="title"
             type="text"
             placeholder="Titre de l'événement"
-            class="input input-bordered w-full"
+            class="input input-bordered w-full bg-[#001a3f] border-gray-500 text-white placeholder-gray-500"
             required
           />
         </div>
@@ -227,10 +241,17 @@ onMounted(() => {
         <!-- Event Type -->
         <div class="form-control">
           <label class="label">
-            <span class="label-text">Type</span>
+            <span class="label-text text-white">Type</span>
           </label>
-          <select v-model="eventType" class="select select-bordered w-full">
-            <option v-for="type in eventTypes" :key="type.value" :value="type.value">
+          <select
+            v-model="eventType"
+            class="select select-bordered w-full bg-[#001a3f] border-gray-500 text-white"
+          >
+            <option
+              v-for="type in eventTypes"
+              :key="type.value"
+              :value="type.value"
+            >
               {{ type.label }}
             </option>
           </select>
@@ -244,7 +265,7 @@ onMounted(() => {
               type="checkbox"
               class="checkbox checkbox-primary"
             />
-            <span class="label-text">Journée entière</span>
+            <span class="label-text text-white">Journée enti\u00e8re</span>
           </label>
         </div>
 
@@ -252,23 +273,23 @@ onMounted(() => {
         <div class="grid grid-cols-2 gap-4">
           <div class="form-control">
             <label class="label">
-              <span class="label-text">Date de début *</span>
+              <span class="label-text text-white">Date de début *</span>
             </label>
             <input
               v-model="startDate"
               type="date"
-              class="input input-bordered w-full"
+              class="input input-bordered w-full bg-[#001a3f] border-gray-500 text-white"
               required
             />
           </div>
           <div v-if="!isAllDay" class="form-control">
             <label class="label">
-              <span class="label-text">Heure de début</span>
+              <span class="label-text text-white">Heure de début</span>
             </label>
             <input
               v-model="startTime"
               type="time"
-              class="input input-bordered w-full"
+              class="input input-bordered w-full bg-[#001a3f] border-gray-500 text-white"
             />
           </div>
         </div>
@@ -276,23 +297,23 @@ onMounted(() => {
         <div class="grid grid-cols-2 gap-4">
           <div class="form-control">
             <label class="label">
-              <span class="label-text">Date de fin *</span>
+              <span class="label-text text-white">Date de fin *</span>
             </label>
             <input
               v-model="endDate"
               type="date"
-              class="input input-bordered w-full"
+              class="input input-bordered w-full bg-[#001a3f] border-gray-500 text-white"
               required
             />
           </div>
           <div v-if="!isAllDay" class="form-control">
             <label class="label">
-              <span class="label-text">Heure de fin</span>
+              <span class="label-text text-white">Heure de fin</span>
             </label>
             <input
               v-model="endTime"
               type="time"
-              class="input input-bordered w-full"
+              class="input input-bordered w-full bg-[#001a3f] border-gray-500 text-white"
             />
           </div>
         </div>
@@ -300,21 +321,41 @@ onMounted(() => {
         <!-- Participants (only for room events) -->
         <div v-if="showParticipants" class="form-control">
           <label class="label">
-            <span class="label-text">Participants</span>
-            <span class="label-text-alt">{{ selectedParticipantIds.length }} sélectionné(s)</span>
+            <span class="label-text text-white">Participants</span>
+            <span class="label-text-alt text-gray-400"
+              >{{ selectedParticipantIds.length }} sélectionné(s)</span
+            >
           </label>
 
           <!-- Selected participants -->
-          <div v-if="selectedParticipants.length > 0" class="flex flex-wrap gap-2 mb-2">
+          <div
+            v-if="selectedParticipants.length > 0"
+            class="flex flex-wrap gap-2 mb-2"
+          >
             <div
               v-for="user in selectedParticipants"
               :key="user.id"
               class="badge badge-primary gap-2"
             >
               {{ user.displayName }}
-              <button type="button" class="btn btn-ghost btn-xs p-0" @click="removeParticipant(user.id)">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              <button
+                type="button"
+                class="btn btn-ghost btn-xs p-0"
+                @click="removeParticipant(user.id)"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-3 w-3"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             </div>
@@ -325,15 +366,17 @@ onMounted(() => {
             v-model="participantSearch"
             type="text"
             placeholder="Rechercher un utilisateur..."
-            class="input input-bordered input-sm w-full mb-2"
+            class="input input-bordered input-sm w-full mb-2 bg-[#001a3f] border-gray-500 text-white placeholder-gray-500"
           />
 
           <!-- Users list -->
-          <div class="border border-base-300 rounded-lg max-h-40 overflow-y-auto">
+          <div
+            class="border border-gray-600 rounded-lg max-h-40 overflow-y-auto bg-[#0a1628]"
+          >
             <div
               v-for="user in filteredUsers"
               :key="user.id"
-              class="flex items-center gap-3 p-2 hover:bg-base-200 cursor-pointer"
+              class="flex items-center gap-3 p-2 hover:bg-[#1a3a52] cursor-pointer transition-colors"
               @click="toggleParticipant(user.id)"
             >
               <input
@@ -344,11 +387,16 @@ onMounted(() => {
                 @change="toggleParticipant(user.id)"
               />
               <div class="flex-1">
-                <div class="font-medium text-sm">{{ user.displayName }}</div>
-                <div class="text-xs text-base-content/60">{{ user.email }}</div>
+                <div class="font-medium text-sm text-white">
+                  {{ user.displayName }}
+                </div>
+                <div class="text-xs text-gray-400">{{ user.email }}</div>
               </div>
             </div>
-            <div v-if="filteredUsers.length === 0" class="p-4 text-center text-base-content/50 text-sm">
+            <div
+              v-if="filteredUsers.length === 0"
+              class="p-4 text-center text-gray-500 text-sm"
+            >
               Aucun utilisateur trouvé
             </div>
           </div>
@@ -357,29 +405,28 @@ onMounted(() => {
         <!-- Location -->
         <div class="form-control">
           <label class="label">
-            <span class="label-text">Lieu</span>
+            <span class="label-text text-white">Lieu</span>
           </label>
           <input
             v-model="location"
             type="text"
             placeholder="Salle de réunion, lien visio..."
-            class="input input-bordered w-full"
+            class="input input-bordered w-full bg-[#001a3f] border-gray-500 text-white placeholder-gray-500"
           />
         </div>
 
         <!-- Description -->
         <div class="form-control">
           <label class="label">
-            <span class="label-text">Description</span>
+            <span class="label-text text-white">Description</span>
           </label>
           <textarea
             v-model="description"
-            class="textarea textarea-bordered w-full"
+            class="textarea textarea-bordered w-full bg-[#001a3f] border-gray-500 text-white placeholder-gray-500"
             placeholder="Détails de l'événement..."
             rows="3"
           ></textarea>
         </div>
-
 
         <!-- Private Toggle -->
         <div class="form-control">
@@ -389,7 +436,9 @@ onMounted(() => {
               type="checkbox"
               class="checkbox checkbox-primary"
             />
-            <span class="label-text">Événement privé (visible uniquement par vous)</span>
+            <span class="label-text text-white"
+              >Événement privé (visible uniquement par vous)</span
+            >
           </label>
         </div>
 
@@ -403,23 +452,27 @@ onMounted(() => {
           <button
             v-if="isEditMode"
             type="button"
-            class="btn btn-error btn-outline"
+            class="btn btn-error btn-outline bg-transparent border-red-500 text-red-500 hover:bg-red-600/20"
             :disabled="loading"
             @click="handleDelete"
           >
             Supprimer
           </button>
           <div class="flex-1"></div>
-          <button type="button" class="btn" @click="emit('close')">
+          <button
+            type="button"
+            class="btn bg-white text-black border-0 hover:bg-gray-200"
+            @click="emit('close')"
+          >
             Annuler
           </button>
           <button
             type="submit"
-            class="btn btn-primary"
-            :class="{ 'loading': loading }"
+            class="btn bg-white text-black border-0 hover:bg-gray-200"
+            :class="{ loading: loading }"
             :disabled="loading || !title.trim()"
           >
-            {{ isEditMode ? 'Enregistrer' : 'Créer' }}
+            {{ isEditMode ? "Enregistrer" : "Créer" }}
           </button>
         </div>
       </form>
@@ -429,3 +482,33 @@ onMounted(() => {
     </form>
   </dialog>
 </template>
+
+<style scoped>
+.modal-box {
+  background-color: #0a1628 !important;
+  border: none !important;
+  color: #e0e0e0 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4) !important;
+}
+
+.modal-box h3 {
+  color: #ffffff !important;
+}
+
+.input:focus,
+.select:focus,
+.textarea:focus {
+  outline: none;
+  border-color: #4115df !important;
+  box-shadow: 0 0 0 3px rgba(65, 21, 223, 0.15);
+}
+
+.label-text {
+  color: #e0e0e0 !important;
+}
+
+.modal-backdrop {
+  background-color: rgba(0, 0, 0, 0.6) !important;
+}
+</style>
