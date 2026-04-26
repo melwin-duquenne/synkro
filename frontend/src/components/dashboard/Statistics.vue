@@ -1,92 +1,53 @@
 <!-- eslint-disable vue/multi-word-component-names -->
 <template>
-  <div class="dashboard-card">
-    <div>
-      <h2 class="card-title">
-        <svg
-          class="w-6 h-6"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
+  <div class="card">
+    <div class="card-header">
+      <svg class="header-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+      </svg>
+      Statistiques de la semaine
+    </div>
+
+    <div v-if="!statistics" class="empty-state">
+      Aucune statistique disponible pour le moment.
+    </div>
+
+    <div v-else class="stats-grid">
+      <div class="stat-box">
+        <div class="stat-label">Productivité</div>
+        <div class="stat-value" :class="getProductivityClass(statistics.productivity)">{{ statistics.productivity }}%</div>
+        <div class="stat-sub">{{ statistics.tasksCompleted }}/{{ statistics.tasksCreated }} tâches</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Réunions</div>
+        <div class="stat-value color-blue">{{ statistics.meetingsCount }}</div>
+        <div class="stat-sub">{{ statistics.meetingsDurationFormatted }}</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Tâches complétées</div>
+        <div class="stat-value color-green">{{ statistics.tasksCompleted }}</div>
+        <div class="stat-sub">Cette semaine</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Moy. par réunion</div>
+        <div class="stat-value color-blue">{{ getAverageMeetingDuration() }}</div>
+        <div class="stat-sub">{{ statistics.meetingsDuration }} min total</div>
+      </div>
+    </div>
+
+    <div v-if="statistics" class="prod-section">
+      <div class="section-label">Objectif de productivité</div>
+      <div class="progress-track">
+        <div
+          class="progress-fill"
+          :class="{
+            'fill-error': statistics.productivity < 50,
+            'fill-warn': statistics.productivity >= 50 && statistics.productivity < 80,
+            'fill-ok': statistics.productivity >= 80,
+          }"
+          :style="{ width: Math.min(statistics.productivity, 100) + '%' }"
         >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"
-          />
-        </svg>
-        Statistiques de la semaine
-      </h2>
-
-      <!-- État vide -->
-      <div v-if="!statistics" class="text-center py-8 text-base-content/60">
-        <p>Aucune statistique disponible pour le moment.</p>
-      </div>
-
-      <div v-else class="grid grid-cols-2 gap-4">
-        <!-- Productivité -->
-        <div class="stat bg-[#1a3a52] rounded-lg p-4">
-          <div class="stat-title text-xs">Productivité</div>
-          <div
-            class="stat-value text-2xl"
-            :class="getProductivityClass(statistics.productivity)"
-          >
-            {{ statistics.productivity }}%
-          </div>
-          <div class="stat-desc text-xs">
-            {{ statistics.tasksCompleted }}/{{ statistics.tasksCreated }} tâches
-          </div>
-        </div>
-
-        <!-- Réunions -->
-        <div class="stat bg-[#1a3a52] rounded-lg p-4">
-          <div class="stat-title text-xs">Réunions</div>
-          <div class="stat-value text-2xl">{{ statistics.meetingsCount }}</div>
-          <div class="stat-desc text-xs">
-            {{ statistics.meetingsDurationFormatted }}
-          </div>
-        </div>
-
-        <!-- Tâches complétées -->
-        <div class="stat bg-[#1a3a52] rounded-lg p-4">
-          <div class="stat-title text-xs">Tâches complétées</div>
-          <div class="stat-value text-2xl text-success">
-            {{ statistics.tasksCompleted }}
-          </div>
-          <div class="stat-desc text-xs">Cette semaine</div>
-        </div>
-
-        <!-- Durée moyenne réunion -->
-        <div class="stat bg-[#1a3a52] rounded-lg p-4">
-          <div class="stat-title text-xs">Moy. par réunion</div>
-          <div class="stat-value text-2xl">
-            {{ getAverageMeetingDuration() }}
-          </div>
-          <div class="stat-desc text-xs">
-            {{ statistics.meetingsDuration }} min total
-          </div>
-        </div>
-      </div>
-
-      <!-- Graphique visuel productivité -->
-      <div v-if="statistics" class="mt-4">
-        <div class="text-sm font-medium mb-2">Objectif de productivité</div>
-        <div class="w-full bg-[#1a3a52] rounded-full h-4">
-          <div
-            class="h-4 rounded-full transition-all duration-500 flex items-center justify-center text-xs font-bold text-white"
-            :class="{
-              'bg-error': statistics.productivity < 50,
-              'bg-warning':
-                statistics.productivity >= 50 && statistics.productivity < 80,
-              'bg-success': statistics.productivity >= 80,
-            }"
-            :style="{ width: Math.min(statistics.productivity, 100) + '%' }"
-          >
-            <span v-if="statistics.productivity > 15"
-              >{{ statistics.productivity }}%</span
-            >
-          </div>
+          <span v-if="statistics.productivity > 20" class="progress-label">{{ statistics.productivity }}%</span>
         </div>
       </div>
     </div>
@@ -108,9 +69,9 @@ const props = defineProps<{
 }>();
 
 const getProductivityClass = (productivity: number): string => {
-  if (productivity >= 80) return "text-success";
-  if (productivity >= 50) return "text-warning";
-  return "text-error";
+  if (productivity >= 80) return "color-green";
+  if (productivity >= 50) return "color-warn";
+  return "color-error";
 };
 
 const getAverageMeetingDuration = (): string => {
@@ -131,17 +92,79 @@ const getAverageMeetingDuration = (): string => {
 </script>
 
 <style scoped>
-.dashboard-card {
-  background-color: #0a1628;
-  border: none;
-  border-radius: 8px;
+.card {
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
   padding: 1.5rem;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transition: border-color 0.2s;
 }
-
-.dashboard-card:hover {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-  transform: translateY(-2px);
+.card:hover { border-color: rgba(255, 255, 255, 0.1); }
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #c8daea;
+  margin-bottom: 1.25rem;
 }
+.header-icon { width: 16px; height: 16px; color: #5ba3e8; flex-shrink: 0; }
+.empty-state { text-align: center; padding: 2rem 0; color: #3d5060; font-size: 0.875rem; }
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+.stat-box {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  border-radius: 10px;
+  padding: 0.875rem 1rem;
+}
+.stat-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #516070;
+  margin-bottom: 0.25rem;
+}
+.stat-value {
+  font-size: 1.625rem;
+  font-weight: 700;
+  color: #c8daea;
+  line-height: 1.2;
+  margin-bottom: 0.125rem;
+}
+.color-blue { color: #5ba3e8; }
+.color-green { color: #6fdd9f; }
+.color-warn { color: #f0a23e; }
+.color-error { color: #f87171; }
+.stat-sub { font-size: 0.6875rem; color: #3d5060; }
+.prod-section { margin-top: 1.25rem; }
+.section-label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #516070;
+  margin-bottom: 0.5rem;
+}
+.progress-track {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 6px;
+  transition: width 0.5s ease;
+  min-width: 2px;
+}
+.fill-ok { background: #6fdd9f; }
+.fill-warn { background: #f0a23e; }
+.fill-error { background: #f87171; }
+.progress-label { font-size: 0.5rem; font-weight: 700; color: rgba(0,0,0,0.6); }
 </style>
