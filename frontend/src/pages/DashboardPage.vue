@@ -1,14 +1,12 @@
 <template>
-  <div class="min-h-screen">
+  <div class="dash-page">
     <!-- Header -->
-    <div class="mb-6">
-      <div class="flex items-center justify-between flex-wrap gap-4">
+    <div class="dash-header reveal reveal-1">
+      <div class="dash-header-inner">
         <div>
-          <h1
-            class="text-3xl font-bold mb-2 flex items-center gap-3 text-white"
-          >
+          <h1 class="dash-title">
             <svg
-              class="w-8 h-8"
+              class="dash-title-icon"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -22,49 +20,65 @@
             </svg>
             Dashboard
           </h1>
-          <p class="text-gray-300">
+          <p class="dash-subtitle">
             <template
               v-if="selectedUserId && selectedUserId !== authStore.user?.id"
             >
               Vue d'ensemble de {{ selectedUserName }}
             </template>
-            <template v-else> Vue d'ensemble de votre activité </template>
+            <template v-else>Vue d'ensemble de votre activité</template>
           </p>
         </div>
 
         <!-- Sélecteur utilisateur global (admin/owner uniquement) -->
         <div
           v-if="isAdminOrOwner && teamUsers.length > 0"
-          class="form-control w-full sm:w-72"
+          class="user-select-wrap"
         >
-          <select
-            v-model="selectedUserId"
-            class="select select-bordered bg-[#001a3f] border-gray-500 text-white"
-            @change="handleUserChange"
-          >
-            <option :value="authStore.user?.id">
-              Moi ({{ authStore.user?.displayName || authStore.user?.email }})
-            </option>
-            <option disabled>──────────</option>
-            <option v-for="user in teamUsers" :key="user.id" :value="user.id">
-              {{ user.name || user.email }}
-            </option>
-          </select>
+          <div class="user-select-control">
+            <select
+              v-model="selectedUserId"
+              class="user-select"
+              @change="handleUserChange"
+            >
+              <option :value="authStore.user?.id">
+                Moi ({{ authStore.user?.displayName || authStore.user?.email }})
+              </option>
+              <option disabled>──────────</option>
+              <option v-for="user in teamUsers" :key="user.id" :value="user.id">
+                {{ user.name || user.email }}
+              </option>
+            </select>
+            <svg
+              class="user-select-chevron"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- Loading State -->
-    <div v-if="loading" class="flex justify-center items-center h-64">
-      <span class="loading loading-spinner loading-lg"></span>
+    <div v-if="loading" class="loading-state reveal reveal-2">
+      <div class="spinner"></div>
+      <p class="loading-text">Chargement du tableau de bord...</p>
     </div>
 
     <!-- Error State -->
-    <div v-else-if="error" class="alert alert-error">
+    <div v-else-if="error" class="error-state reveal reveal-2">
       <svg
-        xmlns="http://www.w3.org/2000/svg"
-        class="stroke-current shrink-0 h-6 w-6"
+        class="w-5 h-5"
         fill="none"
+        stroke="currentColor"
         viewBox="0 0 24 24"
       >
         <path
@@ -78,9 +92,9 @@
     </div>
 
     <!-- Dashboard Grid -->
-    <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div v-else class="dashboard-grid reveal reveal-2">
       <!-- Colonne gauche (2 colonnes sur large) -->
-      <div class="lg:col-span-2 space-y-6">
+      <div class="dashboard-col dashboard-col-wide">
         <!-- Charge de travail -->
         <WorkloadOverview
           class="dashboard-card"
@@ -114,7 +128,7 @@
       </div>
 
       <!-- Colonne droite (1 colonne sur large) -->
-      <div class="space-y-6">
+      <div class="dashboard-col">
         <!-- Actions rapides -->
         <QuickActions
           class="dashboard-card"
@@ -173,28 +187,28 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, computed } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
-import { useDashboard } from '@/composables/useDashboard'
-import { isAtLeast } from '@/utils/permissions'
-import WorkloadOverview from '@/components/dashboard/WorkloadOverview.vue'
-import UpcomingEvents from '@/components/dashboard/UpcomingEvents.vue'
-import TasksOverview from '@/components/dashboard/TasksOverview.vue'
-import RecentRooms from '@/components/dashboard/RecentRooms.vue'
-import TeamAvailability from '@/components/dashboard/TeamAvailability.vue'
-import Statistics from '@/components/dashboard/Statistics.vue'
-import QuickActions from '@/components/dashboard/QuickActions.vue'
-import NotificationCenter from '@/components/dashboard/NotificationCenter.vue'
-import CreateTaskModal from '@/components/tasks/CreateTaskModal.vue'
-import SelectRoomForTaskModal from '@/components/dashboard/SelectRoomForTaskModal.vue'
-import EventDetailModal from '@/components/dashboard/EventDetailModal.vue'
+import { onMounted, ref, computed } from "vue";
+import { useRouter, useRoute } from "vue-router";
+import { useAuthStore } from "@/stores/auth";
+import { useDashboard } from "@/composables/useDashboard";
+import { isAtLeast } from "@/utils/permissions";
+import WorkloadOverview from "@/components/dashboard/WorkloadOverview.vue";
+import UpcomingEvents from "@/components/dashboard/UpcomingEvents.vue";
+import TasksOverview from "@/components/dashboard/TasksOverview.vue";
+import RecentRooms from "@/components/dashboard/RecentRooms.vue";
+import TeamAvailability from "@/components/dashboard/TeamAvailability.vue";
+import Statistics from "@/components/dashboard/Statistics.vue";
+import QuickActions from "@/components/dashboard/QuickActions.vue";
+import NotificationCenter from "@/components/dashboard/NotificationCenter.vue";
+import CreateTaskModal from "@/components/tasks/CreateTaskModal.vue";
+import SelectRoomForTaskModal from "@/components/dashboard/SelectRoomForTaskModal.vue";
+import EventDetailModal from "@/components/dashboard/EventDetailModal.vue";
 
-const router = useRouter()
-const route = useRoute()
-const entrepriseSlug = computed(() => route.params.entrepriseSlug as string)
-const authStore = useAuthStore()
-const { dashboardData, loading, error, fetchDashboardData } = useDashboard()
+const router = useRouter();
+const route = useRoute();
+const entrepriseSlug = computed(() => route.params.entrepriseSlug as string);
+const authStore = useAuthStore();
+const { dashboardData, loading, error, fetchDashboardData } = useDashboard();
 
 // User selection
 const selectedUserId = ref<number | null>(authStore.user?.id || null);
@@ -274,12 +288,20 @@ onMounted(() => {
 });
 
 const handleCreateRoom = () => {
-  router.push({ name: 'rooms', params: { entrepriseSlug: entrepriseSlug.value }, query: { create: 'true' } })
-}
+  router.push({
+    name: "rooms",
+    params: { entrepriseSlug: entrepriseSlug.value },
+    query: { create: "true" },
+  });
+};
 
 const handleCreateEvent = () => {
-  router.push({ name: 'calendar', params: { entrepriseSlug: entrepriseSlug.value }, query: { create: 'true' } })
-}
+  router.push({
+    name: "calendar",
+    params: { entrepriseSlug: entrepriseSlug.value },
+    query: { create: "true" },
+  });
+};
 
 const handleCreateTask = () => {
   showSelectRoomModal.value = true;
@@ -291,8 +313,11 @@ const handleRoomSelected = (room: { id: number }) => {
 };
 
 const handleInviteMembers = () => {
-  router.push({ name: 'admin-users', params: { entrepriseSlug: entrepriseSlug.value } })
-}
+  router.push({
+    name: "admin-users",
+    params: { entrepriseSlug: entrepriseSlug.value },
+  });
+};
 
 const handleEventClick = (event: DashboardEvent) => {
   selectedEvent.value = event;
@@ -305,11 +330,197 @@ const handleUserChange = async () => {
 </script>
 
 <style scoped>
+.dash-page {
+  min-height: 100vh;
+}
+
+.dash-header {
+  margin-bottom: 1.75rem;
+}
+
+.dash-header-inner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.dash-title {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-size: 1.62rem;
+  font-weight: 700;
+  color: #c8daea;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.25rem;
+}
+
+.dash-title-icon {
+  width: 24px;
+  height: 24px;
+  color: #5ba3e8;
+  flex-shrink: 0;
+}
+
+.dash-subtitle {
+  font-size: 0.9rem;
+  color: #6f87a1;
+}
+
+.user-select-wrap {
+  width: 100%;
+  max-width: 18rem;
+}
+
+.user-select-control {
+  position: relative;
+}
+
+.user-select {
+  appearance: none;
+  width: 100%;
+  padding: 0.56rem 2rem 0.56rem 0.85rem;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0.03) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  color: #bfd4e8;
+  font-size: 0.84rem;
+  font-weight: 500;
+  outline: none;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.user-select:hover {
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.user-select:focus {
+  border-color: rgba(91, 163, 232, 0.45);
+  box-shadow: 0 0 0 3px rgba(91, 163, 232, 0.16);
+}
+
+.user-select option {
+  background: #080f1c;
+  color: #bfd4e8;
+}
+
+.user-select-chevron {
+  position: absolute;
+  right: 0.65rem;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  color: #6f88a3;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 0.7rem;
+  height: 18rem;
+}
+
+.spinner {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.06);
+  border-top-color: #5ba3e8;
+  animation: spin 0.8s linear infinite;
+}
+
+.loading-text {
+  margin: 0;
+  color: #6f87a1;
+  font-size: 0.86rem;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.error-state {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.875rem 1rem;
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+  border-radius: 10px;
+  color: #f87171;
+  font-size: 0.875rem;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+.dashboard-col {
+  display: grid;
+  gap: 1.5rem;
+}
+
 .dashboard-card {
-  border: none;
-  background-color: #0a1628;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  transition: all 0.3s ease;
+  border-radius: 12px;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.dashboard-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.24);
+}
+
+.reveal {
+  animation: fade-in-up 0.5s ease both;
+}
+
+.reveal-1 {
+  animation-delay: 0.04s;
+}
+
+.reveal-2 {
+  animation-delay: 0.1s;
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (min-width: 1024px) {
+  .dashboard-grid {
+    grid-template-columns: 2fr 1fr;
+    gap: 1.5rem;
+  }
+
+  .dashboard-col-wide {
+    min-width: 0;
+  }
 }
 </style>

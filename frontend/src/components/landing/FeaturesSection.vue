@@ -1,152 +1,506 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 
-interface Feature {
-  icon: string
-  title: string
-  description: string
-  color: string
-}
-
-const features = ref<Feature[]>([
-  {
-    icon: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z',
-    title: 'Éditeur collaboratif',
-    description: 'Écrivez ensemble en temps réel avec synchronisation instantanée. Voyez les curseurs de vos collègues.',
-    color: 'primary'
-  },
-  {
-    icon: 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z',
-    title: 'Chat instantané',
-    description: 'Communiquez rapidement avec votre équipe. Messages synchronisés en temps réel sur tous les appareils.',
-    color: 'secondary'
-  },
-  {
-    icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
-    title: 'Gestion des tâches',
-    description: 'Organisez votre travail avec des tâches partagées. Drag & drop, statuts, assignations et bien plus.',
-    color: 'accent'
-  },
-  {
-    icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
-    title: 'Calendrier partagé',
-    description: 'Planifiez vos réunions et événements. Vue synchronisée pour toute l\'équipe avec notifications.',
-    color: 'info'
-  },
-  {
-    icon: 'M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01',
-    title: 'Tableau blanc',
-    description: 'Dessinez, schématisez et brainstormez ensemble sur un canvas collaboratif infini.',
-    color: 'success'
-  },
-  {
-    icon: 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z',
-    title: 'Partage de fichiers',
-    description: 'Centralisez vos documents. Upload, partage et gestion des fichiers en toute sécurité.',
-    color: 'warning'
-  }
-])
-
-const visibleCards = ref<boolean[]>([])
+const sectionRef = ref<HTMLElement | null>(null)
+const visible = ref(false)
 
 onMounted(() => {
-  visibleCards.value = new Array(features.value.length).fill(false)
-  
   const observer = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          const index = parseInt(entry.target.getAttribute('data-index') || '0')
-          setTimeout(() => {
-            visibleCards.value[index] = true
-          }, index * 100)
-        }
-      })
-    },
-    { threshold: 0.1 }
+    ([entry]) => { if (entry.isIntersecting) visible.value = true },
+    { threshold: 0.05 }
   )
-
-  document.querySelectorAll('.feature-card').forEach((card) => {
-    observer.observe(card)
-  })
+  if (sectionRef.value) observer.observe(sectionRef.value)
 })
 </script>
 
 <template>
-  <section id="features" class="py-20 lg:py-32 bg-base-100">
-    <div class="container mx-auto px-4">
-      <!-- Section Header -->
-      <div class="text-center mb-16">
-        <h2 class="text-4xl md:text-5xl font-bold mb-4">
-          Tout ce dont vous avez besoin
+  <section id="features" ref="sectionRef" class="features-section py-28 lg:py-36">
+    <div class="max-w-7xl mx-auto px-6">
+
+      <!-- Section label + heading -->
+      <div class="mb-16" :class="visible ? 'section-enter' : 'section-enter-init'">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#5ba3e8]/20 bg-[#5ba3e8]/5 text-[#5ba3e8] text-xs font-semibold uppercase tracking-widest mb-4">
+          Fonctionnalités
+        </div>
+        <h2 class="text-4xl md:text-5xl font-bold text-[#c8daea] leading-tight tracking-tight mb-4 max-w-2xl" style="letter-spacing:-0.03em">
+          Tout ce dont votre équipe a besoin, réuni.
         </h2>
-        <p class="text-xl text-base-content/70 max-w-2xl mx-auto">
-          Une suite complète d'outils pour booster la productivité de votre équipe
+        <p class="text-[#516070] text-lg max-w-xl">
+          Sept modules intégrés, un seul espace de travail. Passez d'un outil à l'autre sans perdre le contexte.
         </p>
       </div>
 
-      <!-- Features Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-        <div
-          v-for="(feature, index) in features"
-          :key="index"
-          :data-index="index"
-          class="feature-card card bg-base-200 hover:bg-base-300 shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer group"
-          :class="{ 'opacity-0 translate-y-10': !visibleCards[index], 'opacity-100 translate-y-0': visibleCards[index] }"
-          style="transition: opacity 0.6s ease-out, transform 0.6s ease-out;"
-        >
-          <div class="card-body">
-            <!-- Icon -->
-            <div 
-              class="w-14 h-14 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"
-              :class="`bg-${feature.color}/20`"
-            >
-              <svg 
-                class="w-8 h-8"
-                :class="`text-${feature.color}`"
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
-                <path 
-                  stroke-linecap="round" 
-                  stroke-linejoin="round" 
-                  stroke-width="2" 
-                  :d="feature.icon" 
-                />
-              </svg>
+      <!-- Bento grid -->
+      <div class="bento-grid" :class="visible ? 'section-enter' : 'section-enter-init'">
+
+        <!-- Large: Éditeur collaboratif -->
+        <div class="bento-card bento-large bento-editor">
+          <div class="bento-card-content">
+            <div class="bento-tag bento-tag-blue">Temps réel</div>
+            <h3 class="bento-title">Éditeur collaboratif</h3>
+            <p class="bento-desc">Écrivez ensemble simultanément. Voyez les curseurs de vos collègues en direct et synchronisez chaque frappe instantanément.</p>
+          </div>
+          <!-- Editor mock -->
+          <div class="editor-mock">
+            <div class="editor-line">
+              <span class="editor-line-num">1</span>
+              <span class="editor-text"><span class="t-kw"># </span><span class="t-hl">Spécifications Projet Alpha</span></span>
             </div>
-
-            <!-- Content -->
-            <h3 class="card-title text-xl mb-2">{{ feature.title }}</h3>
-            <p class="text-base-content/70">{{ feature.description }}</p>
-
-            <!-- Arrow indicator on hover -->
-            <div class="mt-4 flex items-center gap-2 text-primary opacity-0 group-hover:opacity-100 transition-opacity">
-              <span class="text-sm font-medium">En savoir plus</span>
-              <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-              </svg>
+            <div class="editor-line">
+              <span class="editor-line-num">2</span>
+              <span class="editor-text"></span>
+            </div>
+            <div class="editor-line">
+              <span class="editor-line-num">3</span>
+              <span class="editor-text"><span class="t-kw">## </span>Contexte</span>
+            </div>
+            <div class="editor-line">
+              <span class="editor-line-num">4</span>
+              <span class="editor-text t-muted">Notre objectif est de livrer la v2...</span>
+              <span class="cursor-indicator cursor-blue">Jean</span>
+            </div>
+            <div class="editor-line">
+              <span class="editor-line-num">5</span>
+              <span class="editor-text t-muted">avant la fin du trimestre avec...</span>
+            </div>
+            <div class="editor-line">
+              <span class="editor-line-num">6</span>
+              <span class="editor-text"></span>
+            </div>
+            <div class="editor-line">
+              <span class="editor-line-num">7</span>
+              <span class="editor-text"><span class="t-kw">## </span>Objectifs clés</span>
+              <span class="cursor-indicator cursor-green">Alice</span>
+            </div>
+            <div class="editor-line">
+              <span class="editor-line-num">8</span>
+              <span class="editor-text t-muted">- Réduire le time-to-market de 40%</span>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Bottom CTA -->
-      <div class="text-center mt-16">
-        <div class="inline-flex items-center gap-2 px-6 py-3 bg-primary/10 rounded-full">
-          <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-          </svg>
-          <span class="font-medium">Et bien plus de fonctionnalités à venir !</span>
+        <!-- Chat -->
+        <div class="bento-card bento-chat">
+          <div class="bento-tag bento-tag-purple">Instantané</div>
+          <h3 class="bento-title">Chat d'équipe</h3>
+          <p class="bento-desc">Messagerie en temps réel, fils de discussion, mentions et fichiers partagés.</p>
+          <div class="chat-mock">
+            <div class="chat-msg chat-msg-left">
+              <div class="chat-avatar" style="background:#4F6ECD">J</div>
+              <div class="chat-bubble chat-bubble-left">On se call à 14h ? 👋</div>
+            </div>
+            <div class="chat-msg chat-msg-right">
+              <div class="chat-bubble chat-bubble-right">Oui, j'envoie le lien 🔗</div>
+              <div class="chat-avatar" style="background:#27AE60">A</div>
+            </div>
+            <div class="chat-msg chat-msg-left">
+              <div class="chat-avatar" style="background:#9B59B6">M</div>
+              <div class="chat-bubble chat-bubble-left">Je serai là ✅</div>
+            </div>
+          </div>
         </div>
+
+        <!-- Tâches -->
+        <div class="bento-card bento-tasks">
+          <div class="bento-tag bento-tag-green">Organisation</div>
+          <h3 class="bento-title">Gestion des tâches</h3>
+          <p class="bento-desc">Kanban, assignations, priorités et suivi de progression en un coup d'œil.</p>
+          <div class="tasks-mock">
+            <div class="task-item task-done">
+              <span class="task-check done">✓</span>
+              <span class="task-text task-text-done">Maquette validée</span>
+            </div>
+            <div class="task-item task-in-progress">
+              <span class="task-check in-progress"></span>
+              <span class="task-text">Intégration API</span>
+              <span class="task-assignee" style="background:#4F6ECD">J</span>
+            </div>
+            <div class="task-item">
+              <span class="task-check"></span>
+              <span class="task-text">Tests unitaires</span>
+              <span class="task-assignee" style="background:#27AE60">A</span>
+            </div>
+            <div class="task-item">
+              <span class="task-check"></span>
+              <span class="task-text">Documentation</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stats band -->
+        <div class="bento-card bento-stats">
+          <div class="stats-grid">
+            <div class="stat-item">
+              <div class="stat-number text-[#5ba3e8]">99.9%</div>
+              <div class="stat-label">Disponibilité</div>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+              <div class="stat-number text-[#6fdd9f]">7</div>
+              <div class="stat-label">Modules intégrés</div>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+              <div class="stat-number text-[#c084fc]">&lt;50ms</div>
+              <div class="stat-label">Latence sync</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Calendrier -->
+        <div class="bento-card bento-calendar">
+          <div class="bento-tag bento-tag-orange">Planification</div>
+          <h3 class="bento-title">Calendrier partagé</h3>
+          <p class="bento-desc">Vue unifiée de tous les événements, réunions et deadlines de l'équipe.</p>
+          <div class="calendar-mock">
+            <div class="cal-header">
+              <span class="cal-day">Lun</span><span class="cal-day">Mar</span><span class="cal-day">Mer</span><span class="cal-day">Jeu</span><span class="cal-day">Ven</span>
+            </div>
+            <div class="cal-events">
+              <div class="cal-event cal-event-blue" style="grid-column:1/3">Stand-up</div>
+              <div class="cal-event cal-event-purple" style="grid-column:3/5">Sprint Review</div>
+              <div class="cal-event cal-event-green" style="grid-column:5/6">1:1</div>
+              <div class="cal-event cal-event-orange" style="grid-column:2/4">Design Sync</div>
+              <div class="cal-event cal-event-blue" style="grid-column:4/6">Demo Client</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tableau blanc -->
+        <div class="bento-card bento-whiteboard">
+          <div class="bento-tag bento-tag-pink">Créativité</div>
+          <h3 class="bento-title">Tableau blanc</h3>
+          <p class="bento-desc">Canvas infini pour brainstormer, schématiser et visualiser vos idées ensemble.</p>
+          <div class="wb-mock">
+            <svg width="100%" height="80" viewBox="0 0 240 80" fill="none">
+              <rect x="10" y="15" width="60" height="30" rx="6" fill="rgba(64,142,214,0.15)" stroke="rgba(91,163,232,0.4)" stroke-width="1"/>
+              <text x="40" y="35" text-anchor="middle" fill="#5ba3e8" font-size="8">Idée A</text>
+              <rect x="90" y="10" width="60" height="30" rx="6" fill="rgba(111,221,159,0.1)" stroke="rgba(111,221,159,0.35)" stroke-width="1"/>
+              <text x="120" y="30" text-anchor="middle" fill="#6fdd9f" font-size="8">Idée B</text>
+              <rect x="170" y="20" width="55" height="30" rx="6" fill="rgba(192,132,252,0.1)" stroke="rgba(192,132,252,0.35)" stroke-width="1"/>
+              <text x="197" y="40" text-anchor="middle" fill="#c084fc" font-size="8">Idée C</text>
+              <line x1="70" y1="30" x2="90" y2="25" stroke="rgba(255,255,255,0.1)" stroke-width="1" stroke-dasharray="3,2"/>
+              <line x1="150" y1="25" x2="170" y2="32" stroke="rgba(255,255,255,0.1)" stroke-width="1" stroke-dasharray="3,2"/>
+              <circle cx="40" cy="68" r="4" fill="rgba(64,142,214,0.5)"/>
+              <circle cx="80" cy="65" r="4" fill="rgba(111,221,159,0.4)"/>
+              <circle cx="180" cy="68" r="4" fill="rgba(192,132,252,0.4)"/>
+              <path d="M44 68 Q60 55 76 65" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" fill="none"/>
+            </svg>
+          </div>
+        </div>
+
       </div>
     </div>
   </section>
 </template>
 
 <style scoped>
-.feature-card {
-  transform-origin: center;
+.features-section {
+  background: #050a14;
+}
+
+.section-enter-init {
+  opacity: 0;
+  transform: translateY(24px);
+}
+.section-enter {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+}
+
+/* Bento grid */
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: auto;
+  gap: 1rem;
+}
+
+@media (max-width: 1024px) {
+  .bento-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .bento-large { grid-column: 1 / -1; }
+  .bento-stats { grid-column: 1 / -1; }
+}
+
+@media (max-width: 640px) {
+  .bento-grid {
+    grid-template-columns: 1fr;
+  }
+  .bento-large { grid-column: 1; }
+  .bento-stats { grid-column: 1; }
+}
+
+.bento-large {
+  grid-column: 1 / 3;
+  grid-row: 1;
+}
+.bento-chat {
+  grid-column: 3;
+  grid-row: 1;
+}
+.bento-tasks {
+  grid-column: 1;
+  grid-row: 2;
+}
+.bento-stats {
+  grid-column: 2 / 4;
+  grid-row: 2;
+}
+.bento-calendar {
+  grid-column: 1 / 3;
+  grid-row: 3;
+}
+.bento-whiteboard {
+  grid-column: 3;
+  grid-row: 3;
+}
+
+.bento-card {
+  background: rgba(10, 18, 30, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  padding: 1.5rem;
+  overflow: hidden;
+  transition: border-color 0.25s, background 0.25s;
+}
+.bento-card:hover {
+  border-color: rgba(91, 163, 232, 0.2);
+  background: rgba(12, 22, 38, 0.95);
+}
+
+.bento-card-content {
+  margin-bottom: 1.25rem;
+}
+
+.bento-tag {
+  display: inline-block;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.625rem;
+  border-radius: 9999px;
+  margin-bottom: 0.75rem;
+}
+.bento-tag-blue   { background: rgba(64,142,214,0.12); color: #5ba3e8; border: 1px solid rgba(91,163,232,0.2); }
+.bento-tag-purple { background: rgba(192,132,252,0.1); color: #c084fc; border: 1px solid rgba(192,132,252,0.2); }
+.bento-tag-green  { background: rgba(111,221,159,0.1); color: #6fdd9f; border: 1px solid rgba(111,221,159,0.2); }
+.bento-tag-orange { background: rgba(240,162,62,0.1); color: #f0a23e; border: 1px solid rgba(240,162,62,0.2); }
+.bento-tag-pink   { background: rgba(249,115,187,0.1); color: #f973bb; border: 1px solid rgba(249,115,187,0.2); }
+
+.bento-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #c8daea;
+  margin-bottom: 0.375rem;
+  letter-spacing: -0.02em;
+}
+
+.bento-desc {
+  font-size: 0.875rem;
+  color: #3d5060;
+  line-height: 1.55;
+}
+
+/* Editor mock */
+.editor-mock {
+  background: #060c18;
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 8px;
+  padding: 0.875rem;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 11px;
+  line-height: 1.7;
+}
+.editor-line {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  position: relative;
+}
+.editor-line-num {
+  color: rgba(255,255,255,0.12);
+  width: 16px;
+  text-align: right;
+  user-select: none;
+}
+.editor-text {
+  color: #8ea4be;
+  flex: 1;
+}
+.t-kw { color: #5ba3e8; }
+.t-hl { color: #e7f0fa; font-weight: 600; }
+.t-muted { color: #516070; }
+
+.cursor-indicator {
+  font-size: 9px;
+  font-family: sans-serif;
+  padding: 0.1rem 0.375rem;
+  border-radius: 3px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.cursor-blue  { background: rgba(64,142,214,0.3); color: #5ba3e8; border: 1px solid rgba(91,163,232,0.4); }
+.cursor-green { background: rgba(111,221,159,0.2); color: #6fdd9f; border: 1px solid rgba(111,221,159,0.3); }
+
+/* Chat mock */
+.chat-mock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  margin-top: 1rem;
+}
+.chat-msg {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+.chat-msg-right { flex-direction: row-reverse; }
+.chat-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  shrink: 0;
+}
+.chat-bubble {
+  font-size: 0.75rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 12px;
+  max-width: 80%;
+  line-height: 1.4;
+}
+.chat-bubble-left  { background: rgba(255,255,255,0.05); color: #8ea4be; border-radius: 4px 12px 12px 12px; }
+.chat-bubble-right { background: rgba(64,142,214,0.2); color: #b0d4f0; border-radius: 12px 4px 12px 12px; }
+
+/* Tasks mock */
+.tasks-mock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+.task-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.task-check {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1.5px solid rgba(255,255,255,0.12);
+  shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+}
+.task-check.done { background: rgba(111,221,159,0.2); border-color: rgba(111,221,159,0.5); color: #6fdd9f; }
+.task-check.in-progress { border-color: rgba(64,142,214,0.6); background: rgba(64,142,214,0.1); }
+.task-text { flex: 1; font-size: 0.8125rem; color: #6b8099; }
+.task-text-done { text-decoration: line-through; color: #3d5060; }
+.task-assignee {
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Stats */
+.bento-stats {
+  padding: 1.75rem 2.5rem;
+}
+.stats-grid {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  height: 100%;
+  min-height: 90px;
+}
+.stat-item {
+  flex: 1;
+  text-align: center;
+}
+.stat-number {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  margin-bottom: 0.375rem;
+}
+.stat-label {
+  font-size: 0.75rem;
+  color: #3d5060;
+  font-weight: 500;
+}
+.stat-divider {
+  width: 1px;
+  height: 40px;
+  background: rgba(255,255,255,0.06);
+}
+
+/* Calendar mock */
+.calendar-mock {
+  margin-top: 1rem;
+}
+.cal-header {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.cal-day {
+  text-align: center;
+  font-size: 0.625rem;
+  color: #3d5060;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.cal-events {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  grid-auto-rows: 24px;
+}
+.cal-event {
+  border-radius: 4px;
+  font-size: 0.5625rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.cal-event-blue   { background: rgba(64,142,214,0.2); color: #5ba3e8; }
+.cal-event-purple { background: rgba(192,132,252,0.15); color: #c084fc; }
+.cal-event-green  { background: rgba(111,221,159,0.15); color: #6fdd9f; }
+.cal-event-orange { background: rgba(240,162,62,0.15); color: #f0a23e; }
+
+/* Whiteboard mock */
+.wb-mock {
+  margin-top: 1rem;
+  background: rgba(6, 12, 24, 0.6);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 8px;
+  overflow: hidden;
 }
 </style>
