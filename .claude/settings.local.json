@@ -21,7 +21,14 @@
       "Bash(cp \"C:/Users/melwi/Pictures/Screenshots/Capture d'écran 2026-03-31 183730.png\" \"D:/master/projet annuel/synkro/k8s/screenshots/02-kubectl-get-pods-initial.png\")",
       "Bash(cp \"C:/Users/melwi/Pictures/Screenshots/Capture d'écran 2026-03-31 183743.png\" \"D:/master/projet annuel/synkro/k8s/screenshots/03-frontend-loadbalancer-ip.png\")",
       "Bash(cp \"C:/Users/melwi/Pictures/Screenshots/Capture d'écran 2026-03-31 183800.png\" \"D:/master/projet annuel/synkro/k8s/screenshots/04-kubectl-get-svc.png\")",
-      "Bash(cp \"C:/Users/melwi/Pictures/Screenshots/Capture d'écran 2026-04-01 091818.png\" \"D:/master/projet annuel/synkro/k8s/screenshots/05-kubectl-get-pods-full-stack.png\")"
+      "Bash(cp \"C:/Users/melwi/Pictures/Screenshots/Capture d'écran 2026-04-01 091818.png\" \"D:/master/projet annuel/synkro/k8s/screenshots/05-kubectl-get-pods-full-stack.png\")",
+      "Bash(kubectl describe *)",
+      "Bash(kubectl logs *)",
+      "Bash(kubectl config *)",
+      "Bash(docker save *)",
+      "Bash(kubectl rollout restart *)",
+      "Bash(docker pull *)",
+      "Bash(kubectl rollout status *)"
     ]
   }
 }

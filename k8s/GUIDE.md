@@ -80,7 +80,86 @@ cd /chemin/vers/synkro
 
 ---
 
-## 3. Premier déploiement
+## 3. Déploiement local — Docker Desktop
+
+Cette section couvre le déploiement sur le cluster Kubernetes intégré à **Docker Desktop** (pour le développement local), en alternative au cluster Infomaniak.
+
+### Prérequis
+
+- Docker Desktop installé avec l'option **Kubernetes activée** (Settings → Kubernetes → Enable Kubernetes)
+- Vérifier que le contexte actif est bien `docker-desktop` :
+  ```bash
+  kubectl config current-context
+  # Attendu : docker-desktop
+  ```
+
+### Étape 1 — Build des images localement
+
+```bash
+docker build -t moignon/synkro-backend:latest ./backend --target prod
+
+docker build -t moignon/synkro-frontend:latest ./frontend --target prod \
+  --build-arg VITE_API_URL=/api \
+  --build-arg VITE_WS_URL=ws://localhost/ws \
+  --build-arg VITE_BACKEND_URL=http://localhost
+
+docker build -t moignon/synkro-websocket:latest ./server --target prod
+```
+
+### Étape 2 — Pré-charger les images dans containerd
+
+> **Point important** : Docker Desktop k8s utilise un containerd **séparé** du daemon Docker. Les images buildées ou pullées via `docker` ne sont pas automatiquement visibles par k8s. Il faut les importer manuellement, sinon les pods tombent en `ImagePullBackOff` même si l'image existe localement.
+
+```bash
+# Puller toutes les images système nécessaires dans le daemon Docker
+docker pull postgres:16
+docker pull nginx:1.27-alpine
+docker pull alpine/openssl:latest
+
+# Les importer dans le containerd de k8s
+for img in postgres:16 nginx:1.27-alpine alpine/openssl:latest moignon/synkro-backend:latest moignon/synkro-frontend:latest moignon/synkro-websocket:latest; do
+  docker save $img | docker exec -i desktop-control-plane ctr -n k8s.io images import -
+done
+```
+
+Pour vérifier qu'une image est bien complète dans containerd :
+```bash
+docker exec desktop-control-plane ctr -n k8s.io images check 2>&1 | grep postgres
+# Attendu : complete (15/15)
+```
+
+### Étape 3 — Appliquer les manifests
+
+Un fichier `configmap.local.yaml` remplace les URLs du VPS par `localhost` :
+
+```bash
+kubectl apply -f k8s/namespace.yaml
+kubectl apply -f k8s/configmap.local.yaml      # utiliser local, pas configmap.yaml
+kubectl apply -f k8s/secrets.yaml
+kubectl apply -f k8s/jwt-pvc.yaml
+kubectl apply -f k8s/postgres-deployment.yaml
+kubectl apply -f k8s/backend-nginx-configmap.yaml
+kubectl apply -f k8s/backend-deployment.yaml
+kubectl apply -f k8s/backend-service.yaml
+kubectl apply -f k8s/frontend-nginx-configmap.yaml
+kubectl apply -f k8s/frontend-deployment.yaml
+kubectl apply -f k8s/frontend-service.yaml
+kubectl apply -f k8s/websocket-deployment.yaml
+kubectl apply -f k8s/websocket-service.yaml
+```
+
+### Étape 4 — Vérifier
+
+```bash
+kubectl get pods -n synkro -w
+# Attendre que tous les pods soient Running
+```
+
+L'app est ensuite accessible sur **http://localhost**.
+
+---
+
+## 4. Premier déploiement (Infomaniak)
 
 L'ordre d'application est important : chaque étape dépend de la précédente.
 
@@ -165,7 +244,7 @@ kubectl apply -f k8s/monitoring/grafana-dashboard-configmap.yaml
 
 ---
 
-## 4. Vérification post-déploiement
+## 5. Vérification post-déploiement
 
 ### Pods
 
@@ -218,7 +297,7 @@ kubectl get constraints -A              # liste les violations (non bloquant en 
 
 ---
 
-## 5. Accès aux interfaces
+## 6. Accès aux interfaces
 
 ### Application Synkro
 
@@ -245,7 +324,7 @@ Le dashboard **"Synkro — Vue d'ensemble"** est auto-provisionné. Il affiche :
 
 ---
 
-## 6. Opérations courantes
+## 7. Opérations courantes
 
 ### Voir les logs
 
@@ -321,7 +400,7 @@ kubectl delete namespace synkro
 
 ---
 
-## 7. Annexes — Preuves de fonctionnement
+## 8. Annexes — Preuves de fonctionnement
 
 ### Cluster Infomaniak
 
