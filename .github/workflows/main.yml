@@ -111,10 +111,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Installer Ansible
+      - name: Installer Ansible + collections
         run: |
           sudo apt-get update -q
           sudo apt-get install -y ansible
+          ansible-galaxy collection install community.general ansible.posix --upgrade
 
       - name: Configurer la clé SSH
         run: |

@@ -2,6 +2,13 @@
 # .htpasswd pour les vhosts monitoring (Kuma + Netdata)
 # Le mot de passe vient de .env (MONITORING_HTPASSWD_PASSWORD)
 
+- name: Installer passlib (requis par community.general.htpasswd)
+  apt:
+    name: python3-passlib
+    state: present
+    update_cache: yes
+    cache_valid_time: 3600
+
 - name: Vérifier que le mot de passe monitoring est défini
   fail:
     msg: "MONITORING_HTPASSWD_PASSWORD doit être défini dans .env (ou par défaut 'changeme' utilisé)"
