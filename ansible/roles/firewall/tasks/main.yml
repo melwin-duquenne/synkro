@@ -1,0 +1,57 @@
+---
+# UFW : default deny in, allow SSH (transition + nouveau port), HTTP, HTTPS, IPv4 + IPv6
+# Logging activé en mode low
+
+- name: Installer UFW
+  apt:
+    name: ufw
+    state: present
+
+- name: UFW — default policies
+  ufw:
+    direction: "{{ item.dir }}"
+    policy: "{{ item.pol }}"
+  loop:
+    - { dir: incoming, pol: deny }
+    - { dir: outgoing, pol: allow }
+    - { dir: routed, pol: deny }
+
+- name: UFW — autoriser SSH legacy (port 22) tant que la transition n'est pas validée
+  ufw:
+    rule: limit
+    port: '22'
+    proto: tcp
+    comment: "SSH legacy (à supprimer après validation)"
+  when: not ssh_close_old_port | bool
+
+- name: UFW — supprimer SSH port 22 après validation
+  ufw:
+    rule: limit
+    port: '22'
+    proto: tcp
+    delete: yes
+  when: ssh_close_old_port | bool
+
+- name: UFW — autoriser SSH nouveau port (rate-limited)
+  ufw:
+    rule: limit
+    port: "{{ ssh_port }}"
+    proto: tcp
+    comment: "SSH durci"
+
+- name: UFW — autoriser HTTP/HTTPS
+  ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: tcp
+  loop:
+    - '80'
+    - '443'
+
+- name: UFW — logs (low = bloqués + tentatives suspectes)
+  ufw:
+    logging: 'low'
+
+- name: UFW — activer
+  ufw:
+    state: enabled

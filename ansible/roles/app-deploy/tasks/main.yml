@@ -1,0 +1,75 @@
+---
+# Déploiement applicatif : copie .env + compose, pull, up, migrations
+
+- name: Créer les répertoires applicatifs
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ app_dir }}"
+    - "{{ app_dir }}/backend/docker"
+
+- name: Copier docker-compose.deploiement.yml
+  copy:
+    src: "{{ playbook_dir }}/../docker-compose.deploiement.yml"
+    dest: "{{ compose_file }}"
+    mode: '0644'
+
+- name: Copier le .env
+  copy:
+    src: "{{ playbook_dir }}/../.env"
+    dest: "{{ app_dir }}/.env"
+    mode: '0600'
+
+- name: Copier le nginx.conf du backend (proxy interne FPM)
+  copy:
+    src: "{{ playbook_dir }}/../backend/docker/nginx.conf"
+    dest: "{{ app_dir }}/backend/docker/nginx.conf"
+    mode: '0644'
+
+- name: Pull des images Docker
+  shell: "{{ compose_cmd }} pull"
+  register: pull_result
+  changed_when: "'Pull complete' in pull_result.stdout or 'Downloaded newer' in pull_result.stdout"
+
+- name: Up des conteneurs (recreate si nouvelle image)
+  shell: "{{ compose_cmd }} up -d --remove-orphans"
+  register: compose_up
+  changed_when: "'Started' in compose_up.stderr or 'Created' in compose_up.stderr or 'Recreated' in compose_up.stderr"
+
+- name: Attendre PostgreSQL
+  shell: "{{ compose_cmd }} exec -T postgres-synkro pg_isready"
+  retries: 15
+  delay: 3
+  register: pg_ready
+  until: pg_ready.rc == 0
+  changed_when: false
+
+- name: Migrations Doctrine
+  shell: "{{ compose_cmd }} exec -T backend-fpm php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration"
+  register: migrations
+  changed_when: "'No migrations to execute' not in migrations.stdout"
+
+- name: Cache clear
+  shell: "{{ compose_cmd }} exec -T backend-fpm php bin/console cache:clear"
+  register: cache_clear
+  changed_when: false
+
+- name: Health-check frontend (8080)
+  uri:
+    url: "http://127.0.0.1:{{ port_frontend }}"
+    status_code: 200
+    timeout: 10
+  retries: 5
+  delay: 5
+  register: front_check
+  until: front_check.status == 200
+  failed_when: false
+
+- name: Résumé déploiement
+  debug:
+    msg:
+      - "PostgreSQL : {{ 'OK' if pg_ready.rc == 0 else 'KO' }}"
+      - "Migrations : {{ 'OK' if migrations.rc == 0 else 'KO' }}"
+      - "Frontend   : {{ 'OK' if (front_check.status | default(0)) == 200 else 'KO' }}"

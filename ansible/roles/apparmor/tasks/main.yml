@@ -1,0 +1,31 @@
+---
+# AppArmor enforce — Ubuntu/Debian l'ont par défaut, on s'assure qu'il tourne
+
+- name: Installer AppArmor + utils + profils additionnels
+  apt:
+    name:
+      - apparmor
+      - apparmor-utils
+      - apparmor-profiles
+      - apparmor-profiles-extra
+    state: present
+
+- name: Activer AppArmor au boot
+  systemd:
+    name: apparmor
+    state: started
+    enabled: yes
+
+- name: Lister les profils AppArmor
+  shell: |
+    set -o pipefail
+    aa-status --json | python3 -c "import json,sys; d=json.load(sys.stdin); print(len(d['profiles']))"
+  args:
+    executable: /bin/bash
+  register: aa_count
+  changed_when: false
+  failed_when: false
+
+- name: Statut AppArmor
+  debug:
+    msg: "AppArmor : {{ aa_count.stdout | default('inconnu') }} profils chargés"

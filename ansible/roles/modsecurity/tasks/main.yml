@@ -1,0 +1,87 @@
+---
+# ModSecurity v3 + OWASP Core Rule Set (CRS) — WAF en front de Nginx
+
+- name: Installer ModSecurity v3 pour Nginx
+  apt:
+    name:
+      - libnginx-mod-http-modsecurity
+      - modsecurity-crs
+    state: present
+  register: modsec_install
+  failed_when: false
+
+- name: Configurer ModSecurity (uniquement si installé avec succès)
+  when: not (modsec_install.failed | default(false))
+  block:
+    - name: Créer le répertoire ModSecurity
+      file:
+        path: /etc/nginx/modsec
+        state: directory
+        mode: '0755'
+
+    - name: Copier modsecurity.conf-recommended
+      copy:
+        src: /etc/modsecurity/modsecurity.conf-recommended
+        dest: /etc/nginx/modsec/modsecurity.conf
+        mode: '0644'
+        remote_src: yes
+        force: no
+
+    - name: Activer ModSecurity (mode On)
+      lineinfile:
+        path: /etc/nginx/modsec/modsecurity.conf
+        regexp: '^SecRuleEngine'
+        line: 'SecRuleEngine On'
+      notify: Recharger Nginx
+
+    - name: Lien CRS
+      file:
+        src: /usr/share/modsecurity-crs
+        dest: /etc/nginx/modsec/crs
+        state: link
+        force: yes
+
+    - name: Copier crs-setup.conf
+      copy:
+        src: /etc/modsecurity-crs/crs-setup.conf
+        dest: /etc/nginx/modsec/crs/crs-setup.conf
+        mode: '0644'
+        remote_src: yes
+        force: no
+      failed_when: false
+
+    - name: Fichier d'inclusion principal main.conf
+      copy:
+        dest: /etc/nginx/modsec/main.conf
+        mode: '0644'
+        content: |
+          Include /etc/nginx/modsec/modsecurity.conf
+          Include /etc/nginx/modsec/crs/crs-setup.conf
+          Include /etc/nginx/modsec/crs/rules/*.conf
+      notify: Recharger Nginx
+
+    - name: Vérifier si CRS allowed_request_content_type contient déjà ld+json
+      shell: grep -E '^[^#]*allowed_request_content_type=.*ld\+json' /etc/nginx/modsec/crs/crs-setup.conf
+      register: crs_ldjson_check
+      changed_when: false
+      failed_when: false
+
+    - name: Décommenter le bloc SecAction (CRS 900220 — content-types)
+      shell: |
+        LINE=$(grep -n "allowed_request_content_type=" /etc/nginx/modsec/crs/crs-setup.conf | head -1 | cut -d: -f1)
+        if [ -n "$LINE" ]; then
+          START=$((LINE - 8))
+          sed -i "${START},${LINE} s/^#//" /etc/nginx/modsec/crs/crs-setup.conf
+        fi
+      when: crs_ldjson_check.rc != 0
+
+    - name: Ajouter ld+json et merge-patch+json à allowed_request_content_type
+      shell: |
+        sed -i '/allowed_request_content_type=/ { /^#/!s/|application\/json|/|application\/json| |application\/ld+json| |application\/merge-patch+json|/ }' /etc/nginx/modsec/crs/crs-setup.conf
+      when: crs_ldjson_check.rc != 0
+      notify: Recharger Nginx
+
+- name: ModSecurity non disponible — WAF skippé
+  debug:
+    msg: "ATTENTION : ModSecurity n'a pas pu être installé sur cette distribution. Le WAF est désactivé."
+  when: modsec_install.failed | default(false)

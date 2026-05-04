@@ -1,0 +1,34 @@
+---
+# Vhosts Nginx : synkro.ovh (app), status.synkro.ovh (Kuma), netdata.synkro.ovh
+
+- name: Vhost principal — synkro.{{ domain }}
+  template:
+    src: synkro.conf.j2
+    dest: /etc/nginx/sites-available/synkro
+    mode: '0644'
+  notify: Recharger Nginx
+
+- name: Vhost Uptime Kuma — status.{{ domain }}
+  template:
+    src: synkro-kuma.conf.j2
+    dest: /etc/nginx/sites-available/synkro-kuma
+    mode: '0644'
+  notify: Recharger Nginx
+
+- name: Vhost Netdata — netdata.{{ domain }}
+  template:
+    src: synkro-netdata.conf.j2
+    dest: /etc/nginx/sites-available/synkro-netdata
+    mode: '0644'
+  notify: Recharger Nginx
+
+- name: Activer les vhosts
+  file:
+    src: "/etc/nginx/sites-available/{{ item }}"
+    dest: "/etc/nginx/sites-enabled/{{ item }}"
+    state: link
+  loop:
+    - synkro
+    - synkro-kuma
+    - synkro-netdata
+  notify: Recharger Nginx

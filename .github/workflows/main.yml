@@ -139,6 +139,7 @@ jobs:
           VITE_WS_URL: ${{ secrets.VITE_WS_URL }}
           DEFAULT_URI: ${{ secrets.DEFAULT_URI }}
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          MONITORING_HTPASSWD_PASSWORD: ${{ secrets.MONITORING_HTPASSWD_PASSWORD }}
         run: |
           cat > .env <<ENVEOF
           DOCKERHUB_USERNAME=${DOCKERHUB_USERNAME}
@@ -170,6 +171,7 @@ jobs:
           PORT_POSTGRES_2=${{ vars.PORT_POSTGRES_2 }}
           PORT_WEBSOCKET=${{ vars.PORT_WEBSOCKET }}
           BASE_URL=/
+          MONITORING_HTPASSWD_PASSWORD=${MONITORING_HTPASSWD_PASSWORD}
           ENVEOF
           sed -i 's/^          //' .env
 

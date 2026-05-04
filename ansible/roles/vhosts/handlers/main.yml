@@ -1,0 +1,3 @@
+---
+- name: Recharger Nginx
+  shell: nginx -t && systemctl reload nginx

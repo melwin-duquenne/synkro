@@ -1,0 +1,17 @@
+---
+# .htpasswd pour les vhosts monitoring (Kuma + Netdata)
+# Le mot de passe vient de .env (MONITORING_HTPASSWD_PASSWORD)
+
+- name: Vérifier que le mot de passe monitoring est défini
+  fail:
+    msg: "MONITORING_HTPASSWD_PASSWORD doit être défini dans .env (ou par défaut 'changeme' utilisé)"
+  when: monitoring_password == 'changeme'
+
+- name: Créer/maj le fichier .htpasswd pour monitoring
+  community.general.htpasswd:
+    path: /etc/nginx/.htpasswd_monitoring
+    name: "{{ monitoring_user }}"
+    password: "{{ monitoring_password }}"
+    owner: root
+    group: www-data
+    mode: '0640'

@@ -1,24 +1,19 @@
 ---
 # ===========================================================================
-# DÉPLOIEMENT / MISE À JOUR — Lancé par la CI à chaque push
-# Usage: ansible-playbook ansible/deploy.yml -i ansible/inventory.ini
+# DEPLOY.YML — Déploiement applicatif rapide (lancé par la CI à chaque push)
+# Pour le bootstrap complet (système + hardening), lance site.yml manuellement.
 # ===========================================================================
-- name: Déploiement Synkro
+
+- name: Déploiement applicatif Synkro
   hosts: vps
   become: yes
-
-  vars:
-    app_dir: /opt/synkro
-    domain: synkro.ovh
-    compose_file: "{{ app_dir }}/docker-compose.deploiement.yml"
-    compose_cmd: "docker compose --env-file {{ app_dir }}/.env -f {{ compose_file }}"
 
   pre_tasks:
     - name: Vérifier que .env existe en local
       delegate_to: localhost
       become: no
       stat:
-        path: ../.env
+        path: "{{ playbook_dir }}/../.env"
       register: env_file
       failed_when: not env_file.stat.exists
 
@@ -26,168 +21,18 @@
       delegate_to: localhost
       become: no
       stat:
-        path: ../docker-compose.deploiement.yml
-      register: compose_file_check
-      failed_when: not compose_file_check.stat.exists
+        path: "{{ playbook_dir }}/../docker-compose.deploiement.yml"
+      register: compose_check
+      failed_when: not compose_check.stat.exists
 
-  tasks:
-    # ═══════════════════════════════════════════════════════════════════════
-    # BACKUP
-    # ═══════════════════════════════════════════════════════════════════════
-    - name: Créer le répertoire de backup
-      file:
-        path: /opt/synkro-backups
-        state: directory
-        mode: '0700'
-
-    - name: Sauvegarder le .env actuel
+    - name: Backup du .env actuel sur le VPS
       copy:
         src: "{{ app_dir }}/.env"
-        dest: "/opt/synkro-backups/.env.{{ ansible_date_time.iso8601_basic_short }}"
+        dest: "{{ backup_dir }}/.env.{{ ansible_date_time.iso8601_basic_short }}"
         remote_src: yes
       ignore_errors: yes
 
-    # ═══════════════════════════════════════════════════════════════════════
-    # MISE À JOUR DES FICHIERS
-    # ═══════════════════════════════════════════════════════════════════════
-    - name: Créer les répertoires nécessaires
-      file:
-        path: "{{ item }}"
-        state: directory
-        mode: '0755'
-      loop:
-        - "{{ app_dir }}"
-        - "{{ app_dir }}/backend/docker"
-        - "{{ app_dir }}/backend/config/jwt"
-
-    - name: Copier docker-compose.deploiement.yml
-      copy:
-        src: ../docker-compose.deploiement.yml
-        dest: "{{ compose_file }}"
-
-    - name: Copier le fichier .env
-      copy:
-        src: ../.env
-        dest: "{{ app_dir }}/.env"
-        mode: '0644'
-
-    - name: Copier le nginx.conf du backend
-      copy:
-        src: ../backend/docker/nginx.conf
-        dest: "{{ app_dir }}/backend/docker/nginx.conf"
-
-    # ═══════════════════════════════════════════════════════════════════════
-    # CLÉS JWT — générées sur l'hôte si absentes
-    # ═══════════════════════════════════════════════════════════════════════
-    - name: Vérifier si les clés JWT existent
-      stat:
-        path: "{{ app_dir }}/backend/config/jwt/private.pem"
-      register: jwt_private_key
-
-    - name: Lire la passphrase JWT depuis le .env
-      shell: grep '^JWT_PASSPHRASE=' {{ app_dir }}/.env | cut -d'=' -f2-
-      register: jwt_passphrase_raw
-      changed_when: false
-      when: not jwt_private_key.stat.exists
-
-    - name: Générer la clé privée JWT (avec passphrase)
-      shell: >
-        openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:4096
-        -aes-256-cbc -pass pass:{{ jwt_passphrase_raw.stdout | quote }}
-        -out {{ app_dir }}/backend/config/jwt/private.pem
-      when: not jwt_private_key.stat.exists and jwt_passphrase_raw.stdout | default('') | length > 0
-
-    - name: Générer la clé privée JWT (sans passphrase)
-      shell: >
-        openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:4096
-        -out {{ app_dir }}/backend/config/jwt/private.pem
-      when: not jwt_private_key.stat.exists and jwt_passphrase_raw.stdout | default('') | length == 0
-
-    - name: Générer la clé publique JWT
-      shell: >
-        openssl rsa
-        -in {{ app_dir }}/backend/config/jwt/private.pem
-        -pubout -out {{ app_dir }}/backend/config/jwt/public.pem
-        {% if jwt_passphrase_raw.stdout | default('') | length > 0 %}-passin pass:{{ jwt_passphrase_raw.stdout | quote }}{% endif %}
-      when: not jwt_private_key.stat.exists
-
-    - name: Permissions sur les clés JWT
-      file:
-        path: "{{ item }}"
-        mode: '0644'
-      loop:
-        - "{{ app_dir }}/backend/config/jwt/private.pem"
-        - "{{ app_dir }}/backend/config/jwt/public.pem"
-
-    # ═══════════════════════════════════════════════════════════════════════
-    # DÉPLOIEMENT DOCKER
-    # ═══════════════════════════════════════════════════════════════════════
-    - name: Arrêter les conteneurs
-      shell: "{{ compose_cmd }} down --remove-orphans || true"
-
-    - name: Nettoyer les images orphelines
-      shell: docker image prune -f
-
-    - name: Puller les dernières images
-      shell: "{{ compose_cmd }} pull"
-
-    - name: Démarrer les conteneurs
-      shell: "{{ compose_cmd }} up -d --remove-orphans"
-
-    # ═══════════════════════════════════════════════════════════════════════
-    # BASE DE DONNÉES
-    # ═══════════════════════════════════════════════════════════════════════
-    - name: Attendre que PostgreSQL soit prêt
-      shell: "{{ compose_cmd }} exec -T postgres-synkro pg_isready"
-      retries: 15
-      delay: 3
-      register: pg_ready
-      until: pg_ready.rc == 0
-
-    - name: Lancer les migrations Doctrine
-      shell: "{{ compose_cmd }} exec -T backend-fpm php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration"
-      register: migrations
-
-    - name: Résultat des migrations
-      debug:
-        msg: "{{ migrations.stdout_lines }}"
-
-    # ═══════════════════════════════════════════════════════════════════════
-    # CACHE & HEALTH CHECKS
-    # ═══════════════════════════════════════════════════════════════════════
-    - name: Vider le cache Symfony
-      shell: "{{ compose_cmd }} exec -T backend-fpm php bin/console cache:clear"
-
-    - name: Attendre le frontend
-      uri:
-        url: http://127.0.0.1:8080
-        status_code: 200
-        timeout: 10
-      retries: 5
-      delay: 5
-      register: frontend_check
-      until: frontend_check.status == 200
-      failed_when: false
-
-    - name: Résumé du déploiement
-      debug:
-        msg:
-          - "PostgreSQL: {{ 'OK' if pg_ready.rc == 0 else 'ERREUR' }}"
-          - "Migrations: {{ 'OK' if migrations.rc == 0 else 'ERREUR' }}"
-          - "JWT Keys: {{ 'existantes' if jwt_private_key.stat.exists else 'générées' }}"
-          - "Frontend: {{ 'OK' if frontend_check.status | default(0) == 200 else 'ERREUR' }}"
-
-    - name: Afficher les logs en cas d'erreur
-      shell: "{{ compose_cmd }} logs --tail=30"
-      when: frontend_check.status | default(0) != 200 or migrations.rc != 0
-      register: error_logs
-
-    - name: Logs (debug)
-      debug:
-        var: error_logs.stdout_lines
-      when: error_logs is defined and error_logs.stdout_lines is defined
-
-# ═══════════════════════════════════════════════════════════════════════════
-# SÉCURITÉ — Fail2ban, ModSecurity, rate limiting, headers
-# ═══════════════════════════════════════════════════════════════════════════
-- import_playbook: security.yml
+  roles:
+    - jwt-keys
+    - monitoring     # met à jour htpasswd si MONITORING_HTPASSWD_PASSWORD a changé
+    - app-deploy

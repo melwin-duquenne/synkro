@@ -1,0 +1,99 @@
+---
+# AIDE (file integrity) + rkhunter + chkrootkit + cron quotidien
+
+# ─── AIDE ────────────────────────────────────────────────────────────────
+- name: Installer AIDE
+  apt:
+    name: aide
+    state: present
+
+- name: Vérifier si la base AIDE existe
+  stat:
+    path: /var/lib/aide/aide.db.gz
+  register: aide_db
+
+- name: Initialiser la base AIDE (long — ~5 min, ne tourne qu'une fois)
+  shell: |
+    aideinit -y -f
+    cp -f /var/lib/aide/aide.db.new /var/lib/aide/aide.db
+    cp -f /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz 2>/dev/null || true
+  when: not aide_db.stat.exists
+  async: 600
+  poll: 30
+
+- name: Cron AIDE — vérification quotidienne (rapport dans /var/log/aide/)
+  copy:
+    dest: /etc/cron.daily/aide-check
+    mode: '0755'
+    content: |
+      #!/bin/bash
+      mkdir -p /var/log/aide
+      LOG="/var/log/aide/aide-$(date +%Y-%m-%d).log"
+      /usr/bin/aide --check > "$LOG" 2>&1
+      # Garde 30 jours de rapports
+      find /var/log/aide -name 'aide-*.log' -mtime +30 -delete
+
+# ─── RKHunter ────────────────────────────────────────────────────────────
+- name: Installer rkhunter
+  apt:
+    name: rkhunter
+    state: present
+
+- name: Configurer rkhunter (autoriser les MD5_CMD modernes)
+  lineinfile:
+    path: /etc/rkhunter.conf
+    regexp: "^{{ item.k }}="
+    line: "{{ item.k }}={{ item.v }}"
+  loop:
+    - { k: 'MIRRORS_MODE', v: '0' }
+    - { k: 'UPDATE_MIRRORS', v: '1' }
+    - { k: 'WEB_CMD', v: '""' }
+    - { k: 'ALLOW_SSH_ROOT_USER', v: 'no' }
+    - { k: 'ALLOW_SSH_PROT_V1', v: '0' }
+
+- name: Rkhunter — propupd (baseline initiale)
+  shell: rkhunter --propupd --quiet
+  args:
+    creates: /var/lib/rkhunter/db/rkhunter.dat
+
+- name: Cron rkhunter — scan quotidien
+  copy:
+    dest: /etc/cron.daily/rkhunter-scan
+    mode: '0755'
+    content: |
+      #!/bin/bash
+      mkdir -p /var/log/rkhunter
+      LOG="/var/log/rkhunter/rkhunter-$(date +%Y-%m-%d).log"
+      /usr/bin/rkhunter --check --skip-keypress --report-warnings-only > "$LOG" 2>&1 || true
+      find /var/log/rkhunter -name 'rkhunter-*.log' -mtime +30 -delete
+
+# ─── chkrootkit ──────────────────────────────────────────────────────────
+- name: Installer chkrootkit
+  apt:
+    name: chkrootkit
+    state: present
+
+- name: Cron chkrootkit — scan quotidien
+  copy:
+    dest: /etc/cron.daily/chkrootkit-scan
+    mode: '0755'
+    content: |
+      #!/bin/bash
+      mkdir -p /var/log/chkrootkit
+      LOG="/var/log/chkrootkit/chkrootkit-$(date +%Y-%m-%d).log"
+      /usr/sbin/chkrootkit > "$LOG" 2>&1 || true
+      find /var/log/chkrootkit -name 'chkrootkit-*.log' -mtime +30 -delete
+
+- name: Logrotate — AIDE/rkhunter/chkrootkit
+  copy:
+    dest: /etc/logrotate.d/synkro-ids
+    mode: '0644'
+    content: |
+      /var/log/aide/*.log /var/log/rkhunter/*.log /var/log/chkrootkit/*.log {
+          weekly
+          rotate 8
+          compress
+          delaycompress
+          missingok
+          notifempty
+      }
