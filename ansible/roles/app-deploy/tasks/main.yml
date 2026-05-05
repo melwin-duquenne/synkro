@@ -16,11 +16,11 @@
     dest: "{{ compose_file }}"
     mode: '0644'
 
-- name: Copier le .env
+- name: Copier le .env (0644 — lisible par www-data dans le conteneur backend)
   copy:
     src: "{{ playbook_dir }}/../.env"
     dest: "{{ app_dir }}/.env"
-    mode: '0600'
+    mode: '0644'
 
 - name: Copier le nginx.conf du backend (proxy interne FPM)
   copy:
@@ -37,6 +37,11 @@
   shell: "{{ compose_cmd }} up -d --remove-orphans"
   register: compose_up
   changed_when: "'Started' in compose_up.stderr or 'Created' in compose_up.stderr or 'Recreated' in compose_up.stderr"
+
+- name: Restart backend-synkro (nginx interne) si backend-fpm a été recreé — refresh DNS
+  shell: "{{ compose_cmd }} restart backend-synkro"
+  when: "'backend-fpm' in compose_up.stderr and ('Recreated' in compose_up.stderr or 'Started' in compose_up.stderr)"
+  changed_when: true
 
 - name: Attendre PostgreSQL
   shell: "{{ compose_cmd }} exec -T postgres-synkro pg_isready"
