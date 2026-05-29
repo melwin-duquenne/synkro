@@ -92,6 +92,10 @@ async function handleDelete() {
   }
 
   deleteConfirmId.value = null;
+  closeDeleteModal();
+}
+
+function closeDeleteModal() {
   const modal = document.getElementById("delete-modal") as HTMLDialogElement;
   modal?.close();
 }
@@ -381,11 +385,7 @@ function getInitials(name: string): string {
         <div class="dialog-actions">
           <button
             class="btn btn-ghost"
-            @click="
-              (
-                document.getElementById('delete-modal') as HTMLDialogElement
-              )?.close()
-            "
+            @click="closeDeleteModal"
           >
             Annuler
           </button>

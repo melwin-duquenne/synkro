@@ -83,14 +83,12 @@ const initials = computed(() => {
 const roleLabel = computed(() => {
   if (authStore.user?.role === "admin") return "Administrateur";
   if (authStore.user?.role === "owner") return "Proprietaire";
-  if (authStore.user?.role === "manager") return "Manager";
   return "Utilisateur";
 });
 
 const roleBadgeClass = computed(() => {
   if (authStore.user?.role === "admin") return "badge-admin";
   if (authStore.user?.role === "owner") return "badge-owner";
-  if (authStore.user?.role === "manager") return "badge-manager";
   return "badge-user";
 });
 
