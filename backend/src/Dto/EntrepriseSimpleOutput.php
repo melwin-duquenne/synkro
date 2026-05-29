@@ -11,6 +11,7 @@ final class EntrepriseSimpleOutput
 {
     public int $id;
     public string $name;
+    public ?string $slug = null;
 
     public static function fromEntity(?Entreprise $entreprise): ?self
     {
@@ -21,6 +22,7 @@ final class EntrepriseSimpleOutput
         $output = new self();
         $output->id = $entreprise->getId();
         $output->name = $entreprise->getName();
+        $output->slug = $entreprise->getSlug();
 
         return $output;
     }

@@ -1,42 +1,43 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
+import { ref, computed } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { useAuthStore } from "@/stores/auth";
 
-const route = useRoute()
-const router = useRouter()
-const authStore = useAuthStore()
+const route = useRoute();
+const router = useRouter();
+const authStore = useAuthStore();
 
-const token = computed(() => (route.query.token as string) || '')
-const password = ref('')
-const passwordConfirm = ref('')
-const success = ref(false)
-const validationError = ref<string | null>(null)
+const token = computed(() => (route.query.token as string) || "");
+const password = ref("");
+const passwordConfirm = ref("");
+const success = ref(false);
+const validationError = ref<string | null>(null);
 
 async function handleSubmit() {
-  validationError.value = null
+  validationError.value = null;
 
   if (!token.value) {
-    validationError.value = 'Token manquant. Utilisez le lien reçu par email.'
-    return
+    validationError.value = "Token manquant. Utilisez le lien reçu par email.";
+    return;
   }
 
   if (password.value !== passwordConfirm.value) {
-    validationError.value = 'Les mots de passe ne correspondent pas.'
-    return
+    validationError.value = "Les mots de passe ne correspondent pas.";
+    return;
   }
 
   if (password.value.length < 6) {
-    validationError.value = 'Le mot de passe doit contenir au moins 6 caractères.'
-    return
+    validationError.value =
+      "Le mot de passe doit contenir au moins 6 caractères.";
+    return;
   }
 
-  const ok = await authStore.confirmResetPassword(token.value, password.value)
+  const ok = await authStore.confirmResetPassword(token.value, password.value);
   if (ok) {
-    success.value = true
+    success.value = true;
     setTimeout(() => {
-      router.push('/login')
-    }, 3000)
+      router.push("/login");
+    }, 3000);
   }
 }
 </script>
@@ -44,10 +45,15 @@ async function handleSubmit() {
 <template>
   <div class="card bg-base-100 shadow-xl">
     <div class="card-body">
-      <h2 class="card-title justify-center text-2xl mb-4">Nouveau mot de passe</h2>
+      <h2 class="card-title justify-center text-2xl mb-4">
+        Nouveau mot de passe
+      </h2>
 
       <div v-if="success" class="alert alert-success">
-        <span>Mot de passe réinitialisé avec succès. Redirection vers la connexion...</span>
+        <span
+          >Mot de passe réinitialisé avec succès. Redirection vers la
+          connexion...</span
+        >
       </div>
 
       <div v-if="authStore.error" class="alert alert-error mb-4">
@@ -106,7 +112,9 @@ async function handleSubmit() {
       <div class="divider">OU</div>
 
       <p class="text-center">
-        <router-link to="/login" class="link link-primary">Retour à la connexion</router-link>
+        <router-link to="/login" class="link link-primary"
+          >Retour à la connexion</router-link
+        >
       </p>
     </div>
   </div>

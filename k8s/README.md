@@ -309,3 +309,63 @@ kubectl get constraints -A
 kubectl port-forward -n synkro svc/grafana 3000:3000
 # Puis ouvrir http://localhost:3000
 ```
+
+---
+
+## Justification des choix techniques
+
+### Patroni plutôt qu'un simple PostgreSQL
+
+Un déploiement PostgreSQL standard est un point de défaillance unique : si le pod tombe, la base est inaccessible jusqu'au redémarrage. Patroni résout ce problème avec une élection de leader automatique et une réplication streaming vers deux replicas. En cas de panne du leader, un replica prend le relais en ~30 secondes sans intervention manuelle. Kubernetes est utilisé comme DCS (stockage de l'état du cluster via ConfigMaps) pour éviter d'avoir à déployer un etcd externe.
+
+### 3 replicas pour le frontend et le backend, 1 seul pour le WebSocket
+
+Le frontend et le backend sont **stateless** : n'importe quel pod peut traiter n'importe quelle requête, le JWT se suffit à lui-même pour l'authentification. Kubernetes distribue le trafic entre les 3 replicas et redémarre automatiquement un pod défaillant sans interruption de service.
+
+Le WebSocket maintient des **connexions persistantes par utilisateur**. Avec plusieurs replicas, deux utilisateurs connectés à des pods différents ne se verraient pas. La solution serait un broker partagé (Redis pub/sub) — non implémenté dans ce projet, donc on reste sur 1 replica.
+
+### GateKeeper en mode `dryrun` et non `deny`
+
+Passer directement en mode bloquant sur un cluster en production risque d'empêcher des déploiements légitimes si une règle est mal calibrée. Le mode `dryrun` permet d'**auditer sans bloquer** : toutes les violations sont visibles via `kubectl get constraints -A` sans impacter les déploiements existants. C'est la bonne pratique pour tester des politiques de sécurité avant de les activer.
+
+### JWT pour l'authentification backend
+
+Le JWT permet au backend d'être totalement stateless : aucune session stockée côté serveur. Chaque pod backend peut valider un token indépendamment des autres, ce qui est indispensable avec 3 replicas. Les clés RSA sont générées une seule fois dans un PVC partagé pour garantir que tous les pods signent et vérifient avec les mêmes clés.
+
+### Nginx en sidecar devant PHP-FPM
+
+PHP-FPM expose uniquement FastCGI (port 9000), un protocole binaire non compatible HTTP. Nginx sert d'interface HTTP, gère les fichiers statiques (`/uploads/`) directement, et transmet uniquement les requêtes dynamiques à PHP-FPM. C'est le pattern standard pour Symfony en production.
+
+---
+
+## Difficultés rencontrées et solutions
+
+### DNS interne K8s et démarrage nginx
+
+**Problème** : nginx du frontend résout les noms de services au démarrage. Si `backend-synkro` n'est pas encore prêt quand le pod frontend démarre, nginx échoue avec une erreur DNS et le pod crashe en boucle.
+
+**Solution** : utiliser le resolver DNS interne de Kubernetes (`resolver 10.96.0.10`) avec une variable nginx `$backend` au lieu d'un nom hardcodé. Avec une variable, nginx résout le nom à chaque requête et non au démarrage — le pod démarre même si le backend n'est pas encore prêt.
+
+### GateKeeper : erreur "no matches for kind ConstraintTemplate"
+
+**Problème** : appliquer `constraints.yaml` immédiatement après `gatekeeper-install.yaml` échoue car les CRDs ne sont pas encore enregistrés dans l'API Kubernetes.
+
+**Solution** : attendre ~30 secondes entre les deux `kubectl apply` le temps que les CustomResourceDefinitions soient propagés.
+
+### Clés JWT partagées entre plusieurs replicas backend
+
+**Problème** : chaque pod backend génère ses propres clés RSA au premier démarrage. Avec 3 replicas, les pods signent les tokens avec des clés différentes — un token signé par le pod A est rejeté par le pod B.
+
+**Solution** : stocker les clés dans un PVC partagé (`jwt-keys`). L'init container `generate-jwt-keys` vérifie si les clés existent déjà avant de les générer, garantissant que tous les pods utilisent la même paire de clés.
+
+### Ordre des init containers du backend
+
+**Problème** : les migrations Doctrine échouent si elles s'exécutent avant que PostgreSQL soit prêt, ou avant que les clés JWT soient générées (certaines migrations dépendent de la configuration complète).
+
+**Solution** : les 3 init containers s'exécutent séquentiellement dans l'ordre défini : `generate-jwt-keys` → `copy-public` → `migrations`. Kubernetes garantit qu'un init container doit réussir avant de lancer le suivant.
+
+### WebSocket via proxy nginx
+
+**Problème** : le protocole WebSocket nécessite une mise à niveau HTTP (`Upgrade: websocket`) que nginx ne fait pas par défaut. Sans configuration spécifique, la connexion WebSocket est refusée ou se ferme immédiatement.
+
+**Solution** : ajouter les headers `Upgrade` et `Connection` dans la config nginx du frontend, passer en HTTP/1.1 (le multiplexing HTTP/2 est incompatible avec WebSocket), et augmenter le timeout à 86400 secondes pour les connexions longues.

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { User, LoginCredentials, RegisterData, UpdateProfileData } from '@/types'
+import type { User, UserEntreprise, LoginCredentials, RegisterData, UpdateProfileData } from '@/types'
 import { extractApiError } from '@/utils/apiError'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
@@ -8,8 +8,10 @@ const API_URL = import.meta.env.VITE_API_URL || '/api'
 export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(localStorage.getItem('token'))
   const user = ref<User | null>(null)
+  const currentEntreprise = ref<UserEntreprise | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
+  const initialized = ref(false)
 
   const isAuthenticated = computed(() => !!token.value)
 
@@ -77,13 +79,22 @@ export const useAuthStore = defineStore('auth', () => {
         headers: { 'Authorization': `Bearer ${token.value}` }
       })
 
+      if (response.status === 401) {
+        // Token vraiment invalide/expiré → déconnecter
+        logout()
+        return
+      }
+
       if (!response.ok) {
-        throw new Error('Failed to fetch user')
+        // Erreur serveur ou réseau → garder le token, ne pas déconnecter
+        return
       }
 
       user.value = await response.json()
     } catch {
-      logout()
+      // Erreur réseau (API pas démarrée, etc.) → garder le token
+    } finally {
+      initialized.value = true
     }
   }
 
@@ -100,7 +111,20 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function getAuthHeaders(): Record<string, string> {
-    return token.value ? { 'Authorization': `Bearer ${token.value}` } : {}
+    const headers: Record<string, string> = {}
+    if (token.value) headers['Authorization'] = `Bearer ${token.value}`
+    if (currentEntreprise.value) headers['X-Entreprise-Slug'] = currentEntreprise.value.slug
+    return headers
+  }
+
+  function setCurrentEntreprise(slug: string): UserEntreprise | null {
+    const membership = user.value?.entreprises.find(e => e.slug === slug) ?? null
+    currentEntreprise.value = membership
+    return membership
+  }
+
+  function getFirstEntrepriseSlug(): string | null {
+    return user.value?.entreprises[0]?.slug ?? null
   }
 
   async function setupEntreprise(companyName?: string): Promise<boolean> {
@@ -335,6 +359,26 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function createEntreprise(name: string, domain?: string): Promise<string | null> {
+    if (!token.value) return null
+
+    try {
+      const response = await fetch(`${API_URL}/account/entreprises`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/ld+json', ...getAuthHeaders() },
+        body: JSON.stringify({ name, ...(domain ? { domain } : {}) })
+      })
+
+      if (!response.ok) return null
+
+      const data = await response.json()
+      await fetchUser()
+      return data.slug ?? null
+    } catch {
+      return null
+    }
+  }
+
   async function confirmDeleteAccount(deleteToken: string): Promise<boolean> {
     loading.value = true
     error.value = null
@@ -362,27 +406,35 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   // Initialize user on store creation
-  if (token.value) {
-    fetchUser()
+  const _initPromise = token.value ? fetchUser() : Promise.resolve().then(() => { initialized.value = true })
+
+  async function waitForInit(): Promise<void> {
+    await _initPromise
   }
 
   return {
     token,
     user,
+    currentEntreprise,
     loading,
     error,
     isAuthenticated,
+    initialized,
+    waitForInit,
     login,
     loginWithGoogle,
     register,
     fetchUser,
     logout,
     getAuthHeaders,
+    setCurrentEntreprise,
+    getFirstEntrepriseSlug,
     setupEntreprise,
     updateEntrepriseName,
     updateProfile,
     uploadAvatar,
     deleteAvatar,
+    createEntreprise,
     requestResetPassword,
     confirmResetPassword,
     requestDeleteAccount,

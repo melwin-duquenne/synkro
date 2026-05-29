@@ -6,9 +6,11 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
 use App\Dto\DashboardData;
 use App\Entity\CalendarEvent;
+use App\Entity\Entreprise;
 use App\Entity\Room;
 use App\Entity\Task;
 use App\Entity\User;
+use App\Service\EntrepriseContext;
 use App\Service\WorkloadCalculator;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -22,7 +24,8 @@ class DashboardStatsProvider implements ProviderInterface
         private EntityManagerInterface $entityManager,
         private Security $security,
         private WorkloadCalculator $workloadCalculator,
-        private RequestStack $requestStack
+        private RequestStack $requestStack,
+        private EntrepriseContext $entrepriseContext
     ) {}
 
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): object|array|null
@@ -32,6 +35,7 @@ class DashboardStatsProvider implements ProviderInterface
             throw new AccessDeniedHttpException('Vous devez être connecté pour effectuer cette action');
         }
 
+        $entreprise = $this->entrepriseContext->getEntreprise();
         $targetUser = $currentUser;
 
         // If a userId query param is provided, load that user's data instead (admin/owner only)
@@ -39,7 +43,7 @@ class DashboardStatsProvider implements ProviderInterface
         $requestedUserId = $request?->query->get('userId');
 
         if ($requestedUserId && (int)$requestedUserId !== $currentUser->getId()) {
-            if (!$currentUser->isAtLeast(User::ROLE_OWNER)) {
+            if (!$currentUser->isAtLeastInEntreprise($entreprise, User::ROLE_OWNER)) {
                 throw new AccessDeniedHttpException('Droits propriétaire ou administrateur requis');
             }
 
@@ -49,8 +53,7 @@ class DashboardStatsProvider implements ProviderInterface
                 throw new NotFoundHttpException('Utilisateur introuvable');
             }
 
-            // Ensure target user belongs to the same entreprise
-            if ($targetUser->getEntreprise()?->getId() !== $currentUser->getEntreprise()?->getId()) {
+            if (!$targetUser->hasEntreprise($entreprise)) {
                 throw new AccessDeniedHttpException('Impossible de consulter les utilisateurs d\'une autre entreprise');
             }
         }
@@ -64,25 +67,25 @@ class DashboardStatsProvider implements ProviderInterface
         $endOfDay = (clone $now)->setTime(23, 59, 59);
 
         return new DashboardData(
-            workload: $this->getWorkloadData($user, $startOfWeek, $endOfWeek),
-            upcomingEvents: $this->getUpcomingEvents($user),
-            todayEvents: $this->getTodayEvents($user, $startOfDay, $endOfDay),
-            tasks: $this->getTasksData($user),
-            recentRooms: $this->getRecentRooms($currentUser),
+            workload: $this->getWorkloadData($user, $startOfWeek, $endOfWeek, $entreprise),
+            upcomingEvents: $this->getUpcomingEvents($user, $entreprise),
+            todayEvents: $this->getTodayEvents($user, $startOfDay, $endOfDay, $entreprise),
+            tasks: $this->getTasksData($user, $entreprise),
+            recentRooms: $this->getRecentRooms($currentUser, $entreprise),
             teamAvailability: $this->getTeamAvailability($currentUser),
-            statistics: $this->getStatistics($user, $startOfWeek),
+            statistics: $this->getStatistics($user, $startOfWeek, $entreprise),
             notifications: $this->getNotifications($user),
         );
     }
 
-    private function getWorkloadData(User $user, \DateTime $start, \DateTime $end): array
+    private function getWorkloadData(User $user, \DateTime $start, \DateTime $end, Entreprise $entreprise): array
     {
         $workloadData = [];
         $currentDate = clone $start;
         $overloadDays = 0;
 
         while ($currentDate <= $end) {
-            $result = $this->workloadCalculator->calculateDailyWorkload($user, $currentDate);
+            $result = $this->workloadCalculator->calculateDailyWorkload($user, $currentDate, $entreprise);
             $workload = $result['percentage'] ?? 0;
             $workloadData[] = [
                 'date' => $currentDate->format('Y-m-d'),
@@ -105,7 +108,7 @@ class DashboardStatsProvider implements ProviderInterface
         ];
     }
 
-    private function getUpcomingEvents(User $user): array
+    private function getUpcomingEvents(User $user, Entreprise $entreprise): array
     {
         $now = new \DateTime();
 
@@ -114,8 +117,10 @@ class DashboardStatsProvider implements ProviderInterface
             ->leftJoin('e.participants', 'p')
             ->where('e.startDate >= :now')
             ->andWhere('p.user = :user OR e.user = :user')
+            ->andWhere('e.entreprise = :entreprise')
             ->setParameter('now', $now)
             ->setParameter('user', $user)
+            ->setParameter('entreprise', $entreprise)
             ->orderBy('e.startDate', 'ASC')
             ->setMaxResults(5)
             ->getQuery()
@@ -134,16 +139,18 @@ class DashboardStatsProvider implements ProviderInterface
         ], $events);
     }
 
-    private function getTodayEvents(User $user, \DateTime $start, \DateTime $end): array
+    private function getTodayEvents(User $user, \DateTime $start, \DateTime $end, Entreprise $entreprise): array
     {
         $events = $this->entityManager->getRepository(CalendarEvent::class)
             ->createQueryBuilder('e')
             ->leftJoin('e.participants', 'p')
             ->where('e.startDate BETWEEN :start AND :end')
             ->andWhere('p.user = :user OR e.user = :user')
+            ->andWhere('e.entreprise = :entreprise')
             ->setParameter('start', $start)
             ->setParameter('end', $end)
             ->setParameter('user', $user)
+            ->setParameter('entreprise', $entreprise)
             ->orderBy('e.startDate', 'ASC')
             ->getQuery()
             ->getResult();
@@ -157,16 +164,18 @@ class DashboardStatsProvider implements ProviderInterface
         ], $events);
     }
 
-    private function getTasksData(User $user): array
+    private function getTasksData(User $user, Entreprise $entreprise): array
     {
         $taskRepo = $this->entityManager->getRepository(Task::class);
 
-        // Tâches du jour (pas de filtre dueDate car le champ n'existe pas encore)
         $todayTasks = $taskRepo->createQueryBuilder('t')
+            ->join('t.room', 'r')
             ->where('t.assignedTo = :user')
             ->andWhere('t.type = :active')
+            ->andWhere('r.entreprise = :entreprise')
             ->setParameter('user', $user)
             ->setParameter('active', Task::TYPE_ACTIVE)
+            ->setParameter('entreprise', $entreprise)
             ->orderBy('t.createdAt', 'DESC')
             ->setMaxResults(10)
             ->getQuery()
@@ -178,11 +187,13 @@ class DashboardStatsProvider implements ProviderInterface
         // Progression par room
         $roomProgress = $taskRepo->createQueryBuilder('t')
             ->select('IDENTITY(t.room) as roomId, r.name as roomName, COUNT(t.id) as total, SUM(CASE WHEN t.type = :archived THEN 1 ELSE 0 END) as completed')
-            ->leftJoin('t.room', 'r')
+            ->join('t.room', 'r')
             ->where('t.assignedTo = :user')
             ->andWhere('t.room IS NOT NULL')
+            ->andWhere('r.entreprise = :entreprise')
             ->setParameter('user', $user)
             ->setParameter('archived', Task::TYPE_ARCHIVED)
+            ->setParameter('entreprise', $entreprise)
             ->groupBy('t.room, r.name')
             ->getQuery()
             ->getResult();
@@ -200,34 +211,23 @@ class DashboardStatsProvider implements ProviderInterface
         ];
     }
 
-    private function getRecentRooms(User $user): array
+    private function getRecentRooms(User $user, Entreprise $entreprise): array
     {
-        // Récupérer l'entreprise de l'utilisateur si elle existe
-        $userEntreprise = $user->getEntreprise();
-
-        // Récupérer les rooms où l'utilisateur a accès
-        $qb = $this->entityManager->getRepository(Room::class)
+        $rooms = $this->entityManager->getRepository(Room::class)
             ->createQueryBuilder('r')
             ->leftJoin('r.userPermissions', 'urp')
             ->leftJoin('r.teamPermissions', 'trp')
             ->leftJoin('trp.team', 't')
             ->leftJoin('t.users', 'tm')
-            ->leftJoin('r.creator', 'c')
-            ->leftJoin('c.entreprise', 'ce')
-            ->where('r.creator = :user OR urp.user = :user OR tm = :user')
-            ->setParameter('user', $user);
-
-        // Si l'utilisateur a une entreprise, ajouter les rooms enterprise de cette entreprise
-        if ($userEntreprise) {
-            $qb->orWhere('r.visibility = :enterprise AND ce = :userEntreprise')
-               ->setParameter('enterprise', 'enterprise')
-               ->setParameter('userEntreprise', $userEntreprise);
-        }
-
-        $rooms = $qb->orderBy('r.createdAt', 'DESC')
-                    ->setMaxResults(10)
-                    ->getQuery()
-                    ->getResult();
+            ->where('r.entreprise = :entreprise')
+            ->andWhere('r.creator = :user OR urp.user = :user OR tm = :user OR r.visibility = :enterprise')
+            ->setParameter('entreprise', $entreprise)
+            ->setParameter('user', $user)
+            ->setParameter('enterprise', 'enterprise')
+            ->orderBy('r.createdAt', 'DESC')
+            ->setMaxResults(10)
+            ->getQuery()
+            ->getResult();
 
         return array_map(fn($room) => [
             'id' => $room->getId(),
@@ -244,23 +244,27 @@ class DashboardStatsProvider implements ProviderInterface
 
     private function getTeamAvailability(User $user): array
     {
-        if (!$user->getEntreprise()) {
+        try {
+            $entreprise = $this->entrepriseContext->getEntreprise();
+        } catch (\Exception $e) {
             return [];
         }
 
         $now = new \DateTime();
-        $teamMembers = $this->entityManager->getRepository(User::class)
-            ->createQueryBuilder('u')
-            ->where('u.entreprise = :entreprise')
+        $teamMembers = $this->entityManager->createQueryBuilder()
+            ->select('u')
+            ->from(User::class, 'u')
+            ->join('u.userEntreprises', 'ue')
+            ->where('ue.entreprise = :entreprise')
             ->andWhere('u.id != :userId')
-            ->setParameter('entreprise', $user->getEntreprise())
+            ->setParameter('entreprise', $entreprise)
             ->setParameter('userId', $user->getId())
             ->setMaxResults(10)
             ->getQuery()
             ->getResult();
 
-        return array_map(function($member) use ($now) {
-            $result = $this->workloadCalculator->calculateDailyWorkload($member, $now);
+        return array_map(function($member) use ($now, $entreprise) {
+            $result = $this->workloadCalculator->calculateDailyWorkload($member, $now, $entreprise);
             $workload = $result['percentage'] ?? 0;
 
             return [
@@ -269,12 +273,12 @@ class DashboardStatsProvider implements ProviderInterface
                 'email' => $member->getEmail(),
                 'avatar' => $member->getAvatarPath(),
                 'workload' => $workload,
-                'status' => $this->getUserStatus($member, $now),
+                'status' => $this->getUserStatus($member, $now, $entreprise),
             ];
         }, $teamMembers);
     }
 
-    private function getStatistics(User $user, \DateTime $startOfWeek): array
+    private function getStatistics(User $user, \DateTime $startOfWeek, Entreprise $entreprise): array
     {
         $now = new \DateTime();
 
@@ -282,12 +286,15 @@ class DashboardStatsProvider implements ProviderInterface
         $completedTasks = $this->entityManager->getRepository(Task::class)
             ->createQueryBuilder('t')
             ->select('COUNT(t.id)')
+            ->join('t.room', 'r')
             ->where('t.assignedTo = :user')
             ->andWhere('t.type = :archived')
             ->andWhere('t.createdAt >= :start')
+            ->andWhere('r.entreprise = :entreprise')
             ->setParameter('user', $user)
             ->setParameter('archived', Task::TYPE_ARCHIVED)
             ->setParameter('start', $startOfWeek)
+            ->setParameter('entreprise', $entreprise)
             ->getQuery()
             ->getSingleScalarResult();
 
@@ -295,10 +302,13 @@ class DashboardStatsProvider implements ProviderInterface
         $createdTasks = $this->entityManager->getRepository(Task::class)
             ->createQueryBuilder('t')
             ->select('COUNT(t.id)')
+            ->join('t.room', 'r')
             ->where('t.assignedTo = :user')
             ->andWhere('t.createdAt >= :start')
+            ->andWhere('r.entreprise = :entreprise')
             ->setParameter('user', $user)
             ->setParameter('start', $startOfWeek)
+            ->setParameter('entreprise', $entreprise)
             ->getQuery()
             ->getSingleScalarResult();
 
@@ -310,10 +320,12 @@ class DashboardStatsProvider implements ProviderInterface
             ->where('e.startDate >= :start AND e.startDate <= :now')
             ->andWhere('e.eventType = :meeting')
             ->andWhere('p.user = :user OR e.user = :user')
+            ->andWhere('e.entreprise = :entreprise')
             ->setParameter('start', $startOfWeek)
             ->setParameter('now', $now)
             ->setParameter('meeting', 'meeting')
             ->setParameter('user', $user)
+            ->setParameter('entreprise', $entreprise)
             ->getQuery()
             ->getSingleScalarResult();
 
@@ -324,10 +336,12 @@ class DashboardStatsProvider implements ProviderInterface
             ->where('e.startDate >= :start AND e.startDate <= :now')
             ->andWhere('e.eventType = :meeting')
             ->andWhere('p.user = :user OR e.user = :user')
+            ->andWhere('e.entreprise = :entreprise')
             ->setParameter('start', $startOfWeek)
             ->setParameter('now', $now)
             ->setParameter('meeting', 'meeting')
             ->setParameter('user', $user)
+            ->setParameter('entreprise', $entreprise)
             ->getQuery()
             ->getResult();
 
@@ -374,7 +388,7 @@ class DashboardStatsProvider implements ProviderInterface
         ];
     }
 
-    private function getUserStatus(User $user, \DateTime $now): string
+    private function getUserStatus(User $user, \DateTime $now, Entreprise $entreprise): string
     {
         // Vérifier si en absence
         $absence = $this->entityManager->getRepository(CalendarEvent::class)
@@ -383,9 +397,11 @@ class DashboardStatsProvider implements ProviderInterface
             ->where('e.eventType = :absence')
             ->andWhere('e.startDate <= :now AND e.endDate >= :now')
             ->andWhere('p.user = :user OR e.user = :user')
+            ->andWhere('e.entreprise = :entreprise')
             ->setParameter('absence', 'absence')
             ->setParameter('now', $now)
             ->setParameter('user', $user)
+            ->setParameter('entreprise', $entreprise)
             ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult();
@@ -401,9 +417,11 @@ class DashboardStatsProvider implements ProviderInterface
             ->where('e.eventType = :meeting')
             ->andWhere('e.startDate <= :now AND e.endDate >= :now')
             ->andWhere('p.user = :user OR e.user = :user')
+            ->andWhere('e.entreprise = :entreprise')
             ->setParameter('meeting', 'meeting')
             ->setParameter('now', $now)
             ->setParameter('user', $user)
+            ->setParameter('entreprise', $entreprise)
             ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult();

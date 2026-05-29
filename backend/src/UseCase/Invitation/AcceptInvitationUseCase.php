@@ -39,30 +39,40 @@ class AcceptInvitationUseCase
         $user = $this->security->getUser();
 
         if ($user instanceof User) {
-            $user->setEntreprise($invitation->getEntreprise());
+            $role = $invitation->getRole();
+            $user->addToEntreprise($invitation->getEntreprise(), $role);
             $invitation->setStatus('accepted');
             $this->entityManager->flush();
 
-            return new class($invitation->getEntreprise()->getName()) {
+            $slug = $invitation->getEntreprise()->getSlug();
+            $name = $invitation->getEntreprise()->getName();
+
+            return new class($name, $slug) {
                 public string $message;
                 public bool $accepted = true;
+                public string $entrepriseSlug;
+                public string $entrepriseName;
 
-                public function __construct(string $entrepriseName)
+                public function __construct(string $entrepriseName, string $entrepriseSlug)
                 {
+                    $this->entrepriseName = $entrepriseName;
+                    $this->entrepriseSlug = $entrepriseSlug;
                     $this->message = "You have joined {$entrepriseName}";
                 }
             };
         }
 
-        return new class($invitation->getEntreprise()->getName(), $invitation->getEmail()) {
+        return new class($invitation->getEntreprise()->getName(), $invitation->getEntreprise()->getSlug() ?? '', $invitation->getEmail()) {
             public string $message;
             public bool $accepted = false;
             public string $entrepriseName;
+            public string $entrepriseSlug;
             public string $email;
 
-            public function __construct(string $entrepriseName, string $email)
+            public function __construct(string $entrepriseName, string $entrepriseSlug, string $email)
             {
                 $this->entrepriseName = $entrepriseName;
+                $this->entrepriseSlug = $entrepriseSlug;
                 $this->email = $email;
                 $this->message = "Please login or register to join {$entrepriseName}";
             }

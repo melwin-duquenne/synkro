@@ -85,6 +85,8 @@ jspm_packages/
 # DynamoDB Local files
 .dynamodb/
 
+docs/superpowers
+
 # md inutile
 sauvegarde.md
 

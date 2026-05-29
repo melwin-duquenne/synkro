@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { useAuthStore } from '@/stores/auth'
 
 export interface DashboardData {
   workload: {
@@ -89,6 +90,7 @@ interface TaskItem {
 }
 
 export function useDashboard() {
+  const authStore = useAuthStore()
   const dashboardData = ref<DashboardData | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
@@ -97,15 +99,11 @@ export function useDashboard() {
     loading.value = true
     error.value = null
     try {
-      const token = localStorage.getItem('token')
-      console.log('[useDashboard] Fetching dashboard for userId:', userId)
-      
       const url = userId ? `/api/dashboard?userId=${userId}` : '/api/dashboard'
-      console.log('[useDashboard] Request URL:', url)
       const response = await fetch(url, {
         headers: {
           'Accept': 'application/ld+json',
-          'Authorization': `Bearer ${token}`
+          ...authStore.getAuthHeaders()
         }
       })
 
