@@ -75,20 +75,6 @@ const getInitials = (name: string): string => {
     .substring(0, 2);
 };
 
-const getStatusIcon = (status: string): string => {
-  const icons: Record<string, string> = {
-    available:
-      '<span class="inline-block w-2 h-2 rounded-full bg-success"></span>',
-    busy: '<span class="inline-block w-2 h-2 rounded-full bg-error"></span>',
-    absent:
-      '<span class="inline-block w-2 h-2 rounded-full bg-[#667c99]"></span>',
-  };
-  return (
-    icons[status] ||
-    '<span class="inline-block w-2 h-2 rounded-full bg-[#667c99]"></span>'
-  );
-};
-
 const getStatusLabel = (status: string): string => {
   const labels: Record<string, string> = {
     available: "Disponible",
@@ -96,15 +82,6 @@ const getStatusLabel = (status: string): string => {
     absent: "Absent",
   };
   return labels[status] || status;
-};
-
-const getStatusRingClass = (status: string): string => {
-  const classes: Record<string, string> = {
-    available: "ring-success",
-    busy: "ring-error",
-    absent: "ring-base-300",
-  };
-  return classes[status] || "ring-base-300";
 };
 
 const getWorkloadColorClass = (workload: number): string => {

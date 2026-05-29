@@ -6,7 +6,7 @@ const visible = ref(false)
 
 onMounted(() => {
   const observer = new IntersectionObserver(
-    ([entry]) => { if (entry.isIntersecting) visible.value = true },
+    ([entry]) => { if (entry?.isIntersecting) visible.value = true },
     { threshold: 0.05 }
   )
   if (sectionRef.value) observer.observe(sectionRef.value)
