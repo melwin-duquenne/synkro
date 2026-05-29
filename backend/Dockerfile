@@ -3,14 +3,12 @@ FROM php:8.3-cli AS dev
 
 WORKDIR /var/www
 
+ENV COMPOSER_ALLOW_SUPERUSER=1
+
 RUN apt-get update && apt-get install -y \
-    git unzip curl libicu-dev libpq-dev libzip-dev zip \
-    && docker-php-ext-install pdo pdo_pgsql intl zip opcache \
-    && echo 'opcache.enable=1' > /usr/local/etc/php/conf.d/opcache-dev.ini \
-    && echo 'opcache.memory_consumption=128' >> /usr/local/etc/php/conf.d/opcache-dev.ini \
-    && echo 'opcache.max_accelerated_files=10000' >> /usr/local/etc/php/conf.d/opcache-dev.ini \
-    && echo 'opcache.revalidate_freq=0' >> /usr/local/etc/php/conf.d/opcache-dev.ini \
-    && echo 'opcache.validate_timestamps=1' >> /usr/local/etc/php/conf.d/opcache-dev.ini
+    git unzip curl libicu-dev libpq-dev libzip-dev libxml2-dev zip \
+    && docker-php-ext-install pdo pdo_pgsql intl xml zip \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
@@ -56,7 +54,8 @@ ENV APP_ENV=prod \
     APP_FRONTEND_URL=http://localhost \
     GOOGLE_CLIENT_ID=placeholder \
     GOOGLE_CLIENT_SECRET=placeholder \
-    GOOGLE_REDIRECT_URI=http://localhost
+    GOOGLE_REDIRECT_URI=http://localhost \
+    DEFAULT_URI=http://localhost
 
 # Écraser le .env du repo (contient des ${} shell non interprétables par Symfony)
 # Les vraies valeurs sont dans les ENV ci-dessus et seront overridées au runtime
@@ -68,6 +67,8 @@ RUN mkdir -p var/share
 RUN mkdir -p config/jwt \
     && openssl genpkey -algorithm RSA -out config/jwt/private.pem -pkeyopt rsa_keygen_bits:4096 -pass pass:placeholder \
     && openssl pkey -in config/jwt/private.pem -out config/jwt/public.pem -pubout -passin pass:placeholder
+
+RUN rm -rf src/DataFixtures/
 
 # Finaliser l'autoloader et warmup du cache
 RUN composer dump-autoload --optimize --classmap-authoritative

@@ -1,0 +1,95 @@
+---
+# Déploiement applicatif : copie .env + compose, pull, up, migrations
+
+- name: Créer les répertoires applicatifs
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ app_dir }}"
+    - "{{ app_dir }}/backend/docker"
+
+- name: Copier docker-compose.deploiement.yml
+  copy:
+    src: "{{ playbook_dir }}/../docker-compose.deploiement.yml"
+    dest: "{{ compose_file }}"
+    mode: '0644'
+
+- name: Copier le .env (0644 — lisible par www-data dans le conteneur backend)
+  copy:
+    src: "{{ playbook_dir }}/../.env"
+    dest: "{{ app_dir }}/.env"
+    mode: '0644'
+
+- name: Copier le nginx.conf du backend (proxy interne FPM)
+  copy:
+    src: "{{ playbook_dir }}/../backend/docker/nginx.conf"
+    dest: "{{ app_dir }}/backend/docker/nginx.conf"
+    mode: '0644'
+  register: backend_nginx_conf
+
+- name: Pull des images Docker
+  shell: "{{ compose_cmd }} pull"
+  register: pull_result
+  changed_when: "'Pull complete' in pull_result.stdout or 'Downloaded newer' in pull_result.stdout"
+
+- name: Up des conteneurs (recreate si nouvelle image)
+  shell: "{{ compose_cmd }} up -d --remove-orphans"
+  register: compose_up
+  changed_when: "'Started' in compose_up.stderr or 'Created' in compose_up.stderr or 'Recreated' in compose_up.stderr"
+
+# nginx.conf est bind-monté comme FICHIER unique
+# (./backend/docker/nginx.conf:/etc/nginx/conf.d/default.conf). Le mount est
+# résolu vers l'inode du fichier à la création du conteneur ; or 'copy' ci-dessus
+# remplace le fichier (nouvel inode). Le conteneur en cours continue donc de voir
+# l'ANCIEN contenu : un 'nginx -s reload' (ou même 'restart') relit le vieux
+# fichier. SEULE la RECRÉATION du conteneur repointe le mount sur le nouvel inode
+# et charge la nouvelle conf. On ne le fait que quand la conf a changé.
+# (Le resolver dans nginx.conf gère ensuite seul les changements d'IP du FPM :
+#  plus aucun restart nécessaire lors des recréations de backend-fpm/Watchtower.)
+- name: Valider la nouvelle conf nginx backend (conteneur jetable) avant recréation
+  shell: "docker run --rm -v {{ app_dir }}/backend/docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro nginx:1.27-alpine nginx -t"
+  when: backend_nginx_conf is changed
+  changed_when: false
+
+- name: Recréer le nginx interne pour charger la conf montée (nouvel inode)
+  shell: "{{ compose_cmd }} up -d --force-recreate --no-deps backend-synkro"
+  when: backend_nginx_conf is changed
+  changed_when: true
+
+- name: Attendre PostgreSQL
+  shell: "{{ compose_cmd }} exec -T postgres-synkro pg_isready"
+  retries: 15
+  delay: 3
+  register: pg_ready
+  until: pg_ready.rc == 0
+  changed_when: false
+
+- name: Migrations Doctrine
+  shell: "{{ compose_cmd }} exec -T backend-fpm php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration"
+  register: migrations
+  changed_when: "'No migrations to execute' not in migrations.stdout"
+
+- name: Cache clear
+  shell: "{{ compose_cmd }} exec -T backend-fpm php bin/console cache:clear"
+  register: cache_clear
+  changed_when: false
+
+- name: Health-check frontend (8080)
+  uri:
+    url: "http://127.0.0.1:{{ port_frontend }}"
+    status_code: 200
+    timeout: 10
+  retries: 5
+  delay: 5
+  register: front_check
+  until: front_check.status == 200
+  failed_when: false
+
+- name: Résumé déploiement
+  debug:
+    msg:
+      - "PostgreSQL : {{ 'OK' if pg_ready.rc == 0 else 'KO' }}"
+      - "Migrations : {{ 'OK' if migrations.rc == 0 else 'KO' }}"
+      - "Frontend   : {{ 'OK' if (front_check.status | default(0)) == 200 else 'KO' }}"

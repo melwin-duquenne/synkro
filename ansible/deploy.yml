@@ -1,0 +1,38 @@
+---
+# ===========================================================================
+# DEPLOY.YML — Déploiement applicatif rapide (lancé par la CI à chaque push)
+# Pour le bootstrap complet (système + hardening), lance site.yml manuellement.
+# ===========================================================================
+
+- name: Déploiement applicatif Synkro
+  hosts: vps
+  become: yes
+
+  pre_tasks:
+    - name: Vérifier que .env existe en local
+      delegate_to: localhost
+      become: no
+      stat:
+        path: "{{ playbook_dir }}/../.env"
+      register: env_file
+      failed_when: not env_file.stat.exists
+
+    - name: Vérifier que docker-compose.deploiement.yml existe en local
+      delegate_to: localhost
+      become: no
+      stat:
+        path: "{{ playbook_dir }}/../docker-compose.deploiement.yml"
+      register: compose_check
+      failed_when: not compose_check.stat.exists
+
+    - name: Backup du .env actuel sur le VPS
+      copy:
+        src: "{{ app_dir }}/.env"
+        dest: "{{ backup_dir }}/.env.{{ ansible_date_time.iso8601_basic_short }}"
+        remote_src: yes
+      ignore_errors: yes
+
+  roles:
+    - jwt-keys
+    - monitoring     # met à jour htpasswd si MONITORING_HTPASSWD_PASSWORD a changé
+    - app-deploy

@@ -8,7 +8,7 @@ services:
     volumes:
       - ./backend:/var/www
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-synkro:${PORT_POSTGRES_2}/${POSTGRES_DB}?serverVersion=16&charset=utf8
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD_ENC}@postgres-synkro:${PORT_POSTGRES_2}/${POSTGRES_DB}?serverVersion=16&charset=utf8
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
     depends_on:
@@ -41,7 +41,7 @@ services:
     container_name: frontend_app
     restart: unless-stopped
     ports:
-      - ${PORT_FRONTEND}
+      - ${PORT_FRONTEND_DEV:-5173:5173}
     volumes:
       - ./frontend:/app
       - /app/node_modules

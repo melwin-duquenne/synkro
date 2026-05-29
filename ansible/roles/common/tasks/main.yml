@@ -1,0 +1,47 @@
+---
+# Base système : timezone, mises à jour APT, paquets de base, sync NTP
+
+- name: Définir le fuseau horaire (Europe/Paris)
+  community.general.timezone:
+    name: Europe/Paris
+
+- name: Mettre à jour le cache APT
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Upgrade dist (sécurité critique)
+  apt:
+    upgrade: dist
+    autoremove: yes
+    autoclean: yes
+
+- name: Installer paquets de base (admin, réseau, debug)
+  apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - wget
+      - gnupg
+      - software-properties-common
+      - openssl
+      - lsof
+      - net-tools
+      - htop
+      - iotop
+      - tree
+      - vim
+      - git
+      - unzip
+      - logrotate
+      - chrony
+      - acl
+      - python3-passlib
+    state: present
+
+- name: Activer chrony (synchro NTP — critique pour JWT et logs)
+  systemd:
+    name: chrony
+    state: started
+    enabled: yes

@@ -27,7 +27,8 @@ export default defineConfig({
     },
     proxy: {
       '/api': { target: backendTarget, changeOrigin: true },
-      '/uploads': { target: backendTarget, changeOrigin: true }
+      '/uploads': { target: backendTarget, changeOrigin: true },
+      '/auth': { target: backendTarget, changeOrigin: true }
     }
   },
   test: {

@@ -11,17 +11,26 @@ yarn-debug.log*
 yarn-error.log*
 
 # Symfony (backend)
-back/vendor/
-back/var/cache/
-back/var/logs/
-back/var/sessions/
-back/.env.local
-back/.env.*.local
+backend/vendor/
+backend/var/cache/
+backend/var/log/
+backend/var/logs/
+backend/var/sessions/
+backend/.env.local
+backend/.env.*.local
+backend/config/reference.php
+backend/config/jwt/*.pem
+# User-uploaded files (avatars, room files) — stockés en volume Docker en prod
+backend/public/uploads/
 
 # Vue.js (frontend)
-front/dist/
-front/.env.local
-front/.env.*.local
+frontend/dist/
+frontend/.vite/
+frontend/.env.local
+frontend/.env.*.local
+
+# Claude Code (config locale par machine — settings.json est partageable, settings.local.json non)
+.claude/settings.local.json
 
 # Docker
 docker-compose.override.yml
@@ -91,3 +100,11 @@ docs/superpowers
 sauvegarde.md
 
 k8s/secrets.yaml
+
+# --- Ansible & Deploy ---
+# On ignore les fichiers de variables sensibles s'ils ne sont pas cryptés
+ansible/*.env
+ansible/vars/secrets_clear.yml
+
+# On ignore les éventuels fichiers de retry d'Ansible
+*.retry

@@ -1,0 +1,11 @@
+---
+# Règles ignorées : style cosmétique des versions récentes d'ansible-lint.
+# Aucun impact sur l'exécution.
+skip_list:
+  - fqcn[action-core]      # `copy` au lieu de `ansible.builtin.copy` — supporté partout
+  - fqcn[action]
+  - yaml[truthy]           # `yes`/`no` au lieu de `true`/`false`
+  - yaml[line-length]      # lignes longues dans contenus de configs
+  - command-instead-of-shell  # shell utilisé sciemment pour pipes/heredocs
+  - command-instead-of-module  # cas où un module Ansible n'existe pas
+  - args[module]           # faux positif sur policy: "{{ var }}" du module ufw

@@ -1,0 +1,108 @@
+---
+# auditd avec règles inspirées CIS Benchmark — surveille fichiers sensibles + sudoers + syscalls suspects
+
+- name: Installer auditd
+  apt:
+    name:
+      - auditd
+      - audispd-plugins
+    state: present
+
+- name: Configurer auditd (rotation, taille)
+  copy:
+    dest: /etc/audit/auditd.conf
+    mode: '0640'
+    owner: root
+    group: root
+    content: |
+      log_file = /var/log/audit/audit.log
+      log_format = ENRICHED
+      log_group = adm
+      priority_boost = 4
+      flush = INCREMENTAL_ASYNC
+      freq = 50
+      max_log_file = 100
+      num_logs = 5
+      max_log_file_action = ROTATE
+      space_left = 200
+      space_left_action = SYSLOG
+      admin_space_left = 100
+      admin_space_left_action = SUSPEND
+      disk_full_action = SUSPEND
+      disk_error_action = SUSPEND
+  notify: Redémarrer auditd
+
+- name: Déployer les règles audit (CIS-like)
+  copy:
+    dest: /etc/audit/rules.d/99-synkro.rules
+    mode: '0640'
+    content: |
+      # ─── Vide la file pour repartir propre ────────────────────────────
+      -D
+      -b 8192
+      -f 1
+
+      # ─── Identités et auth ────────────────────────────────────────────
+      -w /etc/passwd       -p wa -k identity
+      -w /etc/group        -p wa -k identity
+      -w /etc/gshadow      -p wa -k identity
+      -w /etc/shadow       -p wa -k identity
+      -w /etc/security/opasswd -p wa -k identity
+
+      # ─── Sudoers ──────────────────────────────────────────────────────
+      -w /etc/sudoers      -p wa -k sudoers
+      -w /etc/sudoers.d/   -p wa -k sudoers
+
+      # ─── SSH ──────────────────────────────────────────────────────────
+      -w /etc/ssh/sshd_config       -p wa -k sshd
+      -w /etc/ssh/sshd_config.d/    -p wa -k sshd
+      -w /root/.ssh/                -p wa -k root_ssh
+
+      # ─── Hostname / réseau ────────────────────────────────────────────
+      -a always,exit -F arch=b64 -S sethostname -S setdomainname -k system-locale
+      -w /etc/hosts        -p wa -k network
+      -w /etc/network/     -p wa -k network
+
+      # ─── Mounts (potentielle exfiltration) ────────────────────────────
+      -a always,exit -F arch=b64 -S mount -F auid>=1000 -F auid!=4294967295 -k mounts
+
+      # ─── Modifs temps système ─────────────────────────────────────────
+      -a always,exit -F arch=b64 -S adjtimex -S settimeofday -S clock_settime -k time-change
+      -w /etc/localtime    -p wa -k time-change
+
+      # ─── Modules kernel ───────────────────────────────────────────────
+      -w /sbin/insmod      -p x -k modules
+      -w /sbin/rmmod       -p x -k modules
+      -w /sbin/modprobe    -p x -k modules
+      -a always,exit -F arch=b64 -S init_module -S delete_module -k modules
+
+      # ─── Comptes login/logout ────────────────────────────────────────
+      -w /var/log/lastlog  -p wa -k logins
+      -w /var/run/faillock/ -p wa -k logins
+      -w /var/log/wtmp     -p wa -k session
+      -w /var/log/btmp     -p wa -k session
+
+      # ─── Privilege escalation ────────────────────────────────────────
+      -a always,exit -F arch=b64 -S execve -C uid!=euid -F euid=0 -k setuid
+      -a always,exit -F arch=b64 -S execve -C gid!=egid -F egid=0 -k setgid
+
+      # ─── Suppression / rename de fichiers (utilisateurs) ─────────────
+      -a always,exit -F arch=b64 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete
+
+      # ─── Docker ───────────────────────────────────────────────────────
+      -w /usr/bin/docker        -p rwxa -k docker
+      -w /var/lib/docker        -p rwxa -k docker
+      -w /etc/docker            -p rwxa -k docker
+      -w /etc/default/docker    -p wa -k docker
+      -w /etc/docker/daemon.json -p wa -k docker
+      -w /usr/lib/systemd/system/docker.service -p wa -k docker
+
+      # ─── Verrouille la config audit (peut seulement reboot pour modifier) ─
+      -e 2
+  notify: Redémarrer auditd
+
+- name: Activer auditd
+  systemd:
+    name: auditd
+    state: started
+    enabled: yes

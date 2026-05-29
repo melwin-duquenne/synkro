@@ -1,0 +1,50 @@
+---
+# ===========================================================================
+# SITE.YML — Bootstrap complet + hardening + déploiement (idempotent)
+# Usage:
+#   ansible-playbook site.yml
+#   ansible-playbook site.yml --tags hardening
+#   ansible-playbook site.yml -e ssh_close_old_port=true
+# ===========================================================================
+
+- name: Bootstrap, hardening & déploiement Synkro
+  hosts: vps
+  become: yes
+  gather_facts: yes
+
+  pre_tasks:
+    - name: Vérifier que .env existe en local (source de vérité des secrets)
+      delegate_to: localhost
+      become: no
+      stat:
+        path: "{{ playbook_dir }}/../.env"
+      register: env_file
+      failed_when: not env_file.stat.exists
+      tags: always
+
+  roles:
+    # ─── Base système (toujours) ────────────────────────────────────────
+    - {role: common, tags: [common, base]}
+    - {role: users, tags: [users, base]}
+
+    # ─── Hardening ──────────────────────────────────────────────────────
+    - {role: ssh-hardening, tags: [ssh, hardening]}
+    - {role: firewall, tags: [firewall, hardening]}
+    - {role: kernel-hardening, tags: [sysctl, hardening]}
+    - {role: unattended-upgrades, tags: [updates, hardening]}
+    - {role: apparmor, tags: [apparmor, hardening]}
+    - {role: auditd, tags: [auditd, hardening]}
+    - {role: fail2ban, tags: [fail2ban, hardening]}
+    - {role: intrusion-detection, tags: [ids, hardening]}
+    - {role: clamav, tags: [clamav, hardening]}
+
+    # ─── Stack applicative ──────────────────────────────────────────────
+    - {role: docker, tags: [docker, stack]}
+    - {role: nginx, tags: [nginx, stack]}
+    - {role: modsecurity, tags: [modsec, stack]}
+    - {role: certbot, tags: [tls, stack]}
+    - {role: jwt-keys, tags: [jwt, stack]}
+    - {role: vhosts, tags: [vhosts, stack]}
+    - {role: monitoring, tags: [monitoring]}
+    - {role: backups, tags: [backups]}
+    - {role: app-deploy, tags: [deploy, app]}

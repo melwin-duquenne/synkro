@@ -1,0 +1,45 @@
+---
+# ClamAV antivirus + freshclam (mise à jour signatures) + scan hebdo
+
+- name: Installer ClamAV
+  apt:
+    name:
+      - clamav
+      - clamav-daemon
+      - clamav-freshclam
+    state: present
+
+- name: Stopper freshclam pour update manuel initial
+  systemd:
+    name: clamav-freshclam
+    state: stopped
+  failed_when: false
+
+- name: Mise à jour des signatures ClamAV (premier run, ~30s)
+  shell: freshclam || true
+  args:
+    creates: /var/lib/clamav/main.cvd
+
+- name: Activer freshclam (auto-update quotidien)
+  systemd:
+    name: clamav-freshclam
+    state: started
+    enabled: yes
+
+- name: Activer clamav-daemon
+  systemd:
+    name: clamav-daemon
+    state: started
+    enabled: yes
+
+- name: Cron ClamAV — scan hebdomadaire (dimanche 02h00)
+  cron:
+    name: "ClamAV scan hebdomadaire"
+    minute: "0"
+    hour: "2"
+    weekday: "0"
+    job: |
+      mkdir -p /var/log/clamav && \
+      LOG="/var/log/clamav/scan-$(date +\%Y-\%m-\%d).log" && \
+      clamscan -r --infected --remove=no --exclude-dir='^/sys|^/proc|^/dev|^/var/lib/clamav|^/var/lib/docker' / > "$LOG" 2>&1; \
+      find /var/log/clamav -name 'scan-*.log' -mtime +30 -delete

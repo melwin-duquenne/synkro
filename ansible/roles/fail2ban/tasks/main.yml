@@ -1,0 +1,173 @@
+---
+# Fail2ban — jails SSH, Nginx (auth, rate, login API, register, ModSecurity, scanners)
+
+- name: Installer fail2ban
+  apt:
+    name: fail2ban
+    state: present
+
+- name: Configuration globale fail2ban (jail.local)
+  copy:
+    dest: /etc/fail2ban/jail.local
+    mode: '0644'
+    content: |
+      [DEFAULT]
+      bantime  = {{ fail2ban_default_bantime }}
+      findtime = {{ fail2ban_default_findtime }}
+      maxretry = {{ fail2ban_default_maxretry }}
+      banaction = ufw
+      backend = systemd
+      ignoreip = 127.0.0.1/8 ::1
+      destemail = {{ admin_email }}
+      sender = fail2ban@{{ domain }}
+      mta = sendmail
+      action = %(action_)s
+
+      [sshd]
+      enabled  = true
+      port     = ssh,{{ ssh_port }}
+      filter   = sshd
+      logpath  = %(sshd_log)s
+      backend  = %(sshd_backend)s
+      maxretry = {{ fail2ban_ssh_maxretry }}
+      bantime  = {{ fail2ban_ssh_bantime }}
+  notify: Redémarrer fail2ban
+
+- name: Jail Nginx HTTP Auth
+  copy:
+    dest: /etc/fail2ban/jail.d/nginx-http-auth.conf
+    mode: '0644'
+    content: |
+      [nginx-http-auth]
+      enabled = true
+      port    = http,https
+      filter  = nginx-http-auth
+      logpath = /var/log/nginx/error.log
+      maxretry = 5
+      bantime  = 1h
+  notify: Redémarrer fail2ban
+
+- name: Jail Nginx rate-limit
+  copy:
+    dest: /etc/fail2ban/jail.d/nginx-limit-req.conf
+    mode: '0644'
+    content: |
+      [nginx-limit-req]
+      enabled = true
+      port    = http,https
+      filter  = nginx-limit-req
+      logpath = /var/log/nginx/error.log
+      maxretry = 10
+      findtime = 1m
+      bantime  = 1h
+  notify: Redémarrer fail2ban
+
+- name: Jail Nginx scanners (404 abusifs)
+  copy:
+    dest: /etc/fail2ban/jail.d/nginx-noscript.conf
+    mode: '0644'
+    content: |
+      [nginx-noscript]
+      enabled = true
+      port    = http,https
+      filter  = nginx-noscript
+      logpath = /var/log/nginx/access.log
+      maxretry = 6
+      findtime = 10m
+      bantime  = 24h
+  notify: Redémarrer fail2ban
+
+- name: Jail Nginx bad bots
+  copy:
+    dest: /etc/fail2ban/jail.d/nginx-badbots.conf
+    mode: '0644'
+    content: |
+      [nginx-badbots]
+      enabled = true
+      port    = http,https
+      filter  = apache-badbots
+      logpath = /var/log/nginx/access.log
+      maxretry = 2
+      bantime  = 7d
+  notify: Redémarrer fail2ban
+
+- name: Filtre login API Synkro
+  copy:
+    dest: /etc/fail2ban/filter.d/synkro-login.conf
+    mode: '0644'
+    content: |
+      [Definition]
+      failregex = ^<HOST> .* "POST /api/auth/login HTTP.*" 401
+      ignoreregex =
+  notify: Redémarrer fail2ban
+
+- name: Jail login API (bruteforce)
+  copy:
+    dest: /etc/fail2ban/jail.d/synkro-login.conf
+    mode: '0644'
+    content: |
+      [synkro-login]
+      enabled = true
+      port    = http,https
+      filter  = synkro-login
+      logpath = /var/log/nginx/access.log
+      maxretry = 5
+      findtime = 5m
+      bantime  = 30m
+  notify: Redémarrer fail2ban
+
+- name: Filtre register API Synkro
+  copy:
+    dest: /etc/fail2ban/filter.d/synkro-register.conf
+    mode: '0644'
+    content: |
+      [Definition]
+      failregex = ^<HOST> .* "POST /api/auth/register HTTP.*" (4[0-9]{2}|5[0-9]{2})
+      ignoreregex =
+  notify: Redémarrer fail2ban
+
+- name: Jail register API (anti-spam)
+  copy:
+    dest: /etc/fail2ban/jail.d/synkro-register.conf
+    mode: '0644'
+    content: |
+      [synkro-register]
+      enabled = true
+      port    = http,https
+      filter  = synkro-register
+      logpath = /var/log/nginx/access.log
+      maxretry = 3
+      findtime = 1h
+      bantime  = 24h
+  notify: Redémarrer fail2ban
+
+- name: Filtre ModSecurity blocks
+  copy:
+    dest: /etc/fail2ban/filter.d/modsecurity.conf
+    mode: '0644'
+    content: |
+      [Definition]
+      failregex = \[client <HOST>(:\d+)?\] ModSecurity: Access denied
+      ignoreregex =
+  notify: Redémarrer fail2ban
+
+- name: Jail ModSecurity
+  copy:
+    dest: /etc/fail2ban/jail.d/modsecurity.conf
+    mode: '0644'
+    content: |
+      [modsecurity]
+      enabled = true
+      port    = http,https
+      filter  = modsecurity
+      logpath = /var/log/nginx/error.log
+      maxretry = 3
+      findtime = 5m
+      bantime  = 2h
+  notify: Redémarrer fail2ban
+
+- name: Activer fail2ban
+  systemd:
+    name: fail2ban
+    state: started
+    enabled: yes

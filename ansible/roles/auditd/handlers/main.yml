@@ -1,0 +1,5 @@
+---
+- name: Redémarrer auditd
+  # auditd refuse SIGHUP — on utilise service avec --no-block
+  shell: service auditd restart
+  changed_when: true

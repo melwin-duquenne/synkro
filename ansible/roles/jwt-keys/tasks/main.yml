@@ -1,0 +1,65 @@
+---
+# Génération des clés JWT (RSA 4096) si absentes — passphrase lue depuis .env
+
+- name: Créer le répertoire JWT
+  file:
+    path: "{{ app_dir }}/backend/config/jwt"
+    state: directory
+    mode: '0755'
+
+- name: Vérifier l'existence de la clé privée JWT
+  stat:
+    path: "{{ app_dir }}/backend/config/jwt/private.pem"
+  register: jwt_private
+
+- name: Lire la passphrase JWT depuis le .env distant
+  shell: |
+    set -o pipefail
+    grep '^JWT_PASSPHRASE=' {{ app_dir }}/.env | cut -d'=' -f2-
+  args:
+    executable: /bin/bash
+  register: jwt_pass
+  changed_when: false
+  when: not jwt_private.stat.exists
+
+- name: Générer la clé privée JWT (avec passphrase)
+  shell: >
+    openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:4096
+    -aes-256-cbc -pass pass:{{ jwt_pass.stdout | quote }}
+    -out {{ app_dir }}/backend/config/jwt/private.pem
+  when:
+    - not jwt_private.stat.exists
+    - jwt_pass.stdout | default('') | length > 0
+
+- name: Générer la clé privée JWT (sans passphrase)
+  shell: >
+    openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:4096
+    -out {{ app_dir }}/backend/config/jwt/private.pem
+  when:
+    - not jwt_private.stat.exists
+    - jwt_pass.stdout | default('') | length == 0
+
+- name: Générer la clé publique JWT
+  shell: >
+    openssl rsa
+    -in {{ app_dir }}/backend/config/jwt/private.pem
+    -pubout -out {{ app_dir }}/backend/config/jwt/public.pem
+    {% if jwt_pass.stdout | default('') | length > 0 %}-passin pass:{{ jwt_pass.stdout | quote }}{% endif %}
+  when: not jwt_private.stat.exists
+
+- name: Re-stat JWT après génération éventuelle
+  stat:
+    path: "{{ item }}"
+  loop:
+    - "{{ app_dir }}/backend/config/jwt/private.pem"
+    - "{{ app_dir }}/backend/config/jwt/public.pem"
+  register: jwt_files_post
+
+- name: Permissions JWT (lecture pour conteneur backend uniquement)
+  file:
+    path: "{{ item.item }}"
+    mode: '0644'
+  loop: "{{ jwt_files_post.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+  when: item.stat.exists

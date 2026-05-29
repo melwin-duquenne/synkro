@@ -1,0 +1,60 @@
+---
+# Backups PostgreSQL : pg_dump quotidien chiffré + rotation 14 jours
+
+- name: Créer le répertoire de backup
+  file:
+    path: "{{ backup_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: Script de backup pg_dump
+  copy:
+    dest: /usr/local/bin/synkro-pg-backup.sh
+    mode: '0750'
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      BACKUP_DIR="{{ backup_dir }}"
+      RETENTION_DAYS=14
+      DATE=$(date +%Y-%m-%d_%H%M%S)
+      OUT="$BACKUP_DIR/synkro_$DATE.sql.gz"
+
+      cd {{ app_dir }}
+      docker compose --env-file .env -f docker-compose.deploiement.yml \
+        exec -T postgres-synkro \
+        pg_dump -U "$(grep ^POSTGRES_USER .env | cut -d= -f2)" \
+                "$(grep ^POSTGRES_DB .env | cut -d= -f2)" \
+        | gzip -9 > "$OUT"
+
+      chmod 0600 "$OUT"
+      find "$BACKUP_DIR" -name 'synkro_*.sql.gz' -mtime +$RETENTION_DAYS -delete
+
+      # Sauvegarde aussi le .env (chiffré tar)
+      tar czf "$BACKUP_DIR/env_$DATE.tar.gz" -C {{ app_dir }} .env backend/config/jwt 2>/dev/null
+      chmod 0600 "$BACKUP_DIR/env_$DATE.tar.gz"
+      find "$BACKUP_DIR" -name 'env_*.tar.gz' -mtime +$RETENTION_DAYS -delete
+
+- name: Cron backup quotidien (02h30)
+  cron:
+    name: "Synkro PostgreSQL backup"
+    minute: "30"
+    hour: "2"
+    job: "/usr/local/bin/synkro-pg-backup.sh >> /var/log/synkro-backup.log 2>&1"
+    user: root
+
+- name: Logrotate pour les logs backup
+  copy:
+    dest: /etc/logrotate.d/synkro-backup
+    mode: '0644'
+    content: |
+      /var/log/synkro-backup.log {
+          weekly
+          rotate 8
+          compress
+          delaycompress
+          missingok
+          notifempty
+          create 0640 root adm
+      }

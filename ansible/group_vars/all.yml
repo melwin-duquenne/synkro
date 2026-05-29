@@ -1,0 +1,41 @@
+---
+# ===========================================================================
+# Variables globales — toutes les valeurs sensibles viennent du .env local
+# (lu via lookup), jamais en dur. Aucun doublon avec les secrets GitHub.
+# ===========================================================================
+
+# Application
+app_dir: /opt/synkro
+backup_dir: /opt/synkro-backups
+domain: synkro.ovh
+admin_email: "admin@{{ domain }}"
+sysadmin_user: sysadmin
+
+# Compose
+compose_file: "{{ app_dir }}/docker-compose.deploiement.yml"
+compose_cmd: "docker compose --env-file {{ app_dir }}/.env -f {{ compose_file }}"
+
+# SSH — change le port 22 -> 2222
+# Pour fermer le 22 après vérification : ansible-playbook ... -e ssh_close_old_port=true
+ssh_port: 2222
+ssh_close_old_port: false
+
+# Monitoring (lu depuis .env — ajoute MONITORING_HTPASSWD_PASSWORD à .env.prod)
+monitoring_user: admin
+monitoring_password: "{{ lookup('ansible.builtin.ini', 'MONITORING_HTPASSWD_PASSWORD type=properties file=' ~ playbook_dir ~ '/../.env default=changeme') }}"
+
+# JWT passphrase — lue depuis le .env
+jwt_passphrase: "{{ lookup('ansible.builtin.ini', 'JWT_PASSPHRASE type=properties file=' ~ playbook_dir ~ '/../.env default=') }}"
+
+# Fail2ban — durées
+fail2ban_default_bantime: 1h
+fail2ban_default_findtime: 10m
+fail2ban_default_maxretry: 5
+fail2ban_ssh_bantime: 24h
+fail2ban_ssh_maxretry: 3
+
+# Ports applicatifs (en localhost via Nginx host)
+port_frontend: 8080
+port_websocket: 3001
+port_kuma: 3100
+port_netdata: 9100
