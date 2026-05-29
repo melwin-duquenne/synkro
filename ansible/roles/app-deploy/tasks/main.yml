@@ -27,6 +27,7 @@
     src: "{{ playbook_dir }}/../backend/docker/nginx.conf"
     dest: "{{ app_dir }}/backend/docker/nginx.conf"
     mode: '0644'
+  register: backend_nginx_conf
 
 - name: Pull des images Docker
   shell: "{{ compose_cmd }} pull"
@@ -38,9 +39,20 @@
   register: compose_up
   changed_when: "'Started' in compose_up.stderr or 'Created' in compose_up.stderr or 'Recreated' in compose_up.stderr"
 
-- name: Restart backend-synkro (nginx interne) si backend-fpm a été recreé — refresh DNS
-  shell: "{{ compose_cmd }} restart backend-synkro"
-  when: "'backend-fpm' in compose_up.stderr and ('Recreated' in compose_up.stderr or 'Started' in compose_up.stderr)"
+# Le resolver Docker (127.0.0.11) configuré dans backend/docker/nginx.conf
+# rafraîchit désormais l'IP de backend-fpm automatiquement à chaque requête :
+# plus besoin de redémarrer backend-synkro quand le FPM est recréé (déploiement
+# OU Watchtower). On recharge nginx uniquement quand sa conf MONTÉE a changé,
+# car un volume monté modifié ne déclenche pas de reload tout seul. On valide
+# la conf (nginx -t) avant le reload gracieux (zéro coupure) ; retries au cas
+# où le master nginx n'est pas encore prêt après un 'up -d'.
+- name: Recharger le nginx interne si sa conf a changé (charge le nouveau nginx.conf)
+  shell: "{{ compose_cmd }} exec -T backend-synkro nginx -t && {{ compose_cmd }} exec -T backend-synkro nginx -s reload"
+  when: backend_nginx_conf is changed
+  register: nginx_reload
+  retries: 3
+  delay: 2
+  until: nginx_reload.rc == 0
   changed_when: true
 
 - name: Attendre PostgreSQL
