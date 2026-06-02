@@ -1,8 +1,11 @@
 const http = require('http');
 const WebSocket = require('ws');
 const { setupWSConnection } = require('y-websocket/bin/utils');
+const { authorize } = require('./auth.cjs');
 
 const port = process.env.PORT || 3001;
+const BACKEND_INTERNAL_URL = process.env.BACKEND_INTERNAL_URL || 'http://backend-synkro:8000';
+const authCache = new Map(); // clé "token|roomId" -> { decision, expires }
 
 // WebRTC signaling message types
 const WEBRTC_MESSAGE_TYPES = {
@@ -37,10 +40,31 @@ const server = http.createServer((req, res) => {
   res.end();
 });
 
-const wss = new WebSocket.Server({ server });
+const wss = new WebSocket.Server({ noServer: true });
 
 // Track connections per room
 const roomConnections = new Map();
+
+// Portail d'authentification : on authentifie AVANT de brancher Yjs/WebRTC.
+server.on('upgrade', (req, socket, head) => {
+  wss.handleUpgrade(req, socket, head, async (ws) => {
+    const decision = await authorize({
+      reqUrl: req.url,
+      backendUrl: BACKEND_INTERNAL_URL,
+      cache: authCache,
+    });
+
+    if (!decision.ok) {
+      console.log(`[${new Date().toISOString()}] Connexion WS refusée (code ${decision.closeCode}) pour ${req.url?.split('?')[0]}`);
+      ws.close(decision.closeCode);
+      return;
+    }
+
+    // Utilisateur authentifié : disponible pour fiabiliser l'identité plus tard.
+    ws.user = decision.user;
+    wss.emit('connection', ws, req);
+  });
+});
 
 // Handle WebRTC signaling messages
 function handleWebRTCMessage(ws, roomId, messageType, payload) {
