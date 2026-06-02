@@ -4,7 +4,8 @@
   "description": "WebSocket server for Synkro project with Yjs collaboration",
   "main": "unified-server.cjs",
   "scripts": {
-    "start": "node unified-server.cjs"
+    "start": "node unified-server.cjs",
+    "test": "node --test"
   },
   "dependencies": {
     "ws": "^8.18.3",
