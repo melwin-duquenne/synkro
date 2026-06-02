@@ -166,7 +166,8 @@ export function useWebRTC(roomId: number) {
   // ============================================
 
   function setupSignaling(): void {
-    ws = new WebSocket(`${WS_URL}/room-${roomId}-video`)
+    const token = authStore.token ?? ''
+    ws = new WebSocket(`${WS_URL}/room-${roomId}-video?token=${encodeURIComponent(token)}`)
 
     ws.binaryType = 'arraybuffer'
 

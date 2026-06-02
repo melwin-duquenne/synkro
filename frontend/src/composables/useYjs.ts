@@ -1,10 +1,12 @@
 import { ref, onUnmounted } from 'vue'
 import * as Y from 'yjs'
 import { WebsocketProvider } from 'y-websocket'
+import { useAuthStore } from '@/stores/auth'
 
 const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:3001'
 
 export function useYjs(roomId: string) {
+  const authStore = useAuthStore()
   const ydoc = ref<Y.Doc | null>(null)
   const provider = ref<WebsocketProvider | null>(null)
   const connected = ref(false)
@@ -14,7 +16,9 @@ export function useYjs(roomId: string) {
     if (ydoc.value) return
 
     ydoc.value = new Y.Doc()
-    provider.value = new WebsocketProvider(WS_URL, roomId, ydoc.value)
+    provider.value = new WebsocketProvider(WS_URL, roomId, ydoc.value, {
+      params: { token: authStore.token ?? '' },
+    })
 
     provider.value.on('status', (event: { status: string }) => {
       connected.value = event.status === 'connected'

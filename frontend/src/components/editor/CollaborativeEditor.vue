@@ -57,7 +57,9 @@ onMounted(() => {
   ydoc = new Y.Doc()
 
   // Connect to WebSocket
-  provider = new WebsocketProvider(WS_URL, `room-${props.roomId}-editor`, ydoc)
+  provider = new WebsocketProvider(WS_URL, `room-${props.roomId}-editor`, ydoc, {
+    params: { token: authStore.token ?? '' },
+  })
 
   // Update editor with Yjs
   if (editor.value) {
@@ -124,7 +126,9 @@ watch(() => props.roomId, () => {
   }
 
   ydoc = new Y.Doc()
-  provider = new WebsocketProvider(WS_URL, `room-${props.roomId}-editor`, ydoc)
+  provider = new WebsocketProvider(WS_URL, `room-${props.roomId}-editor`, ydoc, {
+    params: { token: authStore.token ?? '' },
+  })
 
   if (editor.value) {
     editor.value.destroy()
