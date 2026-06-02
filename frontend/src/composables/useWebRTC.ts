@@ -181,8 +181,14 @@ export function useWebRTC(roomId: number) {
       handleSignalingMessage(event)
     }
 
-    ws.onclose = () => {
+    ws.onclose = (event) => {
       console.log('[WebRTC] Signaling disconnected')
+      if (event.code === 4401 || event.code === 4403) {
+        error.value = event.code === 4401
+          ? 'Session expirée — veuillez vous reconnecter.'
+          : "Accès refusé à l'appel vidéo de cette room."
+        callState.value = 'idle'
+      }
     }
 
     ws.onerror = (e) => {

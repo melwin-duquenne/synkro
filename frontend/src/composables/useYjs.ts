@@ -11,6 +11,7 @@ export function useYjs(roomId: string) {
   const provider = ref<WebsocketProvider | null>(null)
   const connected = ref(false)
   const synced = ref(false)
+  const authError = ref<string | null>(null)
 
   function connect() {
     if (ydoc.value) return
@@ -26,6 +27,16 @@ export function useYjs(roomId: string) {
 
     provider.value.on('sync', (isSynced: boolean) => {
       synced.value = isSynced
+    })
+
+    provider.value.on('connection-close', (event: CloseEvent | null) => {
+      if (event && (event.code === 4401 || event.code === 4403)) {
+        authError.value = event.code === 4401
+          ? 'Session expirée — veuillez vous reconnecter.'
+          : 'Accès refusé à cette room.'
+        // Stoppe la boucle de reconnexion de y-websocket.
+        provider.value?.disconnect()
+      }
     })
   }
 
@@ -52,6 +63,7 @@ export function useYjs(roomId: string) {
     provider,
     connected,
     synced,
+    authError,
     connect,
     disconnect
   }
