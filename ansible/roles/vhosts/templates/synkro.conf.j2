@@ -94,6 +94,8 @@ server {
 
     # ─── WebSocket Yjs ───────────────────────────────────────────────────
     location /ws {
+        # Le token JWT transite en query string ; on logge l'URI sans query.
+        access_log /var/log/nginx/synkro-ws.access.log ws_noquery;
         proxy_pass http://127.0.0.1:{{ port_websocket }};
         proxy_http_version 1.1;
         proxy_set_header Upgrade           $http_upgrade;
