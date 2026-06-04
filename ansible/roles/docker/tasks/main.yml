@@ -1,6 +1,14 @@
 ---
 # Installation Docker + daemon hardening (no-new-privileges, log limits, live-restore, etc.)
 
+# Supprime une éventuelle source Docker auto-nommée (sans signed-by) laissée par
+# une ancienne install : elle entre en conflit "Signed-By" avec docker.list et
+# casse tout `apt update`. Tâche file (pas d'apt) → tourne même si apt est cassé.
+- name: Retirer l'ancienne source Docker en conflit (sans signed-by)
+  file:
+    path: /etc/apt/sources.list.d/download_docker_com_linux_ubuntu.list
+    state: absent
+
 - name: Clé GPG officielle Docker
   get_url:
     url: https://download.docker.com/linux/ubuntu/gpg
