@@ -1,0 +1,114 @@
+name: Provision VPS (config Ansible complète)
+
+# Déploiement manuel de la config infra/sécurité via Ansible (site.yml).
+# Contrairement à main.yml (qui ne joue que deploy.yml = app), ce workflow
+# applique les rôles système/web (nginx, vhosts, certbot, hardening…).
+# Déclenché à la main depuis l'onglet Actions → "Run workflow".
+on:
+  workflow_dispatch:
+    inputs:
+      scope:
+        description: "Périmètre Ansible à déployer"
+        type: choice
+        required: true
+        default: stack
+        options:
+          - stack   # config web+app : nginx, vhosts, certbot, modsec, jwt, docker, app, monitoring, backups
+          - nginx   # uniquement le rôle nginx (rapide — ex. en-têtes de sécurité)
+          - full    # site.yml entier : base + hardening + stack + app
+
+jobs:
+  provision:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Installer Ansible + collections
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y ansible
+          ansible-galaxy collection install community.general ansible.posix --upgrade
+
+      - name: Configurer la clé SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Générer le fichier .env depuis les secrets et variables GitHub
+        env:
+          APP_SECRET: ${{ secrets.APP_SECRET }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          JWT_PASSPHRASE: ${{ secrets.JWT_PASSPHRASE }}
+          CORS_ALLOW_ORIGIN: ${{ secrets.CORS_ALLOW_ORIGIN }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REDIRECT_URI: ${{ secrets.GOOGLE_REDIRECT_URI }}
+          MAILER_DSN: ${{ secrets.MAILER_DSN }}
+          APP_FRONTEND_URL: ${{ secrets.APP_FRONTEND_URL }}
+          VITE_WS_URL: ${{ secrets.VITE_WS_URL }}
+          DEFAULT_URI: ${{ secrets.DEFAULT_URI }}
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          MONITORING_HTPASSWD_PASSWORD: ${{ secrets.MONITORING_HTPASSWD_PASSWORD }}
+        run: |
+          cat > .env <<ENVEOF
+          DOCKERHUB_USERNAME=${DOCKERHUB_USERNAME}
+          NODE_ENV=${{ vars.NODE_ENV }}
+          APP_ENV=prod
+          APP_SECRET=${APP_SECRET}
+          POSTGRES_USER=${POSTGRES_USER}
+          POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+          POSTGRES_DB=${POSTGRES_DB}
+          DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-synkro:5432/${POSTGRES_DB}?serverVersion=16&charset=utf8
+          JWT_SECRET_KEY=%kernel.project_dir%/config/jwt/private.pem
+          JWT_PUBLIC_KEY=%kernel.project_dir%/config/jwt/public.pem
+          JWT_PASSPHRASE=${JWT_PASSPHRASE}
+          CORS_ALLOW_ORIGIN=${CORS_ALLOW_ORIGIN}
+          GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+          GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+          GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI}
+          MAILER_DSN=${MAILER_DSN}
+          APP_FRONTEND_URL=${APP_FRONTEND_URL}
+          VITE_WS_URL=${VITE_WS_URL}
+          VITE_API_URL=/api
+          VITE_BACKEND_TARGET=http://backend-synkro:8000
+          VITE_BACKEND_URL=http://backend-synkro:8000
+          DEFAULT_URI=${DEFAULT_URI}
+          PORT=${{ vars.PORT }}
+          PORT_BACKEND=${{ vars.PORT_BACKEND }}
+          PORT_FRONTEND=${{ vars.PORT_FRONTEND }}
+          PORT_POSTGRES=${{ vars.PORT_POSTGRES }}
+          PORT_POSTGRES_2=${{ vars.PORT_POSTGRES_2 }}
+          PORT_WEBSOCKET=${{ vars.PORT_WEBSOCKET }}
+          BASE_URL=/
+          MONITORING_HTPASSWD_PASSWORD=${MONITORING_HTPASSWD_PASSWORD}
+          ENVEOF
+          sed -i 's/^          //' .env
+
+      - name: Générer l'inventory Ansible
+        run: |
+          cat > ansible/inventory.ini << EOF
+          [vps]
+          ${{ secrets.VPS_HOST }} ansible_user=${{ secrets.VPS_USER }} ansible_ssh_private_key_file=~/.ssh/id_rsa ansible_become=yes ansible_become_method=sudo
+          EOF
+
+      - name: Lancer site.yml (scope = ${{ inputs.scope }})
+        run: |
+          case "${{ inputs.scope }}" in
+            full)
+              ansible-playbook ansible/site.yml -i ansible/inventory.ini
+              ;;
+            nginx)
+              ansible-playbook ansible/site.yml -i ansible/inventory.ini --tags nginx
+              ;;
+            stack)
+              ansible-playbook ansible/site.yml -i ansible/inventory.ini --tags stack,app,monitoring,backups
+              ;;
+            *)
+              echo "Scope inconnu: ${{ inputs.scope }}" && exit 1
+              ;;
+          esac
