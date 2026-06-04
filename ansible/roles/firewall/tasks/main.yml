@@ -18,7 +18,7 @@
 
 - name: UFW — autoriser SSH legacy (port 22) tant que la transition n'est pas validée
   ufw:
-    rule: limit
+    rule: allow
     port: '22'
     proto: tcp
     comment: "SSH legacy (à supprimer après validation)"
@@ -26,15 +26,18 @@
 
 - name: UFW — supprimer SSH port 22 après validation
   ufw:
-    rule: limit
+    rule: allow
     port: '22'
     proto: tcp
     delete: yes
   when: ssh_close_old_port | bool
 
-- name: UFW — autoriser SSH nouveau port (rate-limited)
+# 'allow' plutôt que 'limit' : le rate-limit UFW (6 conn/30s) DROP les déploiements
+# CI (Ansible ouvre plusieurs connexions) → timeouts. fail2ban + auth par clé seule
+# assurent la protection anti-bruteforce sans casser l'automatisation.
+- name: UFW — autoriser SSH nouveau port
   ufw:
-    rule: limit
+    rule: allow
     port: "{{ ssh_port }}"
     proto: tcp
     comment: "SSH durci"
