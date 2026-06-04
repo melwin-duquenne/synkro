@@ -14,6 +14,7 @@ on:
         default: stack
         options:
           - stack   # config web+app : nginx, vhosts, certbot, modsec, jwt, docker, app, monitoring, backups
+          - web     # config web seule : nginx + vhosts (fix visio : en-têtes + location /ws), sans docker
           - nginx   # uniquement le rôle nginx (rapide — ex. en-têtes de sécurité)
           - full    # site.yml entier : base + hardening + stack + app
 
@@ -101,6 +102,9 @@ jobs:
           case "${{ inputs.scope }}" in
             full)
               ansible-playbook ansible/site.yml -i ansible/inventory.ini
+              ;;
+            web)
+              ansible-playbook ansible/site.yml -i ansible/inventory.ini --tags nginx,vhosts
               ;;
             nginx)
               ansible-playbook ansible/site.yml -i ansible/inventory.ini --tags nginx
