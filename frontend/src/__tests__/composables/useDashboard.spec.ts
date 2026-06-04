@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { setActivePinia, createPinia } from 'pinia'
 import { useDashboard } from '@/composables/useDashboard'
 
 const mockFetch = vi.fn()
@@ -7,6 +8,7 @@ beforeEach(() => {
   localStorage.clear()
   mockFetch.mockReset()
   vi.stubGlobal('fetch', mockFetch)
+  setActivePinia(createPinia())
 })
 
 afterEach(() => {
