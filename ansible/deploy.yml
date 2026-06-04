@@ -17,11 +17,11 @@
       register: env_file
       failed_when: not env_file.stat.exists
 
-    - name: Vérifier que docker-compose.deploiement.yml existe en local
+    - name: Vérifier que docker-compose.prod.yml existe en local
       delegate_to: localhost
       become: no
       stat:
-        path: "{{ playbook_dir }}/../docker-compose.deploiement.yml"
+        path: "{{ playbook_dir }}/../docker-compose.prod.yml"
       register: compose_check
       failed_when: not compose_check.stat.exists
 

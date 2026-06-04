@@ -22,7 +22,7 @@
       OUT="$BACKUP_DIR/synkro_$DATE.sql.gz"
 
       cd {{ app_dir }}
-      docker compose --env-file .env -f docker-compose.deploiement.yml \
+      docker compose --env-file .env -f docker-compose.prod.yml \
         exec -T postgres-synkro \
         pg_dump -U "$(grep ^POSTGRES_USER .env | cut -d= -f2)" \
                 "$(grep ^POSTGRES_DB .env | cut -d= -f2)" \

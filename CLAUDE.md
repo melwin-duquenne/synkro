@@ -68,4 +68,4 @@ docker-compose exec backend php bin/console lexik:jwt:generate-keypair
 
 ## CI/CD
 
-GitHub Actions (`.github/workflows/main.yml`): builds Docker images for all 3 services, pushes to Docker Hub, deploys to VPS via Ansible (`ansible/deploy.yml`). Production uses `docker-compose.deploiement.yml`.
+GitHub Actions (`.github/workflows/main.yml`): builds Docker images for all 3 services, pushes to Docker Hub, deploys to VPS via Ansible (`ansible/deploy.yml`). Production uses `docker-compose.prod.yml`.
