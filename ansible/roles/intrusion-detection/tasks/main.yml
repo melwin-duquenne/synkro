@@ -18,7 +18,7 @@
     cp -f /var/lib/aide/aide.db.new /var/lib/aide/aide.db
     cp -f /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz 2>/dev/null || true
   when: not aide_db.stat.exists
-  async: 600
+  async: 1800
   poll: 30
 
 - name: Cron AIDE — vérification quotidienne (rapport dans /var/log/aide/)
