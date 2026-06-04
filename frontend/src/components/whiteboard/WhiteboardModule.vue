@@ -122,6 +122,7 @@ function initWhiteboard() {
     WS_URL,
     `room-${props.roomId}-whiteboard`,
     ydoc,
+    { params: { token: authStore.token ?? '' } },
   );
 
   provider.on("status", (event: { status: string }) => {

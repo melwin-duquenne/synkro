@@ -12,7 +12,7 @@ admin_email: "admin@{{ domain }}"
 sysadmin_user: sysadmin
 
 # Compose
-compose_file: "{{ app_dir }}/docker-compose.deploiement.yml"
+compose_file: "{{ app_dir }}/docker-compose.prod.yml"
 compose_cmd: "docker compose --env-file {{ app_dir }}/.env -f {{ compose_file }}"
 
 # SSH — change le port 22 -> 2222

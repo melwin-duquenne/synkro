@@ -77,7 +77,9 @@ function initEditor() {
   ydoc = new Y.Doc();
 
   // Connect to WebSocket
-  provider = new WebsocketProvider(WS_URL, `room-${props.roomId}-editor`, ydoc);
+  provider = new WebsocketProvider(WS_URL, `room-${props.roomId}-editor`, ydoc, {
+    params: { token: authStore.token ?? '' },
+  });
 
   provider.on("status", (event: { status: string }) => {
     isConnected.value = event.status === "connected";

@@ -69,7 +69,9 @@ function connectToRoom() {
   }
 
   ydoc = new Y.Doc();
-  provider = new WebsocketProvider(WS_URL, `room-${props.roomId}-chat`, ydoc);
+  provider = new WebsocketProvider(WS_URL, `room-${props.roomId}-chat`, ydoc, {
+    params: { token: authStore.token ?? '' },
+  });
 
   provider.on("status", (event: { status: string }) => {
     connected.value = event.status === "connected";

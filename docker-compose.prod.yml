@@ -58,6 +58,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: "3001"
+      BACKEND_INTERNAL_URL: "http://backend-synkro:8000"
     networks:
       - synkronet-prod
 

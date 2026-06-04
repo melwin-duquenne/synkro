@@ -31,6 +31,7 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV}
       - PORT=${PORT}
+      - BACKEND_INTERNAL_URL=http://backend-synkro:8000
     networks:
       - synkronet-synkro
 
