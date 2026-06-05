@@ -114,12 +114,14 @@
           START=$((LINE - 8))
           sed -i "${START},${LINE} s/^#//" /etc/nginx/modsec/crs/crs-setup.conf
         fi
-      when: crs_ldjson_check.rc != 0
+      when: crs_ldjson_check.rc | default(1) != 0
+      failed_when: false
 
     - name: Ajouter ld+json et merge-patch+json à allowed_request_content_type
       shell: |
         sed -i '/allowed_request_content_type=/ { /^#/!s/|application\/json|/|application\/json| |application\/ld+json| |application\/merge-patch+json|/ }' /etc/nginx/modsec/crs/crs-setup.conf
-      when: crs_ldjson_check.rc != 0
+      when: crs_ldjson_check.rc | default(1) != 0
+      failed_when: false
       notify: Recharger Nginx
 
 - name: ModSecurity non disponible — WAF skippé
