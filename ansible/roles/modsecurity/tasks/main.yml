@@ -64,32 +64,25 @@
         line: 'SecRuleEngine On'
       notify: Recharger Nginx
 
-    - name: État actuel de /etc/nginx/modsec/crs
-      stat:
-        path: /etc/nginx/modsec/crs
-      register: crs_dest
-
-    - name: Retirer /etc/nginx/modsec/crs s'il est un vrai dossier (résidu, bloque le lien)
+    # CRS moderne du paquet : owasp-crs.load (déjà fourni) charge crs-setup.conf
+    # (depuis /etc/modsecurity/crs/) + /usr/share/modsecurity-crs/rules/*.conf.
+    # On gère nous-mêmes crs-setup.conf (version CRS + content-types dont ld+json
+    # et merge-patch+json pour l'API Symfony). Plus de symlink ni de sed fragile.
+    - name: Répertoire de config CRS
       file:
-        path: /etc/nginx/modsec/crs
-        state: absent
-      when: crs_dest.stat.exists and crs_dest.stat.isdir and not crs_dest.stat.islnk
+        path: /etc/modsecurity/crs
+        state: directory
+        mode: '0755'
 
-    - name: Lien CRS
-      file:
-        src: /usr/share/modsecurity-crs
-        dest: /etc/nginx/modsec/crs
-        state: link
-        force: yes
-
-    - name: Copier crs-setup.conf
+    - name: crs-setup.conf géré (version CRS + content-types autorisés)
       copy:
-        src: /etc/modsecurity-crs/crs-setup.conf
-        dest: /etc/nginx/modsec/crs/crs-setup.conf
+        dest: /etc/modsecurity/crs/crs-setup.conf
         mode: '0644'
-        remote_src: yes
-        force: no
-      failed_when: false
+        content: |
+          # Géré par Ansible — setup CRS minimal
+          SecAction "id:900990,phase:1,nolog,pass,t:none,setvar:tx.crs_setup_version=400"
+          SecAction "id:900220,phase:1,nolog,pass,t:none,setvar:'tx.allowed_request_content_type=|application/x-www-form-urlencoded| |multipart/form-data| |multipart/related| |text/xml| |application/xml| |application/soap+xml| |application/json| |application/cloudevents+json| |application/cloudevents-batch+json| |application/ld+json| |application/merge-patch+json|'"
+      notify: Recharger Nginx
 
     - name: Fichier d'inclusion principal main.conf
       copy:
@@ -97,31 +90,7 @@
         mode: '0644'
         content: |
           Include /etc/nginx/modsec/modsecurity.conf
-          Include /etc/nginx/modsec/crs/crs-setup.conf
-          Include /etc/nginx/modsec/crs/rules/*.conf
-      notify: Recharger Nginx
-
-    - name: Vérifier si CRS allowed_request_content_type contient déjà ld+json
-      shell: grep -E '^[^#]*allowed_request_content_type=.*ld\+json' /etc/nginx/modsec/crs/crs-setup.conf
-      register: crs_ldjson_check
-      changed_when: false
-      failed_when: false
-
-    - name: Décommenter le bloc SecAction (CRS 900220 — content-types)
-      shell: |
-        LINE=$(grep -n "allowed_request_content_type=" /etc/nginx/modsec/crs/crs-setup.conf | head -1 | cut -d: -f1)
-        if [ -n "$LINE" ]; then
-          START=$((LINE - 8))
-          sed -i "${START},${LINE} s/^#//" /etc/nginx/modsec/crs/crs-setup.conf
-        fi
-      when: crs_ldjson_check.rc | default(1) != 0
-      failed_when: false
-
-    - name: Ajouter ld+json et merge-patch+json à allowed_request_content_type
-      shell: |
-        sed -i '/allowed_request_content_type=/ { /^#/!s/|application\/json|/|application\/json| |application\/ld+json| |application\/merge-patch+json|/ }' /etc/nginx/modsec/crs/crs-setup.conf
-      when: crs_ldjson_check.rc | default(1) != 0
-      failed_when: false
+          Include /usr/share/modsecurity-crs/owasp-crs.load
       notify: Recharger Nginx
 
 - name: ModSecurity non disponible — WAF skippé
