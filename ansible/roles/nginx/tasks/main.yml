@@ -26,11 +26,11 @@
     path: /etc/nginx/dhparam.pem
   register: dhparam_stat
 
-- name: Générer dhparam 4096 (long — ~5 min, une seule fois)
-  shell: openssl dhparam -out /etc/nginx/dhparam.pem 4096
+- name: Générer dhparam 2048 (rapide, une seule fois ; 2048 = minimum NIST, ECDHE prioritaire)
+  shell: openssl dhparam -out /etc/nginx/dhparam.pem 2048
   args:
     creates: /etc/nginx/dhparam.pem
-  async: 600
+  async: 900
   poll: 30
 
 - name: Conf Nginx — sécurité globale (rate limit, body size, timeouts, tokens)
