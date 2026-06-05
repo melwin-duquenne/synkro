@@ -60,8 +60,8 @@ function handleLogout() {
           <span>Synkro</span>
         </router-link>
 
-        <p class="section-label">Navigation</p>
-        <nav class="sidebar-nav">
+        <p v-if="currentSlug" class="section-label">Navigation</p>
+        <nav v-if="currentSlug" class="sidebar-nav">
           <router-link
             :to="{ name: 'dashboard', params: { entrepriseSlug: currentSlug } }"
             class="nav-link"
@@ -174,6 +174,7 @@ function handleLogout() {
 
               <div class="user-mini-menu">
                 <router-link
+                  v-if="currentSlug"
                   :to="{
                     name: 'profile',
                     params: { entrepriseSlug: currentSlug },
@@ -183,7 +184,7 @@ function handleLogout() {
                   Profil
                 </router-link>
                 <router-link
-                  v-if="isAdmin"
+                  v-if="isAdmin && currentSlug"
                   :to="{
                     name: 'admin-users',
                     params: { entrepriseSlug: currentSlug },

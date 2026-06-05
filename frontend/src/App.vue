@@ -18,7 +18,12 @@ const currentLayout = computed(() => {
   if (route.meta.layout === 'blank') {
     return BlankLayout
   }
-  return authStore.isAuthenticated ? MainLayout : AuthLayout
+  if (!authStore.isAuthenticated) {
+    return AuthLayout
+  }
+  // MainLayout (nav scopée entreprise) UNIQUEMENT sur une route avec slug ;
+  // sinon sa nav résout entrepriseSlug=undefined et plante au setup → layout minimal.
+  return route.params.entrepriseSlug ? MainLayout : BlankLayout
 })
 
 // Clé unique par entreprise : force le remontage des composants au changement d'entreprise
