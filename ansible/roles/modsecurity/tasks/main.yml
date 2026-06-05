@@ -64,6 +64,17 @@
         line: 'SecRuleEngine On'
       notify: Recharger Nginx
 
+    - name: État actuel de /etc/nginx/modsec/crs
+      stat:
+        path: /etc/nginx/modsec/crs
+      register: crs_dest
+
+    - name: Retirer /etc/nginx/modsec/crs s'il est un vrai dossier (résidu, bloque le lien)
+      file:
+        path: /etc/nginx/modsec/crs
+        state: absent
+      when: crs_dest.stat.exists and crs_dest.stat.isdir and not crs_dest.stat.islnk
+
     - name: Lien CRS
       file:
         src: /usr/share/modsecurity-crs
