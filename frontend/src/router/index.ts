@@ -56,6 +56,14 @@ const router = createRouter({
       name: 'unauthorized',
       component: () => import('@/pages/UnauthorizedPage.vue')
     },
+    {
+      // Connecté mais membre d'aucune entreprise (design : on rejoint par invitation).
+      // Layout minimal pour ne pas monter la nav scopée entreprise.
+      path: '/no-entreprise',
+      name: 'no-entreprise',
+      component: () => import('@/pages/NoEntreprisePage.vue'),
+      meta: { requiresAuth: true, layout: 'blank' }
+    },
 
     // Routes entreprise-scoped — préfixées par /:entrepriseSlug
     {
@@ -128,7 +136,7 @@ router.beforeEach(async (to, _from, next) => {
     const slug = authStore.getFirstEntrepriseSlug()
     // Si user chargé avec une entreprise → dashboard, sinon rester sur landing (API peut-être down)
     if (slug) return next({ name: 'dashboard', params: { entrepriseSlug: slug } })
-    if (authStore.user) return next() // connecté mais sans entreprise → landing ok
+    if (authStore.user) return next({ name: 'no-entreprise' }) // connecté sans entreprise → écran dédié
     return next() // API down mais token valide → landing (pas de déconnexion forcée)
   }
 
@@ -139,6 +147,10 @@ router.beforeEach(async (to, _from, next) => {
 
   // Vérification du slug entreprise pour les routes /:entrepriseSlug/*
   if (to.params.entrepriseSlug) {
+    // Connecté sans aucune entreprise → écran dédié (évite le crash de la nav scopée)
+    if (authStore.user && authStore.user.entreprises.length === 0) {
+      return next({ name: 'no-entreprise' })
+    }
     const slug = to.params.entrepriseSlug as string
     const membership = authStore.user?.entreprises.find(e => e.slug === slug)
     if (!membership) {
