@@ -33,6 +33,14 @@
   async: 900
   poll: 30
 
+# Ancienne conf (nom security.conf) d'une version précédente du rôle : elle
+# redéfinit les mêmes limit_req_zone que 00-security.conf → nginx -t échoue
+# ("already bound"). On la retire avant d'écrire la version actuelle.
+- name: Retirer l'ancienne conf de sécurité en doublon
+  file:
+    path: /etc/nginx/conf.d/security.conf
+    state: absent
+
 - name: Conf Nginx — sécurité globale (rate limit, body size, timeouts, tokens)
   copy:
     dest: /etc/nginx/conf.d/00-security.conf
