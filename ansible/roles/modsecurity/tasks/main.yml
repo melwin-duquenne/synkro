@@ -19,13 +19,43 @@
         state: directory
         mode: '0755'
 
-    - name: Copier modsecurity.conf-recommended
+    - name: Chercher le modsecurity.conf-recommended fourni par le paquet
+      stat:
+        path: "{{ item }}"
+      loop:
+        - /etc/modsecurity/modsecurity.conf-recommended
+        - /usr/share/modsecurity/modsecurity.conf-recommended
+      register: modsec_reco
+
+    - name: Copier modsecurity.conf depuis le paquet (si présent)
       copy:
-        src: /etc/modsecurity/modsecurity.conf-recommended
+        src: "{{ modsec_reco.results | selectattr('stat.exists') | map(attribute='item') | first }}"
         dest: /etc/nginx/modsec/modsecurity.conf
         mode: '0644'
         remote_src: yes
         force: no
+      when: modsec_reco.results | selectattr('stat.exists') | list | length > 0
+
+    - name: Sinon, écrire un modsecurity.conf minimal (paquet sans fichier recommandé)
+      copy:
+        dest: /etc/nginx/modsec/modsecurity.conf
+        mode: '0644'
+        force: no
+        content: |
+          SecRuleEngine On
+          SecRequestBodyAccess On
+          SecRequestBodyLimit 13107200
+          SecRequestBodyNoFilesLimit 131072
+          SecRequestBodyLimitAction Reject
+          SecResponseBodyAccess Off
+          SecAuditEngine RelevantOnly
+          SecAuditLogParts ABIJDEFHZ
+          SecAuditLogType Serial
+          SecAuditLog /var/log/nginx/modsec_audit.log
+          SecArgumentSeparator &
+          SecCookieFormat 0
+          SecStatusEngine Off
+      when: modsec_reco.results | selectattr('stat.exists') | list | length == 0
 
     - name: Activer ModSecurity (mode On)
       lineinfile:

@@ -17,6 +17,11 @@ on:
           - web     # config web seule : nginx + vhosts (fix visio : en-têtes + location /ws), sans docker
           - nginx   # uniquement le rôle nginx (rapide — ex. en-têtes de sécurité)
           - full    # site.yml entier : base + hardening + stack + app
+      dry_run:
+        description: "Dry-run (--check --diff) : montre les changements SANS rien appliquer"
+        type: boolean
+        required: false
+        default: true
 
 jobs:
   provision:
@@ -97,20 +102,25 @@ jobs:
           ${{ secrets.VPS_HOST }} ansible_user=${{ secrets.VPS_USER }} ansible_ssh_private_key_file=~/.ssh/id_rsa ansible_become=yes ansible_become_method=sudo
           EOF
 
-      - name: Lancer site.yml (scope = ${{ inputs.scope }})
+      - name: Lancer site.yml (scope = ${{ inputs.scope }}, dry_run = ${{ inputs.dry_run }})
         run: |
+          EXTRA=""
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            EXTRA="--check --diff"
+            echo "::notice::DRY-RUN — aucun changement ne sera appliqué (--check --diff)"
+          fi
           case "${{ inputs.scope }}" in
             full)
-              ansible-playbook ansible/site.yml -i ansible/inventory.ini
+              ansible-playbook ansible/site.yml -i ansible/inventory.ini $EXTRA
               ;;
             web)
-              ansible-playbook ansible/site.yml -i ansible/inventory.ini --tags nginx,vhosts
+              ansible-playbook ansible/site.yml -i ansible/inventory.ini --tags nginx,vhosts $EXTRA
               ;;
             nginx)
-              ansible-playbook ansible/site.yml -i ansible/inventory.ini --tags nginx
+              ansible-playbook ansible/site.yml -i ansible/inventory.ini --tags nginx $EXTRA
               ;;
             stack)
-              ansible-playbook ansible/site.yml -i ansible/inventory.ini --tags stack,app,monitoring,backups
+              ansible-playbook ansible/site.yml -i ansible/inventory.ini --tags stack,app,monitoring,backups $EXTRA
               ;;
             *)
               echo "Scope inconnu: ${{ inputs.scope }}" && exit 1
