@@ -46,6 +46,7 @@
     certbot certonly --webroot -w /var/www/certbot \
       -d {{ domain }} -d www.{{ domain }} \
       -d status.{{ domain }} -d netdata.{{ domain }} \
+      -d wazuh.{{ domain }} \
       --email {{ admin_email }} \
       --agree-tos --non-interactive --expand --keep-until-expiring
   register: certbot_run

@@ -1,0 +1,99 @@
+---
+# ===========================================================================
+# Wazuh SIEM — single-node Docker (manager + indexer + dashboard)
+#   + relais mail conteneurisé (Brevo) pour les alertes email (sévérité ≥ 10)
+#   + lecture des logs de l'hôte (nginx, ssh, auditd, fail2ban) montés en RO
+#
+# ⚠️  NON TESTÉ depuis le poste de dev (Windows). À valider sur le VPS :
+#     ansible-playbook site.yml --tags wazuh
+#
+# Pré-requis côté toi :
+#   - DNS : un enregistrement A  wazuh.{{ domain }}  -> IP du VPS
+#   - Brevo : compte gratuit, clé SMTP créée, expéditeur {{ wazuh_email_from }}
+#             validé (sinon Brevo refuse l'envoi)
+#   - .env  : BREVO_SMTP_USER + BREVO_SMTP_KEY renseignés
+# ===========================================================================
+
+- name: Vérifier que les identifiants Brevo sont renseignés
+  assert:
+    that:
+      - brevo_smtp_user | length > 0
+      - brevo_smtp_password | length > 0
+    fail_msg: "BREVO_SMTP_USER et BREVO_SMTP_KEY doivent être définis dans .env"
+
+# OpenSearch (indexer) refuse de démarrer sans ce réglage kernel
+- name: Régler vm.max_map_count pour l'indexer
+  sysctl:
+    name: vm.max_map_count
+    value: '262144'
+    state: present
+    reload: yes
+
+- name: Cloner wazuh-docker (version pinnée)
+  git:
+    repo: https://github.com/wazuh/wazuh-docker.git
+    dest: "{{ wazuh_dir }}"
+    version: "v{{ wazuh_version }}"
+    single_branch: yes
+    depth: 1
+    force: no
+
+# Génère les certificats TLS internes du cluster (indexer/manager/dashboard).
+# One-shot : ne tourne qu'à la première installation.
+- name: Générer les certificats internes du cluster
+  command:
+    cmd: docker compose -f generate-indexer-certs.yml run --rm generator
+    chdir: "{{ wazuh_dir }}/single-node"
+    creates: "{{ wazuh_dir }}/single-node/config/wazuh_indexer_ssl_certs/root-ca.pem"
+
+# Surcharge : bind tous les ports sur 127.0.0.1 (IMPORTANT — Docker contourne ufw,
+# sans ça l'indexer/manager seraient exposés publiquement), heap indexer bridé,
+# et ajoute le conteneur mail-relay (Brevo) sur le réseau du SIEM.
+- name: Déposer le docker-compose.override.yml
+  template:
+    src: docker-compose.override.yml.j2
+    dest: "{{ wazuh_dir }}/single-node/docker-compose.override.yml"
+    mode: '0640'
+
+# ─── Config du manager : logs de l'hôte + email ───────────────────────────
+- name: Lecture des logs de l'hôte (montés en RO via l'override)
+  blockinfile:
+    path: "{{ wazuh_dir }}/single-node/config/wazuh_cluster/wazuh_manager.conf"
+    marker: "  <!-- {mark} ANSIBLE : logs hôte -->"
+    insertbefore: "</ossec_config>"
+    block: |
+      <localfile><log_format>syslog</log_format><location>/var/log/nginx/access.log</location></localfile>
+      <localfile><log_format>syslog</log_format><location>/var/log/nginx/error.log</location></localfile>
+      <localfile><log_format>syslog</log_format><location>/var/log/auth.log</location></localfile>
+      <localfile><log_format>syslog</log_format><location>/var/log/fail2ban.log</location></localfile>
+      <localfile><log_format>audit</log_format><location>/var/log/audit/audit.log</location></localfile>
+  notify: Redémarrer le manager Wazuh
+
+- name: Activer les notifications email (bloc global)
+  blockinfile:
+    path: "{{ wazuh_dir }}/single-node/config/wazuh_cluster/wazuh_manager.conf"
+    marker: "    <!-- {mark} ANSIBLE : email global -->"
+    insertafter: "<global>"
+    block: |
+      <email_notification>yes</email_notification>
+      <smtp_server>mail-relay</smtp_server>
+      <email_from>{{ wazuh_email_from }}</email_from>
+      <email_to>{{ wazuh_email_to }}</email_to>
+      <email_maxperhour>{{ wazuh_email_maxperhour }}</email_maxperhour>
+  notify: Redémarrer le manager Wazuh
+
+- name: Définir le seuil d'alerte email (sévérité ≥ {{ wazuh_email_alert_level }})
+  blockinfile:
+    path: "{{ wazuh_dir }}/single-node/config/wazuh_cluster/wazuh_manager.conf"
+    marker: "    <!-- {mark} ANSIBLE : seuil email -->"
+    insertafter: "<alerts>"
+    block: |
+      <email_alert_level>{{ wazuh_email_alert_level }}</email_alert_level>
+  notify: Redémarrer le manager Wazuh
+
+- name: Démarrer / mettre à jour la stack Wazuh
+  command:
+    cmd: docker compose up -d
+    chdir: "{{ wazuh_dir }}/single-node"
+  register: wazuh_up
+  changed_when: "'Started' in wazuh_up.stderr or 'Created' in wazuh_up.stderr or 'Recreate' in wazuh_up.stderr"

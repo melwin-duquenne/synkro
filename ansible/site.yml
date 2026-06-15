@@ -46,5 +46,6 @@
     - {role: jwt-keys, tags: [jwt, stack]}
     - {role: vhosts, tags: [vhosts, stack]}
     - {role: monitoring, tags: [monitoring]}
+    - {role: wazuh, tags: [wazuh, siem]}
     - {role: backups, tags: [backups]}
     - {role: app-deploy, tags: [deploy, app]}

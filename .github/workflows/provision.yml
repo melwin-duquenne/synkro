@@ -60,6 +60,8 @@ jobs:
           DEFAULT_URI: ${{ secrets.DEFAULT_URI }}
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           MONITORING_HTPASSWD_PASSWORD: ${{ secrets.MONITORING_HTPASSWD_PASSWORD }}
+          BREVO_SMTP_USER: ${{ secrets.BREVO_SMTP_USER }}
+          BREVO_SMTP_KEY: ${{ secrets.BREVO_SMTP_KEY }}
         run: |
           cat > .env <<ENVEOF
           DOCKERHUB_USERNAME=${DOCKERHUB_USERNAME}
@@ -78,6 +80,7 @@ jobs:
           GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
           GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI}
           MAILER_DSN=${MAILER_DSN}
+          MAILER_FROM=${{ vars.MAILER_FROM || 'noreply@synkro.ovh' }}
           APP_FRONTEND_URL=${APP_FRONTEND_URL}
           VITE_WS_URL=${VITE_WS_URL}
           VITE_API_URL=/api
@@ -92,6 +95,8 @@ jobs:
           PORT_WEBSOCKET=${{ vars.PORT_WEBSOCKET }}
           BASE_URL=/
           MONITORING_HTPASSWD_PASSWORD=${MONITORING_HTPASSWD_PASSWORD}
+          BREVO_SMTP_USER=${BREVO_SMTP_USER}
+          BREVO_SMTP_KEY=${BREVO_SMTP_KEY}
           ENVEOF
           sed -i 's/^          //' .env
 
@@ -120,7 +125,7 @@ jobs:
               ansible-playbook ansible/site.yml -i ansible/inventory.ini --tags nginx $EXTRA
               ;;
             stack)
-              ansible-playbook ansible/site.yml -i ansible/inventory.ini --tags stack,app,monitoring,backups $EXTRA
+              ansible-playbook ansible/site.yml -i ansible/inventory.ini --tags stack,app,monitoring,backups,wazuh $EXTRA
               ;;
             *)
               echo "Scope inconnu: ${{ inputs.scope }}" && exit 1

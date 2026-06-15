@@ -22,6 +22,13 @@
     mode: '0644'
   notify: Recharger Nginx
 
+- name: Vhost Wazuh SIEM — wazuh.{{ domain }}
+  template:
+    src: synkro-wazuh.conf.j2
+    dest: /etc/nginx/sites-available/synkro-wazuh
+    mode: '0644'
+  notify: Recharger Nginx
+
 - name: Activer les vhosts
   file:
     src: "/etc/nginx/sites-available/{{ item }}"
@@ -31,4 +38,5 @@
     - synkro
     - synkro-kuma
     - synkro-netdata
+    - synkro-wazuh
   notify: Recharger Nginx

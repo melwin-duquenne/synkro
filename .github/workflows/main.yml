@@ -190,6 +190,7 @@ jobs:
           GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
           GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI}
           MAILER_DSN=${MAILER_DSN}
+          MAILER_FROM=${{ vars.MAILER_FROM || 'noreply@synkro.ovh' }}
           APP_FRONTEND_URL=${APP_FRONTEND_URL}
           VITE_WS_URL=${VITE_WS_URL}
           VITE_API_URL=/api

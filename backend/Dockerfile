@@ -51,6 +51,7 @@ ENV APP_ENV=prod \
     JWT_PASSPHRASE=placeholder \
     CORS_ALLOW_ORIGIN='^https?://localhost$' \
     MAILER_DSN=null://null \
+    MAILER_FROM=noreply@synkro.ovh \
     APP_FRONTEND_URL=http://localhost \
     GOOGLE_CLIENT_ID=placeholder \
     GOOGLE_CLIENT_SECRET=placeholder \

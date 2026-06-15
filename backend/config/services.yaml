@@ -34,6 +34,7 @@ services:
     App\Service\MailerService:
         arguments:
             $frontendUrl: '%env(APP_FRONTEND_URL)%'
+            $fromAddress: '%env(MAILER_FROM)%'
 
     App\Ai\Provider\MistralProvider:
         tags: ['ai.provider']
