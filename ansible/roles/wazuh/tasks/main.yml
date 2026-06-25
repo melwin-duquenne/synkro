@@ -29,7 +29,11 @@
     state: present
     reload: yes
 
-- name: Cloner wazuh-docker (version pinnée)
+# Clone UNE SEULE FOIS : les tâches suivantes modifient les fichiers du repo
+# (manager.conf, override, certs générés) → au 2ᵉ run, git verrait des
+# "local modifications" et échouerait. update:no = ne rien repuller si le repo
+# existe déjà (version pinnée, on ne met jamais à jour en place de toute façon).
+- name: Cloner wazuh-docker (version pinnée, clone unique)
   git:
     repo: https://github.com/wazuh/wazuh-docker.git
     dest: "{{ wazuh_dir }}"
@@ -37,6 +41,7 @@
     single_branch: yes
     depth: 1
     force: no
+    update: no
 
 # Génère les certificats TLS internes du cluster (indexer/manager/dashboard).
 # One-shot : ne tourne qu'à la première installation.
