@@ -13,7 +13,11 @@
     path: "/etc/letsencrypt/live/{{ domain }}/fullchain.pem"
   register: cert_main
 
-- name: Premier challenge HTTP — vhost minimal pour Certbot
+# Toujours actif pendant l'émission : c'est ce default_server:80 qui répond au
+# challenge ACME des sous-domaines dont le vrai vhost n'existe pas encore (le rôle
+# vhosts tourne APRÈS certbot). Indispensable pour AJOUTER un domaine au cert
+# (ex. wazuh), pas seulement à la première installation. Retiré en fin de rôle.
+- name: Challenge HTTP — vhost minimal pour Certbot (default_server :80)
   copy:
     dest: /etc/nginx/sites-available/01-certbot-bootstrap
     mode: '0644'
@@ -28,14 +32,12 @@
               return 404;
           }
       }
-  when: not cert_main.stat.exists
 
 - name: Activer le vhost bootstrap
   file:
     src: /etc/nginx/sites-available/01-certbot-bootstrap
     dest: /etc/nginx/sites-enabled/01-certbot-bootstrap
     state: link
-  when: not cert_main.stat.exists
   notify: Recharger Nginx
 
 - name: Flush handlers (Nginx prêt)
