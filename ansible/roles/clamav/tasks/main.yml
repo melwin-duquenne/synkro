@@ -25,12 +25,14 @@
     name: clamav-freshclam
     state: started
     enabled: yes
+    daemon_reload: yes   # recharge la table d'unités : l'unité vient d'être installée
 
 - name: Activer clamav-daemon
   systemd:
     name: clamav-daemon
     state: started
     enabled: yes
+    daemon_reload: yes
 
 - name: Cron ClamAV — scan hebdomadaire (dimanche 02h00)
   cron:
