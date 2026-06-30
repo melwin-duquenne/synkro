@@ -39,11 +39,27 @@
     name: rkhunter
     state: present
 
-- name: Configurer rkhunter (autoriser les MD5_CMD modernes)
-  lineinfile:
+- name: Vérifier la présence du conffile principal rkhunter
+  stat:
     path: /etc/rkhunter.conf
+  register: rkhunter_conf
+
+- name: Restaurer le conffile rkhunter s'il manque (réinstall --force-confmiss)
+  # Cas Debian : un paquet déjà installé puis supprimé laisse dpkg "se souvenir"
+  # d'un conffile effacé ; un simple apt install ne le restaure pas. On force.
+  command: apt-get install --reinstall -y -o Dpkg::Options::=--force-confmiss rkhunter
+  when: not rkhunter_conf.stat.exists
+
+- name: Configurer rkhunter (overrides dans le .local, lu automatiquement par rkhunter)
+  # On écrit dans /etc/rkhunter.conf.local (créé si absent) plutôt que dans le
+  # conffile principal /etc/rkhunter.conf : rkhunter merge le .local par-dessus,
+  # ça évite de dépendre de la présence du conffile paquet et les prompts dpkg.
+  lineinfile:
+    path: /etc/rkhunter.conf.local
     regexp: "^{{ item.k }}="
     line: "{{ item.k }}={{ item.v }}"
+    create: yes
+    mode: '0644'
   loop:
     - { k: 'MIRRORS_MODE', v: '0' }
     - { k: 'UPDATE_MIRRORS', v: '1' }
