@@ -36,14 +36,24 @@
     daemon_reload: yes
   when: not ansible_check_mode
 
+# Script sorti dans un fichier : un job cron doit tenir sur UNE ligne (sinon
+# "Job should not contain line breaks" → crontab malformé). Pas d'échappement %
+# nécessaire dans un script (contrairement à un job cron inline).
+- name: Script de scan ClamAV hebdomadaire
+  copy:
+    dest: /usr/local/bin/synkro-clamscan.sh
+    mode: '0755'
+    content: |
+      #!/bin/bash
+      mkdir -p /var/log/clamav
+      LOG="/var/log/clamav/scan-$(date +%Y-%m-%d).log"
+      clamscan -r --infected --remove=no --exclude-dir='^/sys|^/proc|^/dev|^/var/lib/clamav|^/var/lib/docker' / > "$LOG" 2>&1
+      find /var/log/clamav -name 'scan-*.log' -mtime +30 -delete
+
 - name: Cron ClamAV — scan hebdomadaire (dimanche 02h00)
   cron:
     name: "ClamAV scan hebdomadaire"
     minute: "0"
     hour: "2"
     weekday: "0"
-    job: |
-      mkdir -p /var/log/clamav && \
-      LOG="/var/log/clamav/scan-$(date +\%Y-\%m-\%d).log" && \
-      clamscan -r --infected --remove=no --exclude-dir='^/sys|^/proc|^/dev|^/var/lib/clamav|^/var/lib/docker' / > "$LOG" 2>&1; \
-      find /var/log/clamav -name 'scan-*.log' -mtime +30 -delete
+    job: "/usr/local/bin/synkro-clamscan.sh"
