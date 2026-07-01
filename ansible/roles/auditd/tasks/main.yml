@@ -97,8 +97,9 @@
       -w /etc/docker/daemon.json -p wa -k docker
       -w /usr/lib/systemd/system/docker.service -p wa -k docker
 
-      # ─── Verrouille la config audit (peut seulement reboot pour modifier) ─
-      -e 2
+      # Config mutable (-e 1) : -e 2 verrouille l'audit jusqu'au reboot et fait
+      # échouer tout rechargement de règles au re-run Ansible (mode immutable).
+      -e 1
   notify: Redémarrer auditd
 
 - name: Activer auditd

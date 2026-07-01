@@ -1,3 +1,8 @@
 ---
 - name: Recharger sysctl
-  shell: sysctl --system
+  # Non-fatal : sur un VPS conteneurisé (LXC/OpenVZ) certaines clés kernel.*/net.*
+  # sont en lecture seule et feraient renvoyer un code non-zéro ; les clés valides
+  # sont quand même appliquées.
+  command: sysctl --system
+  changed_when: false
+  failed_when: false

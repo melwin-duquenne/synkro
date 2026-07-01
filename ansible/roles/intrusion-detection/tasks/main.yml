@@ -26,8 +26,9 @@
 
 - name: Initialiser la base AIDE (long — ne tourne qu'une fois)
   shell: |
-    # Tue un éventuel aideinit resté en fond après un timeout précédent (évite 2 scans concurrents)
-    pkill -9 -f aideinit 2>/dev/null || true
+    # Tue un éventuel 'aide' resté en fond après un timeout précédent (évite 2 scans concurrents).
+    # NE PAS utiliser 'pkill -f aideinit' : le -f matcherait la cmdline de CE script
+    # (qui contient "aideinit") et le tuerait lui-même (rc -9). Le -x sur le binaire est sûr.
     pkill -9 -x aide 2>/dev/null || true
     aideinit -y -f
     cp -f /var/lib/aide/aide.db.new /var/lib/aide/aide.db

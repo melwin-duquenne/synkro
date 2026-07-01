@@ -69,6 +69,9 @@
 - name: Migrations Doctrine
   shell: "{{ compose_cmd }} exec -T backend-fpm php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration"
   register: migrations
+  retries: 5
+  delay: 5
+  until: migrations.rc == 0
   changed_when: "'No migrations to execute' not in migrations.stdout"
 
 - name: Cache clear

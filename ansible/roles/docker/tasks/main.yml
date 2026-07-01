@@ -9,6 +9,12 @@
     path: /etc/apt/sources.list.d/download_docker_com_linux_ubuntu.list
     state: absent
 
+- name: Créer /etc/apt/keyrings (get_url ne crée pas les dossiers parents)
+  file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+
 - name: Clé GPG officielle Docker
   get_url:
     url: https://download.docker.com/linux/ubuntu/gpg

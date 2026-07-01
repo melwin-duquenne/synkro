@@ -34,6 +34,23 @@
     mode: '0600'
   notify: Redémarrer SSH
 
+- name: Désactiver la socket-activation SSH (Ubuntu 24.04 ignore les directives Port sinon)
+  # Tant que ssh.socket est actif, c'est lui qui décide du port (22) et les lignes
+  # "Port 2222" de sshd_config sont ignorées → 2222 n'écoute jamais → lockout au
+  # moment de fermer le 22. On repasse au ssh.service classique qui lit sshd_config.
+  systemd:
+    name: ssh.socket
+    state: stopped
+    enabled: no
+    daemon_reload: yes
+  failed_when: false   # la socket peut ne pas exister selon l'image
+  notify: Redémarrer SSH
+
+- name: S'assurer que ssh.service est activé (écoute 22 + {{ ssh_port }} via sshd_config)
+  systemd:
+    name: ssh.service
+    enabled: yes
+
 - name: Forcer l'application immédiate (handler flush avant tests réseau)
   meta: flush_handlers
 
