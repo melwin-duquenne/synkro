@@ -65,7 +65,7 @@ brevo_smtp_password: "{{ lookup('ansible.builtin.ini', 'BREVO_SMTP_KEY type=prop
 #           (ex: https://discord.com/api/webhooks/ID/TOKEN/slack).
 # Slack   : "Incoming Webhook" → colle l'URL telle quelle.
 wazuh_slack_hook_url: "{{ lookup('ansible.builtin.ini', 'WAZUH_SLACK_HOOK_URL type=properties file=' ~ playbook_dir ~ '/../.env default=') }}"
-wazuh_slack_alert_level: 10        # ≥10 = sérieux uniquement ; baisse à 7 pour voir plus d'activité en démo
+wazuh_slack_alert_level: 7         # 7 = alertes régulières pour la démo (≥10 = sérieux uniquement ; 5 = encore plus)
 
 # Email désactivé : on utilise le webhook. Repasse à true + renseigne Brevo pour réactiver.
 wazuh_email_enabled: false
