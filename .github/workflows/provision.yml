@@ -18,10 +18,13 @@ on:
           - nginx   # uniquement le rôle nginx (rapide — ex. en-têtes de sécurité)
           - full    # site.yml entier : base + hardening + stack + app
       dry_run:
-        description: "Dry-run (--check --diff) : montre les changements SANS rien appliquer"
+        # ATTENTION : le dry-run (--check) n'est fiable QUE pour les scopes config
+        # (nginx / web). Pour stack / full (pattern "installe apt puis configure"),
+        # le check mode n'installe rien et génère de faux échecs → laisser décoché.
+        description: "Dry-run (--check --diff) : preview SANS appliquer. Fiable uniquement pour scope nginx/web."
         type: boolean
         required: false
-        default: true
+        default: false
 
 jobs:
   provision:

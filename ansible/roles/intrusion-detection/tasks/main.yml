@@ -7,19 +7,34 @@
     name: aide
     state: present
 
+# Sans exclusions, aideinit hashe TOUT /var/lib/docker (images + volumes) → l'init
+# dépasse le timeout et le check quotidien est noyé sous le churn docker. On dépose
+# un fragment lu par update-aide.conf (nom sans point : regex ^[a-zA-Z0-9_-]+$).
+- name: Exclusions AIDE — dossiers volumineux/volatils (docker, db AIDE)
+  copy:
+    dest: /etc/aide/aide.conf.d/99_synkro_exclude
+    mode: '0644'
+    content: |
+      !/var/lib/docker
+      !/var/lib/containerd
+      !/var/lib/aide
+
 - name: Vérifier si la base AIDE existe
   stat:
     path: /var/lib/aide/aide.db.gz
   register: aide_db
 
-- name: Initialiser la base AIDE (long — ~5 min, ne tourne qu'une fois)
+- name: Initialiser la base AIDE (long — ne tourne qu'une fois)
   shell: |
+    # Tue un éventuel aideinit resté en fond après un timeout précédent (évite 2 scans concurrents)
+    pkill -9 -f aideinit 2>/dev/null || true
+    pkill -9 -x aide 2>/dev/null || true
     aideinit -y -f
     cp -f /var/lib/aide/aide.db.new /var/lib/aide/aide.db
     cp -f /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz 2>/dev/null || true
   when: not aide_db.stat.exists
-  async: 1800
-  poll: 30
+  async: 3600
+  poll: 60
 
 - name: Cron AIDE — vérification quotidienne (rapport dans /var/log/aide/)
   copy:

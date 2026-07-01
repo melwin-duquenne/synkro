@@ -26,6 +26,7 @@
     state: started
     enabled: yes
     daemon_reload: yes   # recharge la table d'unités : l'unité vient d'être installée
+  when: not ansible_check_mode   # en dry-run le paquet n'est pas installé → service introuvable
 
 - name: Activer clamav-daemon
   systemd:
@@ -33,6 +34,7 @@
     state: started
     enabled: yes
     daemon_reload: yes
+  when: not ansible_check_mode
 
 - name: Cron ClamAV — scan hebdomadaire (dimanche 02h00)
   cron:
