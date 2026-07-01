@@ -65,6 +65,7 @@ jobs:
           MONITORING_HTPASSWD_PASSWORD: ${{ secrets.MONITORING_HTPASSWD_PASSWORD }}
           BREVO_SMTP_USER: ${{ secrets.BREVO_SMTP_USER }}
           BREVO_SMTP_KEY: ${{ secrets.BREVO_SMTP_KEY }}
+          WAZUH_SLACK_HOOK_URL: ${{ secrets.WAZUH_SLACK_HOOK_URL }}
         run: |
           cat > .env <<ENVEOF
           DOCKERHUB_USERNAME=${DOCKERHUB_USERNAME}
@@ -100,6 +101,7 @@ jobs:
           MONITORING_HTPASSWD_PASSWORD=${MONITORING_HTPASSWD_PASSWORD}
           BREVO_SMTP_USER=${BREVO_SMTP_USER}
           BREVO_SMTP_KEY=${BREVO_SMTP_KEY}
+          WAZUH_SLACK_HOOK_URL=${WAZUH_SLACK_HOOK_URL}
           ENVEOF
           sed -i 's/^          //' .env
 

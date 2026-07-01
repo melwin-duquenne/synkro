@@ -20,6 +20,7 @@
       - brevo_smtp_user | length > 0
       - brevo_smtp_password | length > 0
     fail_msg: "BREVO_SMTP_USER et BREVO_SMTP_KEY doivent être définis dans .env"
+  when: wazuh_email_enabled
 
 # OpenSearch (indexer) refuse de démarrer sans ce réglage kernel
 - name: Régler vm.max_map_count pour l'indexer
@@ -96,11 +97,11 @@
 # le <email_notification>no</email_notification> d'origine resterait et
 # wazuh-maild ne démarrerait pas (aucune alerte envoyée). Valeurs stock stables
 # car version Wazuh pinnée ({{ wazuh_version }}).
-- name: Email — activer les notifications (remplace le 'no' d'origine)
+- name: Email — activer/désactiver les notifications selon wazuh_email_enabled
   replace:
     path: "{{ wazuh_dir }}/single-node/config/wazuh_cluster/wazuh_manager.conf"
-    regexp: '<email_notification>no</email_notification>'
-    replace: '<email_notification>yes</email_notification>'
+    regexp: '<email_notification>(yes|no)</email_notification>'
+    replace: "<email_notification>{{ 'yes' if wazuh_email_enabled else 'no' }}</email_notification>"
   notify: Redémarrer le manager Wazuh
 
 - name: Email — serveur SMTP = mail-relay
@@ -136,6 +137,24 @@
     path: "{{ wazuh_dir }}/single-node/config/wazuh_cluster/wazuh_manager.conf"
     regexp: '<email_alert_level>\d+</email_alert_level>'
     replace: '<email_alert_level>{{ wazuh_email_alert_level }}</email_alert_level>'
+  notify: Redémarrer le manager Wazuh
+
+# ─── Alertes via webhook Slack/Discord (canal principal) ──────────────────
+# Wazuh envoie les alertes de niveau ≥ wazuh_slack_alert_level vers le webhook.
+# Discord fonctionne via son endpoint compatible Slack (URL se terminant par /slack).
+- name: Alertes webhook Slack/Discord — intégration
+  blockinfile:
+    path: "{{ wazuh_dir }}/single-node/config/wazuh_cluster/wazuh_manager.conf"
+    marker: "  <!-- {mark} ANSIBLE : webhook slack/discord -->"
+    insertbefore: "</ossec_config>"
+    block: |
+      <integration>
+        <name>slack</name>
+        <hook_url>{{ wazuh_slack_hook_url }}</hook_url>
+        <level>{{ wazuh_slack_alert_level }}</level>
+        <alert_format>json</alert_format>
+      </integration>
+  when: wazuh_slack_hook_url | length > 0
   notify: Redémarrer le manager Wazuh
 
 - name: Démarrer / mettre à jour la stack Wazuh

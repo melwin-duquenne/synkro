@@ -58,3 +58,14 @@ brevo_smtp_host: smtp-relay.brevo.com
 brevo_smtp_port: 587
 brevo_smtp_user: "{{ lookup('ansible.builtin.ini', 'BREVO_SMTP_USER type=properties file=' ~ playbook_dir ~ '/../.env default=') }}"
 brevo_smtp_password: "{{ lookup('ansible.builtin.ini', 'BREVO_SMTP_KEY type=properties file=' ~ playbook_dir ~ '/../.env default=') }}"
+
+# ─── Alertes Wazuh via webhook Slack/Discord (remplace l'email) ──────────
+# Canal principal des alertes. Hook lu depuis .env (jamais en dur).
+# Discord : crée un webhook dans le salon puis AJOUTE "/slack" à la fin de l'URL
+#           (ex: https://discord.com/api/webhooks/ID/TOKEN/slack).
+# Slack   : "Incoming Webhook" → colle l'URL telle quelle.
+wazuh_slack_hook_url: "{{ lookup('ansible.builtin.ini', 'WAZUH_SLACK_HOOK_URL type=properties file=' ~ playbook_dir ~ '/../.env default=') }}"
+wazuh_slack_alert_level: 10        # ≥10 = sérieux uniquement ; baisse à 7 pour voir plus d'activité en démo
+
+# Email désactivé : on utilise le webhook. Repasse à true + renseigne Brevo pour réactiver.
+wazuh_email_enabled: false
