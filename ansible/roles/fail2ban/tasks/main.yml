@@ -16,7 +16,11 @@
       findtime = {{ fail2ban_default_findtime }}
       maxretry = {{ fail2ban_default_maxretry }}
       banaction = ufw
-      backend = systemd
+      # backend = auto : les jails nginx/modsec surveillent des FICHIERS
+      # (/var/log/nginx/*.log). Avec 'systemd' ils liraient journald et ne
+      # verraient jamais ces logs → jails dormants (0 ban). sshd force son
+      # propre backend (systemd/journald) plus bas via %(sshd_backend)s.
+      backend = auto
       ignoreip = 127.0.0.1/8 ::1
       destemail = {{ admin_email }}
       sender = fail2ban@{{ domain }}
@@ -141,29 +145,73 @@
       bantime  = 24h
   notify: Redémarrer fail2ban
 
-- name: Filtre ModSecurity blocks
+# ── WAF ModSecurity : 2 jails complémentaires (lisent nginx error.log) ──────
+# bot   : scanners évidents (.env, .git/config, wp-login, PROPFIND) → tolérance
+#         nulle, ban long. human : tout autre 403 CRS (faux positif d'un vrai
+#         utilisateur) → ban court incrémental. Le filtre human EXCLUT les
+#         chemins bot (ignoreregex) pour ne pas compter deux fois le même 403.
+# banaction héritée du [DEFAULT] (ufw) → cohérent avec les autres jails.
+# NB : le dashboard Wazuh tourne en SecRuleEngine DetectionOnly (voir le vhost
+#      synkro-wazuh) donc il n'émet plus "Access denied" et ne peut plus
+#      alimenter ces jails — plus de lockout accidentel sur le SIEM.
+- name: Filtre ModSecurity — scanners/bots
   copy:
-    dest: /etc/fail2ban/filter.d/modsecurity.conf
+    dest: /etc/fail2ban/filter.d/modsecurity-bot.conf
     mode: '0644'
     content: |
       [Definition]
-      failregex = \[client <HOST>(:\d+)?\] ModSecurity: Access denied
+      failregex = ^.*\[client <HOST>\] ModSecurity: Access denied with code 403.*(\/\.env|\/\.git\/config|wp-login\.php|PROPFIND).*$
       ignoreregex =
   notify: Redémarrer fail2ban
 
-- name: Jail ModSecurity
+- name: Filtre ModSecurity — humains (403 CRS hors scanners)
+  copy:
+    dest: /etc/fail2ban/filter.d/modsecurity-human.conf
+    mode: '0644'
+    content: |
+      [Definition]
+      failregex   = ^.*\[client <HOST>\] ModSecurity: Access denied with code 403.*$
+      ignoreregex = ^.*\[client <HOST>\] ModSecurity: Access denied with code 403.*(\/\.env|\/\.git\/config|wp-login\.php|PROPFIND).*$
+  notify: Redémarrer fail2ban
+
+- name: Jails ModSecurity (bot + human)
   copy:
     dest: /etc/fail2ban/jail.d/modsecurity.conf
     mode: '0644'
     content: |
-      [modsecurity]
-      enabled = true
-      port    = http,https
-      filter  = modsecurity
-      logpath = /var/log/nginx/error.log
-      maxretry = 3
+      [modsecurity-bot]
+      enabled  = true
+      port     = http,https
+      filter   = modsecurity-bot
+      logpath  = /var/log/nginx/error.log
+      findtime = 60
+      maxretry = 1
+      bantime  = 24h
+
+      [modsecurity-human]
+      enabled  = true
+      port     = http,https
+      filter   = modsecurity-human
+      logpath  = /var/log/nginx/error.log
       findtime = 5m
-      bantime  = 2h
+      maxretry = 5
+      bantime  = 10m
+      bantime.increment = true
+      bantime.factor    = 2
+      bantime.max       = 1h
+  notify: Redémarrer fail2ban
+
+# Nettoyage : ancien filtre générique + fichiers .local/.save ajoutés à la main
+# (jails empilés en double, banaction nftables incohérente avec ufw). Le rôle
+# est désormais la seule source de vérité pour les jails modsec.
+- name: Nettoyer les fichiers modsec legacy/manuels
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/fail2ban/filter.d/modsecurity.conf
+    - /etc/fail2ban/jail.d/modsecurity.local
+    - /etc/fail2ban/jail.d/modsecurity.local.save
   notify: Redémarrer fail2ban
 
 - name: Activer fail2ban
