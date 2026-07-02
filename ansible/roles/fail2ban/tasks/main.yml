@@ -74,7 +74,11 @@
       [nginx-noscript]
       enabled = true
       port    = http,https
-      filter  = nginx-noscript
+      # apache-noscript est le filtre fourni par fail2ban (il n'existe PAS de
+      # filtre 'nginx-noscript' → jail muet jusqu'ici). Il matche les requêtes
+      # de scripts (.php/.asp/.exe…) sur le combined log nginx. Même convention
+      # que nginx-badbots qui utilise le filtre apache-badbots.
+      filter  = apache-noscript
       logpath = /var/log/nginx/access.log
       maxretry = 6
       findtime = 10m
