@@ -26,6 +26,17 @@ server {
     include snippets/tls-strong.conf;
     include snippets/security-headers.conf;
 
+    # WAF en mode DetectionOnly pour ce vhost. ModSecurity/OWASP CRS est activé
+    # globalement (http{}) et bloque les requêtes légitimes du dashboard Wazuh
+    # (OpenSearch Dashboards) : ex. PUT /api/saved_objects/index-pattern/... →
+    # faux positifs 911100 (méthode PUT) + 930120 (LFI sur ".profile" dans le
+    # gros payload JSON de champs) → 403 → l'app boucle sur getPatternList/
+    # getConfiguration jusqu'au timeout 20s (blank-screen), et les 403 répétés
+    # font bannir l'IP par fail2ban (jail modsecurity) → PR_CONNECT_RESET.
+    # On hérite des règles CRS globales mais on passe le moteur en DetectionOnly
+    # (journalise sans bloquer). Le vhost reste protégé par Basic auth + TLS.
+    modsecurity_rules 'SecRuleEngine DetectionOnly';
+
     auth_basic "SIEM";
     auth_basic_user_file /etc/nginx/.htpasswd_monitoring;
 
