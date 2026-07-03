@@ -26,6 +26,14 @@ server {
     include snippets/tls-strong.conf;
     include snippets/security-headers.conf;
 
+    # WAF en DetectionOnly : ModSecurity/OWASP CRS est activé globalement et
+    # 403 le trafic /socket.io d'Uptime Kuma (handshake polling + upgrade WS) →
+    # le dashboard boucle sur "Lost connection to the socket server" et les 403
+    # répétés font bannir l'IP par fail2ban (jail modsecurity). On journalise
+    # sans bloquer ; le vhost reste protégé par Basic auth + TLS. Même correctif
+    # que le vhost wazuh.
+    modsecurity_rules 'SecRuleEngine DetectionOnly';
+
     auth_basic "Monitoring";
     auth_basic_user_file /etc/nginx/.htpasswd_monitoring;
 
