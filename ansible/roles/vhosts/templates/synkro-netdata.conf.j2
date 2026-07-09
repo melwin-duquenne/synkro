@@ -26,6 +26,13 @@ server {
     include snippets/tls-strong.conf;
     include snippets/security-headers.conf;
 
+    # WAF en DetectionOnly : ModSecurity/OWASP CRS est activé globalement et
+    # coupe le flux streaming/WebSocket du dashboard Netdata → "response stream
+    # aborted" côté client (Uptime Kuma) et les 403 répétés font bannir l'IP par
+    # fail2ban (jail modsecurity). On journalise sans bloquer ; le vhost reste
+    # protégé par Basic auth + TLS. Même correctif que les vhosts kuma et wazuh.
+    modsecurity_rules 'SecRuleEngine DetectionOnly';
+
     auth_basic "Monitoring";
     auth_basic_user_file /etc/nginx/.htpasswd_monitoring;
 

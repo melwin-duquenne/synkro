@@ -21,7 +21,12 @@
       # verraient jamais ces logs → jails dormants (0 ban). sshd force son
       # propre backend (systemd/journald) plus bas via %(sshd_backend)s.
       backend = auto
-      ignoreip = 127.0.0.1/8 ::1
+      # 172.16.0.0/12 : réseau bridge Docker — Uptime Kuma sonde les URL
+      # publiques (Site, API, Wazuh) depuis son conteneur ; sans ça son IP
+      # d'egress se fait bannir (ECONNREFUSED sur tous les checks publics).
+      # ansible_default_ipv4.address : au cas où le trafic hairpin est masqué
+      # derrière l'IP publique du serveur. Aucun attaquant réel ne vient de 172.x.
+      ignoreip = 127.0.0.1/8 ::1 172.16.0.0/12 {{ ansible_default_ipv4.address }}
       destemail = {{ admin_email }}
       sender = fail2ban@{{ domain }}
       mta = sendmail
