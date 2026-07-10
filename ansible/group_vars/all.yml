@@ -41,12 +41,19 @@ dev_modsec_engine: DetectionOnly   # passer à "On" pour le volet WAF du pentest
 ssh_port: 2222
 ssh_close_old_port: false
 
+# Lecture BRUTE du .env local (pas de ConfigParser). Le lookup 'ini' interprétait
+# les '%' des valeurs (ConfigParser → InterpolationSyntaxError, ex. passphrase JWT
+# contenant un '%') et cassait sur un environnement neuf (staging) où la clé JWT
+# n'existe pas encore et où la passphrase est donc réellement évaluée. La regex ne
+# fait aucune interprétation : pour toute valeur sans '%' elle renvoie l'identique.
+_env_raw: "{{ lookup('ansible.builtin.file', playbook_dir ~ '/../.env', errors='ignore') | default('', true) }}"
+
 # Monitoring (lu depuis .env — ajoute MONITORING_HTPASSWD_PASSWORD à .env.prod)
 monitoring_user: admin
-monitoring_password: "{{ lookup('ansible.builtin.ini', 'MONITORING_HTPASSWD_PASSWORD type=properties file=' ~ playbook_dir ~ '/../.env default=changeme') }}"
+monitoring_password: "{{ (_env_raw | regex_findall('(?m)^MONITORING_HTPASSWD_PASSWORD=(.*)$') + ['changeme']) | first }}"
 
 # JWT passphrase — lue depuis le .env
-jwt_passphrase: "{{ lookup('ansible.builtin.ini', 'JWT_PASSPHRASE type=properties file=' ~ playbook_dir ~ '/../.env default=') }}"
+jwt_passphrase: "{{ (_env_raw | regex_findall('(?m)^JWT_PASSPHRASE=(.*)$') + ['']) | first }}"
 
 # Fail2ban — durées
 fail2ban_default_bantime: 1h
@@ -77,15 +84,15 @@ wazuh_email_maxperhour: 12
 # Relais SMTP Brevo (identifiants lus depuis .env — jamais en dur)
 brevo_smtp_host: smtp-relay.brevo.com
 brevo_smtp_port: 587
-brevo_smtp_user: "{{ lookup('ansible.builtin.ini', 'BREVO_SMTP_USER type=properties file=' ~ playbook_dir ~ '/../.env default=') }}"
-brevo_smtp_password: "{{ lookup('ansible.builtin.ini', 'BREVO_SMTP_KEY type=properties file=' ~ playbook_dir ~ '/../.env default=') }}"
+brevo_smtp_user: "{{ (_env_raw | regex_findall('(?m)^BREVO_SMTP_USER=(.*)$') + ['']) | first }}"
+brevo_smtp_password: "{{ (_env_raw | regex_findall('(?m)^BREVO_SMTP_KEY=(.*)$') + ['']) | first }}"
 
 # ─── Alertes Wazuh via webhook Slack/Discord (remplace l'email) ──────────
 # Canal principal des alertes. Hook lu depuis .env (jamais en dur).
 # Discord : crée un webhook dans le salon puis AJOUTE "/slack" à la fin de l'URL
 #           (ex: https://discord.com/api/webhooks/ID/TOKEN/slack).
 # Slack   : "Incoming Webhook" → colle l'URL telle quelle.
-wazuh_slack_hook_url: "{{ lookup('ansible.builtin.ini', 'WAZUH_SLACK_HOOK_URL type=properties file=' ~ playbook_dir ~ '/../.env default=') }}"
+wazuh_slack_hook_url: "{{ (_env_raw | regex_findall('(?m)^WAZUH_SLACK_HOOK_URL=(.*)$') + ['']) | first }}"
 wazuh_slack_alert_level: 7         # 7 = alertes régulières pour la démo (≥10 = sérieux uniquement ; 5 = encore plus)
 
 # Email désactivé : on utilise le webhook. Repasse à true + renseigne Brevo pour réactiver.
