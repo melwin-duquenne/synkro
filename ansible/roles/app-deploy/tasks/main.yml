@@ -10,9 +10,9 @@
     - "{{ app_dir }}"
     - "{{ app_dir }}/backend/docker"
 
-- name: Copier docker-compose.prod.yml
+- name: Copier le fichier compose de l'environnement ({{ deploy_env }})
   copy:
-    src: "{{ playbook_dir }}/../docker-compose.prod.yml"
+    src: "{{ playbook_dir }}/../{{ compose_src }}"
     dest: "{{ compose_file }}"
     mode: '0644'
 

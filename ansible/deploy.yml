@@ -8,7 +8,14 @@
   hosts: vps
   become: yes
 
+  vars:
+    deploy_env: "{{ deploy_env | default('prod') }}"
+
   pre_tasks:
+    - name: Afficher l'environnement de déploiement
+      debug:
+        msg: "Déploiement APP env={{ deploy_env }} → dir={{ app_dir }} project={{ compose_project }}"
+
     - name: Vérifier que .env existe en local
       delegate_to: localhost
       become: no
