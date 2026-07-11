@@ -230,7 +230,10 @@ jobs:
             URL="${{ secrets.APP_FRONTEND_URL }}"
           fi
           echo "Smoke test → $URL"
-          code=$(curl -s -o /dev/null -w '%{http_code}' \
+          # User-Agent de navigateur : sans lui, ModSecurity (WAF) bloque le curl
+          # du runner (UA par défaut = scanner) et renvoie 403 → faux négatif.
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36"
+          code=$(curl -s -o /dev/null -w '%{http_code}' -A "$UA" \
                    --retry 5 --retry-delay 10 --retry-all-errors \
                    --max-time 20 "$URL" || echo 000)
           echo "HTTP $code"
