@@ -12,7 +12,7 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
-    "lint": "eslint \"src/**/*.{js,ts,vue}\" && oxlint \"src/**/*.{js,ts,vue}\""
+    "lint": "eslint \"src/**/*.{js,ts,vue}\" && oxlint src"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.18",
