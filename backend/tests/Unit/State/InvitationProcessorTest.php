@@ -8,6 +8,8 @@ use App\Dto\Invitation\SendInvitationInput;
 use App\Entity\Entreprise;
 use App\Entity\Invitation;
 use App\Entity\User;
+use App\Entity\UserEntreprise;
+use App\Service\EntrepriseContext;
 use App\Service\MailerService;
 use App\State\InvitationProcessor;
 use App\UseCase\Invitation\AcceptInvitationUseCase;
@@ -27,6 +29,7 @@ class InvitationProcessorTest extends TestCase
     private MailerService $mailer;
     private EntityRepository $userRepo;
     private EntityRepository $invitationRepo;
+    private EntityRepository $userEntrepriseRepo;
 
     protected function setUp(): void
     {
@@ -35,20 +38,29 @@ class InvitationProcessorTest extends TestCase
         $this->mailer = $this->createStub(MailerService::class);
         $this->userRepo = $this->createStub(EntityRepository::class);
         $this->invitationRepo = $this->createStub(EntityRepository::class);
+        $this->userEntrepriseRepo = $this->createStub(EntityRepository::class);
 
         $this->em->method('getRepository')->willReturnMap([
             [User::class, $this->userRepo],
             [Invitation::class, $this->invitationRepo],
+            [UserEntreprise::class, $this->userEntrepriseRepo],
         ]);
     }
 
-    private function makeAdminUser(): User
+    private function makeAdminUser(Entreprise $entreprise): User
     {
-        $entreprise = $this->createStub(Entreprise::class);
         $admin = new User();
         $admin->setRole('admin');
-        $admin->setEntreprise($entreprise);
+        $admin->addToEntreprise($entreprise, User::ROLE_ADMIN);
         return $admin;
+    }
+
+    private function makeEntrepriseContext(Entreprise $entreprise, string $roleInCurrent = User::ROLE_ADMIN): EntrepriseContext
+    {
+        $context = $this->createStub(EntrepriseContext::class);
+        $context->method('getEntreprise')->willReturn($entreprise);
+        $context->method('getRoleInCurrent')->willReturn($roleInCurrent);
+        return $context;
     }
 
     private function makeSendOperation(): Operation
@@ -58,10 +70,11 @@ class InvitationProcessorTest extends TestCase
         return $op;
     }
 
-    private function makeProcessor(): InvitationProcessor
+    private function makeProcessor(EntrepriseContext $entrepriseContext): InvitationProcessor
     {
         return new InvitationProcessor(
             $this->security,
+            $entrepriseContext,
             new SendInvitationUseCase($this->em, $this->mailer),
             new CancelInvitationUseCase($this->em),
             new AcceptInvitationUseCase($this->em, $this->security)
@@ -70,20 +83,23 @@ class InvitationProcessorTest extends TestCase
 
     public function testSendThrowsConflictExceptionWhenUserAlreadyInEntreprise(): void
     {
-        $admin = $this->makeAdminUser();
+        $entreprise = new Entreprise();
+        $admin = $this->makeAdminUser($entreprise);
         $this->security->method('getUser')->willReturn($admin);
         $this->userRepo->method('findOneBy')->willReturn(new User());
+        $this->userEntrepriseRepo->method('findOneBy')->willReturn(new UserEntreprise());
 
         $input = new SendInvitationInput();
         $input->email = 'existing@test.com';
 
         $this->expectException(ConflictHttpException::class);
-        $this->makeProcessor()->process($input, $this->makeSendOperation());
+        $this->makeProcessor($this->makeEntrepriseContext($entreprise))->process($input, $this->makeSendOperation());
     }
 
     public function testSendThrowsConflictExceptionWhenPendingInvitationAlreadyExists(): void
     {
-        $admin = $this->makeAdminUser();
+        $entreprise = new Entreprise();
+        $admin = $this->makeAdminUser($entreprise);
         $this->security->method('getUser')->willReturn($admin);
         $this->userRepo->method('findOneBy')->willReturn(null);
         $this->invitationRepo->method('findOneBy')->willReturn(new Invitation());
@@ -92,7 +108,7 @@ class InvitationProcessorTest extends TestCase
         $input->email = 'pending@test.com';
 
         $this->expectException(ConflictHttpException::class);
-        $this->makeProcessor()->process($input, $this->makeSendOperation());
+        $this->makeProcessor($this->makeEntrepriseContext($entreprise))->process($input, $this->makeSendOperation());
     }
 
     public function testAcceptThrowsBadRequestExceptionWhenInvitationIsExpired(): void
@@ -114,6 +130,7 @@ class InvitationProcessorTest extends TestCase
         $input = new AcceptInvitationInput();
         $input->token = 'mytoken';
 
-        $this->makeProcessor()->process($input, $op);
+        $entreprise = new Entreprise();
+        $this->makeProcessor($this->makeEntrepriseContext($entreprise))->process($input, $op);
     }
 }
