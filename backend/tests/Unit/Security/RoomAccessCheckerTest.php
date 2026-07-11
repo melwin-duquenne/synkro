@@ -13,10 +13,12 @@ class RoomAccessCheckerTest extends TestCase
     public function testCanAccessReturnsFalseWhenUserIsFromDifferentEntreprise(): void
     {
         $entrepriseA = new Entreprise();
+        (new \ReflectionProperty(Entreprise::class, 'id'))->setValue($entrepriseA, 1);
         $entrepriseB = new Entreprise();
+        (new \ReflectionProperty(Entreprise::class, 'id'))->setValue($entrepriseB, 2);
 
         $user = new User();
-        $user->setEntreprise($entrepriseA);
+        $user->addToEntreprise($entrepriseA, User::ROLE_USER);
 
         $room = new Room();
         $room->setEntreprise($entrepriseB);
@@ -32,7 +34,7 @@ class RoomAccessCheckerTest extends TestCase
 
         $user = new User();
         $user->setRole('user');
-        $user->setEntreprise($entreprise);
+        $user->addToEntreprise($entreprise, User::ROLE_USER);
 
         $room = new Room();
         $room->setEntreprise($entreprise);
@@ -49,7 +51,7 @@ class RoomAccessCheckerTest extends TestCase
 
         $user = new User();
         $user->setRole('editor');
-        $user->setEntreprise($entreprise);
+        $user->addToEntreprise($entreprise, User::ROLE_EDITOR);
 
         $room = new Room();
         $room->setEntreprise($entreprise);

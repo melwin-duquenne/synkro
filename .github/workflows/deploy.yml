@@ -2,9 +2,17 @@ name: Build, Push & Deploy Synkro
 
 on:
   push:
-    branches: [ "main", "develop", "calista" ]
+    branches: [ main, develop ]
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
+  # ─── QUALITY GATE (bloque tout le reste si échec) ──────────────────────────
+  quality:
+    uses: ./.github/workflows/quality.yml
+
   # ─── ROUTAGE PAR BRANCHE ───────────────────────────────────────────────────
   config:
     runs-on: ubuntu-latest
@@ -22,51 +30,20 @@ jobs:
             echo "img_tag=staging"    >> "$GITHUB_OUTPUT"
           fi
 
-  # ─── TESTS (bloque tout le reste si échec) ─────────────────────────────────
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: |
-            frontend/package-lock.json
-            server/package-lock.json
-
-      - name: Frontend — install & tests
-        working-directory: ./frontend
-        run: |
-          npm ci
-          npx vitest run
-
-      - name: WebSocket — install & tests
-        working-directory: ./server
-        run: |
-          npm ci
-          node --test test/
-
   # ─── BUILD BACKEND ─────────────────────────────────────────────────────────
   build-backend:
     runs-on: ubuntu-latest
-    needs: [test, config]
+    needs: [quality, config]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-
       - name: Build & Push Backend
         uses: docker/build-push-action@v6
         with:
@@ -86,20 +63,17 @@ jobs:
   # ─── BUILD WEBSOCKET ───────────────────────────────────────────────────────
   build-websocket:
     runs-on: ubuntu-latest
-    needs: [test, config]
+    needs: [quality, config]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-
       - name: Build & Push WebSocket
         uses: docker/build-push-action@v6
         with:
@@ -118,20 +92,17 @@ jobs:
   # ─── BUILD FRONTEND ────────────────────────────────────────────────────────
   build-frontend:
     runs-on: ubuntu-latest
-    needs: [test, config]
+    needs: [quality, config]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-
       - name: Déterminer les URLs frontend selon l'environnement
         run: |
           if [ "${{ needs.config.outputs.deploy_env }}" = "staging" ]; then
@@ -141,7 +112,6 @@ jobs:
             echo "VITE_WS_URL=${{ secrets.VITE_WS_URL }}"       >> "$GITHUB_ENV"
             echo "VITE_BACKEND_URL=${{ secrets.APP_FRONTEND_URL }}" >> "$GITHUB_ENV"
           fi
-
       - name: Build & Push Frontend
         uses: docker/build-push-action@v6
         with:
@@ -164,24 +134,21 @@ jobs:
   # ─── DEPLOY SUR VPS ────────────────────────────────────────────────────────
   deploy:
     runs-on: ubuntu-latest
-    needs: [config, build-backend, build-websocket, build-frontend]  # Attend que les 3 builds soient OK
+    needs: [config, build-backend, build-websocket, build-frontend]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Installer Ansible + collections
         run: |
           sudo apt-get update -q
           sudo apt-get install -y ansible
           ansible-galaxy collection install community.general ansible.posix --upgrade
-
       - name: Configurer la clé SSH
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
-
       - name: Générer le fichier .env depuis les secrets et variables GitHub
         env:
           APP_SECRET: ${{ secrets.APP_SECRET }}
@@ -240,14 +207,34 @@ jobs:
           MONITORING_HTPASSWD_PASSWORD=${MONITORING_HTPASSWD_PASSWORD}
           ENVEOF
           sed -i 's/^          //' .env
-
       - name: Générer l'inventory Ansible
         run: |
           cat > ansible/inventory.ini << EOF
           [vps]
           ${{ secrets.VPS_HOST }} ansible_user=${{ secrets.VPS_USER }} ansible_ssh_private_key_file=~/.ssh/id_rsa ansible_become=yes ansible_become_method=sudo
           EOF
-
       - name: Lancer le playbook Ansible
         run: |
           ansible-playbook ansible/deploy.yml -i ansible/inventory.ini -e deploy_env=${{ needs.config.outputs.deploy_env }}
+
+  # ─── SMOKE TEST POST-DEPLOY ────────────────────────────────────────────────
+  smoke-test:
+    runs-on: ubuntu-latest
+    needs: [config, deploy]
+    steps:
+      - name: Health-check HTTP
+        run: |
+          if [ "${{ needs.config.outputs.deploy_env }}" = "staging" ]; then
+            URL="https://dev.synkro.ovh"
+          else
+            URL="${{ secrets.APP_FRONTEND_URL }}"
+          fi
+          echo "Smoke test → $URL"
+          code=$(curl -s -o /dev/null -w '%{http_code}' \
+                   --retry 5 --retry-delay 10 --retry-all-errors \
+                   --max-time 20 "$URL" || echo 000)
+          echo "HTTP $code"
+          case "$code" in
+            2*|3*|401) echo "✅ Site joignable ($code)";;
+            *) echo "❌ Smoke test échoué ($code)"; exit 1;;
+          esac
