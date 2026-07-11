@@ -8,6 +8,7 @@ use ApiPlatform\Metadata\Patch;
 use ApiPlatform\State\ProcessorInterface;
 use App\Dto\Account\AdminUpdateUserInput;
 use App\Dto\Account\AdminUserOutput;
+use App\Entity\Entreprise;
 use App\Entity\Team;
 use App\Entity\User;
 use App\Exception\ErrorMessage;
@@ -53,7 +54,7 @@ class AdminUserProcessor implements ProcessorInterface
         }
 
         if ($operation instanceof Patch) {
-            return $this->update($data, $currentUser, $targetUser);
+            return $this->update($data, $currentUser, $targetUser, $entreprise);
         }
 
         if ($operation instanceof Delete) {
@@ -63,7 +64,7 @@ class AdminUserProcessor implements ProcessorInterface
         return null;
     }
 
-    private function update(mixed $data, User $currentUser, User $targetUser): AdminUserOutput
+    private function update(mixed $data, User $currentUser, User $targetUser, Entreprise $entreprise): AdminUserOutput
     {
         if (!$data instanceof AdminUpdateUserInput) {
             throw new \InvalidArgumentException(ErrorMessage::INVALID_DATA);
