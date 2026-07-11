@@ -38,6 +38,12 @@ jobs:
       - name: Install
         working-directory: ./backend
         run: composer install --no-interaction --no-progress --prefer-dist --no-scripts
+      - name: Prepare test env
+        # tests/bootstrap.php appelle Dotenv::bootEnv() qui exige un .env de base ;
+        # en CI le .env n'existe pas (gitignoré, généré seulement au deploy). Un
+        # .env minimal suffit : APP_ENV=test + les overrides de .env.test (committé).
+        working-directory: ./backend
+        run: echo "APP_ENV=test" > .env
       - name: Unit tests
         working-directory: ./backend
         run: php vendor/bin/phpunit tests/Unit
