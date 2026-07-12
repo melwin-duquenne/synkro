@@ -108,8 +108,7 @@ function initEditor() {
     ],
     editorProps: {
       attributes: {
-        class:
-          "prose prose-sm sm:prose max-w-none focus:outline-none min-h-[400px] p-6",
+        class: "editor-surface__content",
       },
     },
     onUpdate: () => {
@@ -338,17 +337,14 @@ watch(
 </script>
 
 <template>
-  <div class="editor-module h-full flex flex-col bg-[#0a1628] rounded-lg">
+  <div class="editor-module h-full flex flex-col">
     <!-- Toolbar -->
-    <div
-      v-if="editor"
-      class="toolbar flex flex-wrap items-center gap-1 p-3 border-b border-[#4115df]/10 bg-[#1a3a52]"
-    >
+    <div v-if="editor" class="editor-toolbar">
       <!-- Text formatting -->
-      <div class="flex gap-0.5">
+      <div class="editor-toolbar__group">
         <button
-          class="btn btn-sm btn-ghost rounded-lg text-[#b0b0b0] hover:text-[#e0e0e0]"
-          :class="{ 'bg-[#2a4a62]': editor.isActive('bold') }"
+          class="editor-tool-btn"
+          :class="{ 'editor-tool-btn--active': editor.isActive('bold') }"
           @click="editor.chain().focus().toggleBold().run()"
           title="Gras (Ctrl+B)"
         >
@@ -359,8 +355,8 @@ watch(
           </svg>
         </button>
         <button
-          class="btn btn-sm btn-ghost rounded-lg text-[#b0b0b0] hover:text-[#e0e0e0]"
-          :class="{ 'bg-[#2a4a62]': editor.isActive('italic') }"
+          class="editor-tool-btn"
+          :class="{ 'editor-tool-btn--active': editor.isActive('italic') }"
           @click="editor.chain().focus().toggleItalic().run()"
           title="Italique (Ctrl+I)"
         >
@@ -369,8 +365,8 @@ watch(
           </svg>
         </button>
         <button
-          class="btn btn-sm btn-ghost rounded-lg text-[#b0b0b0] hover:text-[#e0e0e0]"
-          :class="{ 'bg-[#2a4a62]': editor.isActive('underline') }"
+          class="editor-tool-btn"
+          :class="{ 'editor-tool-btn--active': editor.isActive('underline') }"
           @click="editor.chain().focus().toggleUnderline().run()"
           title="Souligné (Ctrl+U)"
         >
@@ -381,8 +377,8 @@ watch(
           </svg>
         </button>
         <button
-          class="btn btn-sm btn-ghost rounded-lg text-[#b0b0b0] hover:text-[#e0e0e0]"
-          :class="{ 'bg-[#2a4a62]': editor.isActive('strike') }"
+          class="editor-tool-btn"
+          :class="{ 'editor-tool-btn--active': editor.isActive('strike') }"
           @click="editor.chain().focus().toggleStrike().run()"
           title="Barré"
         >
@@ -392,29 +388,35 @@ watch(
         </button>
       </div>
 
-      <div class="divider divider-horizontal mx-0.5 h-6 bg-gray-600/30"></div>
+      <div class="editor-toolbar__divider"></div>
 
       <!-- Headings -->
-      <div class="flex gap-0.5">
+      <div class="editor-toolbar__group">
         <button
-          class="btn btn-sm btn-ghost rounded-lg text-[#b0b0b0] hover:text-[#e0e0e0]"
-          :class="{ 'bg-[#2a4a62]': editor.isActive('heading', { level: 1 }) }"
+          class="editor-tool-btn editor-tool-btn--text"
+          :class="{
+            'editor-tool-btn--active': editor.isActive('heading', { level: 1 }),
+          }"
           @click="editor.chain().focus().toggleHeading({ level: 1 }).run()"
           title="Titre 1"
         >
           H1
         </button>
         <button
-          class="btn btn-sm btn-ghost rounded-lg text-[#b0b0b0] hover:text-[#e0e0e0]"
-          :class="{ 'bg-[#2a4a62]': editor.isActive('heading', { level: 2 }) }"
+          class="editor-tool-btn editor-tool-btn--text"
+          :class="{
+            'editor-tool-btn--active': editor.isActive('heading', { level: 2 }),
+          }"
           @click="editor.chain().focus().toggleHeading({ level: 2 }).run()"
           title="Titre 2"
         >
           H2
         </button>
         <button
-          class="btn btn-sm btn-ghost rounded-lg text-[#b0b0b0] hover:text-[#e0e0e0]"
-          :class="{ 'bg-[#2a4a62]': editor.isActive('heading', { level: 3 }) }"
+          class="editor-tool-btn editor-tool-btn--text"
+          :class="{
+            'editor-tool-btn--active': editor.isActive('heading', { level: 3 }),
+          }"
           @click="editor.chain().focus().toggleHeading({ level: 3 }).run()"
           title="Titre 3"
         >
@@ -422,13 +424,13 @@ watch(
         </button>
       </div>
 
-      <div class="divider divider-horizontal mx-0.5 h-6 bg-gray-600/30"></div>
+      <div class="editor-toolbar__divider"></div>
 
       <!-- Lists -->
-      <div class="flex gap-0.5">
+      <div class="editor-toolbar__group">
         <button
-          class="btn btn-sm btn-ghost rounded-lg text-[#b0b0b0] hover:text-[#e0e0e0]"
-          :class="{ 'bg-[#2a4a62]': editor.isActive('bulletList') }"
+          class="editor-tool-btn"
+          :class="{ 'editor-tool-btn--active': editor.isActive('bulletList') }"
           @click="editor.chain().focus().toggleBulletList().run()"
           title="Liste à puces"
         >
@@ -439,8 +441,8 @@ watch(
           </svg>
         </button>
         <button
-          class="btn btn-sm btn-ghost rounded-lg text-[#b0b0b0] hover:text-[#e0e0e0]"
-          :class="{ 'bg-[#2a4a62]': editor.isActive('orderedList') }"
+          class="editor-tool-btn"
+          :class="{ 'editor-tool-btn--active': editor.isActive('orderedList') }"
           @click="editor.chain().focus().toggleOrderedList().run()"
           title="Liste numérotée"
         >
@@ -451,8 +453,8 @@ watch(
           </svg>
         </button>
         <button
-          class="btn btn-sm btn-ghost rounded-lg text-[#b0b0b0] hover:text-[#e0e0e0]"
-          :class="{ 'bg-[#2a4a62]': editor.isActive('blockquote') }"
+          class="editor-tool-btn"
+          :class="{ 'editor-tool-btn--active': editor.isActive('blockquote') }"
           @click="editor.chain().focus().toggleBlockquote().run()"
           title="Citation"
         >
@@ -461,8 +463,8 @@ watch(
           </svg>
         </button>
         <button
-          class="btn btn-sm btn-ghost rounded-lg text-[#b0b0b0] hover:text-[#e0e0e0]"
-          :class="{ 'bg-[#2a4a62]': editor.isActive('codeBlock') }"
+          class="editor-tool-btn"
+          :class="{ 'editor-tool-btn--active': editor.isActive('codeBlock') }"
           @click="editor.chain().focus().toggleCodeBlock().run()"
           title="Bloc de code"
         >
@@ -474,13 +476,15 @@ watch(
         </button>
       </div>
 
-      <div class="divider divider-horizontal mx-0.5 h-6 bg-gray-600/30"></div>
+      <div class="editor-toolbar__divider"></div>
 
       <!-- Alignment -->
-      <div class="flex gap-0.5">
+      <div class="editor-toolbar__group">
         <button
-          class="btn btn-sm btn-ghost rounded-lg text-[#b0b0b0] hover:text-[#e0e0e0]"
-          :class="{ 'bg-[#2a4a62]': editor.isActive({ textAlign: 'left' }) }"
+          class="editor-tool-btn"
+          :class="{
+            'editor-tool-btn--active': editor.isActive({ textAlign: 'left' }),
+          }"
           @click="editor.chain().focus().setTextAlign('left').run()"
           title="Aligner à gauche"
         >
@@ -491,8 +495,10 @@ watch(
           </svg>
         </button>
         <button
-          class="btn btn-sm btn-ghost rounded-lg text-[#b0b0b0] hover:text-[#e0e0e0]"
-          :class="{ 'bg-[#2a4a62]': editor.isActive({ textAlign: 'center' }) }"
+          class="editor-tool-btn"
+          :class="{
+            'editor-tool-btn--active': editor.isActive({ textAlign: 'center' }),
+          }"
           @click="editor.chain().focus().setTextAlign('center').run()"
           title="Centrer"
         >
@@ -503,8 +509,10 @@ watch(
           </svg>
         </button>
         <button
-          class="btn btn-sm btn-ghost rounded-lg text-[#b0b0b0] hover:text-[#e0e0e0]"
-          :class="{ 'bg-[#2a4a62]': editor.isActive({ textAlign: 'right' }) }"
+          class="editor-tool-btn"
+          :class="{
+            'editor-tool-btn--active': editor.isActive({ textAlign: 'right' }),
+          }"
           @click="editor.chain().focus().setTextAlign('right').run()"
           title="Aligner à droite"
         >
@@ -516,25 +524,22 @@ watch(
         </button>
       </div>
 
-      <div class="flex-1"></div>
+      <div class="editor-toolbar__spacer"></div>
 
       <!-- Actions -->
-      <div class="flex items-center gap-2">
+      <div class="editor-toolbar__actions">
         <!-- Save status -->
-        <span
-          v-if="saving"
-          class="text-xs text-[#b0b0b0] flex items-center gap-1"
-        >
+        <span v-if="saving" class="editor-status-text">
           <span class="loading loading-spinner loading-xs"></span>
           Sauvegarde...
         </span>
-        <span v-else-if="lastSaved" class="text-xs text-[#b0b0b0]">
+        <span v-else-if="lastSaved" class="editor-status-text">
           {{ formatLastSaved(lastSaved) }}
         </span>
 
         <!-- Manual save -->
         <button
-          class="btn btn-sm btn-ghost rounded-lg text-[#b0b0b0] hover:text-[#e0e0e0] hover:bg-[#2a4a62]"
+          class="editor-action-btn"
           @click="saveDocument"
           :disabled="saving"
           title="Sauvegarder (Ctrl+S)"
@@ -548,7 +553,7 @@ watch(
 
         <!-- Export PDF -->
         <button
-          class="btn btn-sm btn-ghost rounded-lg text-[#b0b0b0] hover:text-[#e0e0e0] hover:bg-[#2a4a62]"
+          class="editor-action-btn"
           @click="exportToPdf"
           :disabled="exportingPdf"
           title="Exporter en PDF"
@@ -564,8 +569,8 @@ watch(
         <!-- AI assistant -->
         <button
           type="button"
-          class="btn btn-sm gap-1"
-          :class="showAiPanel ? 'btn-primary' : 'btn-ghost'"
+          class="editor-ai-btn"
+          :class="{ 'editor-ai-btn--active': showAiPanel }"
           @click="openAiPanel"
           title="Assistant IA"
         >
@@ -586,12 +591,12 @@ watch(
           IA
         </button>
 
-        <div class="divider divider-horizontal mx-0.5 h-6"></div>
+        <div class="editor-toolbar__divider"></div>
 
         <!-- Connection status -->
-        <div class="flex items-center gap-1.5">
+        <div class="editor-connection-pill">
           <span
-            class="w-2 h-2 rounded-full"
+            class="editor-connection-pill__dot"
             :class="{
               'bg-[#6fdd9f]': connectionStatus === 'connected',
               'bg-[#fbbf24]': connectionStatus === 'connecting',
@@ -612,9 +617,13 @@ watch(
     </div>
 
     <!-- Editor content -->
-    <div class="flex-1 overflow-auto">
-      <EditorContent v-if="editor" :editor="editor" class="h-full" />
-      <div v-else class="flex items-center justify-center h-full">
+    <div class="editor-surface">
+      <EditorContent
+        v-if="editor"
+        :editor="editor"
+        class="editor-surface__inner"
+      />
+      <div v-else class="editor-loading-state">
         <span class="loading loading-spinner loading-lg"></span>
       </div>
     </div>
@@ -627,12 +636,12 @@ watch(
       :selected-text="selectedText"
       :document-content="editor?.getText() ?? ''"
       @insert="insertAiResponse"
-      class="m-3"
+      class="editor-ai-panel"
     />
 
     <!-- Toast notification -->
     <div v-if="toastMessage" class="toast toast-bottom toast-end z-50">
-      <div class="alert alert-success text-sm py-2">
+      <div class="editor-toast">
         <span>{{ toastMessage }}</span>
       </div>
     </div>
@@ -640,22 +649,221 @@ watch(
 </template>
 
 <style>
+.editor-module {
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(91, 163, 232, 0.18),
+      transparent 28%
+    ),
+    linear-gradient(180deg, rgba(8, 18, 31, 0.98), rgba(5, 10, 20, 0.98));
+  box-shadow:
+    0 22px 44px rgba(0, 0, 0, 0.28),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+
+.editor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.8rem 0.9rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.045),
+    rgba(255, 255, 255, 0.02)
+  );
+  backdrop-filter: blur(10px);
+}
+
+.editor-toolbar__group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.editor-toolbar__divider {
+  width: 1px;
+  height: 1.9rem;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.editor-toolbar__spacer {
+  flex: 1 1 auto;
+}
+
+.editor-toolbar__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.editor-tool-btn,
+.editor-action-btn,
+.editor-ai-btn {
+  min-height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.38rem;
+  padding: 0.42rem 0.62rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.03);
+  color: #a9c0d8;
+  transition:
+    border-color 0.22s ease,
+    background-color 0.22s ease,
+    transform 0.22s ease,
+    box-shadow 0.22s ease,
+    color 0.22s ease;
+}
+
+.editor-tool-btn svg,
+.editor-action-btn svg,
+.editor-ai-btn svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.editor-tool-btn--text {
+  min-width: 2.15rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.editor-tool-btn:hover,
+.editor-action-btn:hover,
+.editor-ai-btn:hover {
+  border-color: rgba(91, 163, 232, 0.3);
+  background: rgba(91, 163, 232, 0.08);
+  color: #edf6ff;
+  transform: translateY(-1px);
+}
+
+.editor-tool-btn--active,
+.editor-ai-btn--active {
+  border-color: rgba(91, 163, 232, 0.38);
+  background: linear-gradient(
+    135deg,
+    rgba(91, 163, 232, 0.18),
+    rgba(91, 163, 232, 0.06)
+  );
+  color: #eef7ff;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.18);
+}
+
+.editor-action-btn:disabled,
+.editor-ai-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.editor-ai-btn {
+  padding-inline: 0.72rem;
+}
+
+.editor-status-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: #90a6bf;
+  font-size: 0.74rem;
+}
+
+.editor-connection-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.58rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.editor-connection-pill__dot {
+  width: 0.48rem;
+  height: 0.48rem;
+  border-radius: 999px;
+  box-shadow: 0 0 10px currentColor;
+}
+
+.editor-surface {
+  position: relative;
+  flex: 1;
+  overflow: auto;
+  background: linear-gradient(
+    180deg,
+    rgba(8, 18, 31, 0.55),
+    rgba(8, 18, 31, 0)
+  );
+}
+
+.editor-surface__inner {
+  height: 100%;
+}
+
+.editor-surface__content {
+  max-width: none;
+  min-height: 400px;
+  padding: 1.75rem 1.6rem 2.2rem;
+  color: #eef4ff;
+  font-size: 0.95rem;
+  line-height: 1.72;
+}
+
+.editor-loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.editor-ai-panel {
+  margin: 0.9rem;
+}
+
+.editor-toast {
+  border: 1px solid rgba(111, 221, 159, 0.22);
+  border-radius: 14px;
+  background: rgba(18, 53, 40, 0.95);
+  color: #dff9ea;
+  padding: 0.72rem 0.9rem;
+  font-size: 0.84rem;
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.24);
+}
+
 .editor-module .ProseMirror {
   min-height: 400px;
-  padding: 1.5rem;
-  background-color: #0a1628;
-  color: #e0e0e0;
+  padding: 1.75rem 1.6rem 2.2rem;
+  background-color: transparent;
+  color: #eef4ff;
 }
 
 .editor-module .ProseMirror:focus {
   outline: none;
 }
 
+.editor-module .ProseMirror::selection {
+  background: rgba(91, 163, 232, 0.22);
+}
+
 .editor-module .ProseMirror h1 {
   font-size: 2em;
   font-weight: bold;
   margin-bottom: 0.5em;
-  color: #e0e0e0;
+  color: #f4f8ff;
 }
 
 .editor-module .ProseMirror h2 {
@@ -663,7 +871,7 @@ watch(
   font-weight: bold;
   margin-top: 1em;
   margin-bottom: 0.5em;
-  color: #e0e0e0;
+  color: #f4f8ff;
 }
 
 .editor-module .ProseMirror h3 {
@@ -671,43 +879,45 @@ watch(
   font-weight: bold;
   margin-top: 1em;
   margin-bottom: 0.5em;
-  color: #e0e0e0;
+  color: #f4f8ff;
 }
 
 .editor-module .ProseMirror p {
   margin: 1em 0;
-  color: #e0e0e0;
+  color: #dbe6f4;
 }
 
 .editor-module .ProseMirror ul,
 .editor-module .ProseMirror ol {
   padding-left: 1.5em;
   margin: 1em 0;
-  color: #e0e0e0;
+  color: #dbe6f4;
 }
 
 .editor-module .ProseMirror blockquote {
-  border-left: 3px solid #6b7280;
-  padding-left: 1em;
+  border-left: 3px solid rgba(91, 163, 232, 0.5);
+  padding: 0.2rem 0 0.2rem 1em;
   margin: 1em 0;
-  color: #b0b0b0;
-  background-color: transparent;
+  color: #9eb4ca;
+  background: rgba(255, 255, 255, 0.025);
+  border-radius: 0 12px 12px 0;
 }
 
 .editor-module .ProseMirror pre {
-  background: #1a3a52;
+  background: rgba(14, 31, 52, 0.95);
   color: #8ab4f8;
   padding: 1em;
-  border-radius: 0.5em;
+  border-radius: 0.9em;
   overflow-x: auto;
-  border: 1px solid #2a4a62;
+  border: 1px solid rgba(91, 163, 232, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
 }
 
 .editor-module .ProseMirror code {
-  background: #1a3a52;
+  background: rgba(14, 31, 52, 0.95);
   color: #8ab4f8;
   padding: 0.2em 0.4em;
-  border-radius: 0.25em;
+  border-radius: 0.45em;
   font-family: monospace;
 }
 
@@ -741,5 +951,33 @@ watch(
   top: -1.4em;
   user-select: none;
   white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .editor-toolbar {
+    padding: 0.7rem;
+    gap: 0.4rem;
+  }
+
+  .editor-toolbar__actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .editor-toolbar__spacer {
+    display: none;
+  }
+
+  .editor-tool-btn,
+  .editor-action-btn,
+  .editor-ai-btn {
+    min-height: 1.9rem;
+    padding: 0.38rem 0.55rem;
+  }
+
+  .editor-surface__content,
+  .editor-module .ProseMirror {
+    padding: 1.2rem 1rem 1.5rem;
+  }
 }
 </style>

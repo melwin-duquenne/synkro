@@ -138,9 +138,9 @@ const selectedRoomId = ref<number | null>(null);
 
 const getPriorityClass = (priority: string): string => {
   const classes: Record<string, string> = {
-    high: "badge-error",
-    medium: "badge-warning",
-    low: "badge-success",
+    high: "pill-error",
+    medium: "pill-warn",
+    low: "pill-ok",
   };
   return classes[priority] || "pill-ghost";
 };
@@ -171,72 +171,121 @@ const formatDate = (dateString: string | null): string => {
 
 <style scoped>
 .card {
-  background: rgba(255, 255, 255, 0.025);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(91, 163, 232, 0.1),
+      transparent 40%
+    ),
+    linear-gradient(180deg, rgba(9, 19, 34, 0.94), rgba(7, 13, 24, 0.96));
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
-  padding: 1.5rem;
-  transition: border-color 0.2s;
+  padding: 1.1rem;
+  box-shadow:
+    0 14px 28px rgba(0, 0, 0, 0.22),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+  transition: border-color 0.2s, transform 0.2s;
 }
-.card:hover { border-color: rgba(255, 255, 255, 0.1); }
+
+.card:hover {
+  border-color: rgba(91, 163, 232, 0.28);
+  transform: translateY(-1px);
+}
+
 .card-header {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.8125rem;
+  font-size: 0.84rem;
   font-weight: 600;
-  color: #c8daea;
-  margin-bottom: 1.25rem;
+  color: #d9e8f6;
+  margin-bottom: 1rem;
 }
-.header-icon { width: 16px; height: 16px; color: #5ba3e8; flex-shrink: 0; }
-.empty-state { text-align: center; padding: 2rem 0; color: #3d5060; font-size: 0.875rem; }
+
+.header-icon { width: 16px; height: 16px; color: #7fc0ff; flex-shrink: 0; }
+
+.empty-state {
+  text-align: center;
+  padding: 1.4rem 0;
+  color: #8fa5bd;
+  font-size: 0.84rem;
+}
+
 .room-filter { margin-bottom: 1rem; }
-.filter-label { display: block; font-size: 0.6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #516070; margin-bottom: 0.375rem; }
+
+.filter-label {
+  display: block;
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #8ea4be;
+  margin-bottom: 0.35rem;
+}
+
 .filter-select {
   width: 100%;
   padding: 0.5rem 0.75rem;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  color: #8ea4be;
+  background: rgba(14, 29, 49, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  color: #d3e5f7;
   font-size: 0.875rem;
   outline: none;
   cursor: pointer;
 }
-.filter-select:focus { border-color: rgba(91, 163, 232, 0.3); }
+
+.filter-select:focus {
+  border-color: rgba(91, 163, 232, 0.6);
+  box-shadow: 0 0 0 3px rgba(91, 163, 232, 0.2);
+}
+
 .filter-select option { background: #080f1c; color: #8ea4be; }
+
 .tasks-section { margin-bottom: 1.25rem; }
 .section-label {
   display: flex;
   align-items: center;
   gap: 0.375rem;
-  font-size: 0.6875rem;
+  font-size: 0.66rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #516070;
+  color: #8ea4be;
   margin-bottom: 0.5rem;
 }
+
 .section-error { color: #f87171; }
 .count-pill {
   padding: 0.1rem 0.4rem;
-  background: rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.12);
   border-radius: 999px;
   font-size: 0.6rem;
+  color: #d7e8f7;
 }
+
 .count-error { background: rgba(248,113,113,0.15); color: #f87171; }
 .tasks-list { display: flex; flex-direction: column; gap: 0.375rem; }
+
 .task-row {
   display: flex;
   align-items: flex-start;
   gap: 0.625rem;
   padding: 0.5rem 0.75rem;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
+  background:
+    radial-gradient(circle at top right, rgba(91, 163, 232, 0.08), transparent 42%),
+    rgba(17, 35, 56, 0.46);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.15s, border-color 0.15s;
 }
-.task-row:hover { background: rgba(255,255,255,0.05); }
+
+.task-row:hover {
+  background: rgba(91, 163, 232, 0.12);
+  border-color: rgba(91, 163, 232, 0.28);
+}
+
 .task-overdue { background: rgba(248,113,113,0.05); border-color: rgba(248,113,113,0.15); }
 .task-overdue:hover { background: rgba(248,113,113,0.08); }
 .task-check {
@@ -249,8 +298,17 @@ const formatDate = (dateString: string | null): string => {
 }
 .check-error { accent-color: #f87171; }
 .task-content { flex: 1; min-width: 0; }
-.task-title { font-size: 0.8125rem; font-weight: 500; color: #c8daea; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.task-room { font-size: 0.6875rem; color: #5ba3e8; display: flex; align-items: center; gap: 0.25rem; margin-top: 0.125rem; }
+
+.task-title {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #d9e8f6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.task-room { font-size: 0.6875rem; color: #8ec4f3; display: flex; align-items: center; gap: 0.25rem; margin-top: 0.125rem; }
 .task-due { font-size: 0.6875rem; color: #f87171; margin-top: 0.125rem; }
 .inline-icon { width: 10px; height: 10px; flex-shrink: 0; }
 .priority-pill {
@@ -269,12 +327,20 @@ const formatDate = (dateString: string | null): string => {
 .progress-list { display: flex; flex-direction: column; gap: 0.75rem; }
 .progress-item { }
 .progress-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem; }
-.progress-name { font-size: 0.8125rem; font-weight: 500; color: #8ea4be; }
-.progress-count { font-size: 0.6875rem; color: #516070; }
-.progress-track { height: 4px; background: rgba(255,255,255,0.06); border-radius: 999px; overflow: hidden; }
+
+.progress-name { font-size: 0.8125rem; font-weight: 500; color: #c5d8ea; }
+.progress-count { font-size: 0.6875rem; color: #8ea4be; }
+.progress-track { height: 4px; background: rgba(255,255,255,0.1); border-radius: 999px; overflow: hidden; }
 .progress-fill { height: 100%; border-radius: 999px; transition: width 0.4s ease; min-width: 2px; }
 .fill-ok { background: #6fdd9f; }
 .fill-warn { background: #f0a23e; }
 .fill-error { background: #f87171; }
-.progress-pct { font-size: 0.6875rem; color: #3d5060; text-align: right; margin-top: 0.125rem; }
+
+.progress-pct { font-size: 0.6875rem; color: #8ea4be; text-align: right; margin-top: 0.125rem; }
+
+@media (max-width: 768px) {
+  .card {
+    padding: 0.95rem;
+  }
+}
 </style>

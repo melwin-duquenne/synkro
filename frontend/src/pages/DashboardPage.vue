@@ -2,7 +2,7 @@
   <div class="dash-page">
     <!-- Header -->
     <div class="dash-header reveal reveal-1">
-      <div class="dash-header-inner">
+      <div class="dash-header-inner section-panel">
         <div>
           <h1 class="dash-title">
             <svg
@@ -63,6 +63,25 @@
               />
             </svg>
           </div>
+        </div>
+      </div>
+
+      <div class="dash-kpi-row" v-if="dashboardData">
+        <div class="dash-kpi-card">
+          <span>Rooms actives</span>
+          <strong>{{ dashboardData.recentRooms?.length || 0 }}</strong>
+        </div>
+        <div class="dash-kpi-card">
+          <span>Tâches aujourd'hui</span>
+          <strong>{{ dashboardData.tasks?.today?.length || 0 }}</strong>
+        </div>
+        <div class="dash-kpi-card">
+          <span>Réunions du jour</span>
+          <strong>{{ dashboardData.todayEvents?.length || 0 }}</strong>
+        </div>
+        <div class="dash-kpi-card">
+          <span>Productivité</span>
+          <strong>{{ dashboardData.statistics?.productivity || 0 }}%</strong>
         </div>
       </div>
     </div>
@@ -339,11 +358,27 @@ const handleUserChange = async () => {
 }
 
 .dash-header-inner {
+  padding: 1rem 1.05rem;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 1rem;
+}
+
+.section-panel {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(91, 163, 232, 0.14),
+      transparent 34%
+    ),
+    linear-gradient(180deg, rgba(8, 18, 31, 0.98), rgba(5, 10, 20, 0.98));
+  box-shadow:
+    0 22px 44px rgba(0, 0, 0, 0.28),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03);
 }
 
 .dash-title {
@@ -358,8 +393,8 @@ const handleUserChange = async () => {
 }
 
 .dash-title-icon {
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   color: #5ba3e8;
   flex-shrink: 0;
 }
@@ -397,6 +432,35 @@ const handleUserChange = async () => {
   transition:
     border-color 0.2s ease,
     box-shadow 0.2s ease;
+}
+
+.dash-kpi-row {
+  margin-top: 0.75rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.dash-kpi-card {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.55rem 0.72rem;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(14, 29, 49, 0.72);
+}
+
+.dash-kpi-card span {
+  color: #8fa5bd;
+  font-size: 0.67rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dash-kpi-card strong {
+  color: #e7f0fa;
+  font-size: 1rem;
+  font-weight: 700;
 }
 
 .user-select:hover {
@@ -469,16 +533,27 @@ const handleUserChange = async () => {
 .dashboard-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 1.5rem;
+  gap: 1.15rem;
 }
 
 .dashboard-col {
   display: grid;
-  gap: 1.5rem;
+  gap: 1.15rem;
 }
 
 .dashboard-card {
-  border-radius: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(91, 163, 232, 0.1),
+      transparent 40%
+    ),
+    linear-gradient(180deg, rgba(9, 19, 34, 0.94), rgba(7, 13, 24, 0.96));
+  box-shadow:
+    0 14px 28px rgba(0, 0, 0, 0.22),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.02);
   transition:
     transform 0.2s ease,
     border-color 0.2s ease,
@@ -486,8 +561,9 @@ const handleUserChange = async () => {
 }
 
 .dashboard-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.24);
+  transform: translateY(-1px);
+  border-color: rgba(91, 163, 232, 0.28);
+  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.26);
 }
 
 .reveal {
@@ -516,11 +592,25 @@ const handleUserChange = async () => {
 @media (min-width: 1024px) {
   .dashboard-grid {
     grid-template-columns: 2fr 1fr;
-    gap: 1.5rem;
+    gap: 1.2rem;
   }
 
   .dashboard-col-wide {
     min-width: 0;
+  }
+
+  .dash-kpi-row {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .dash-header-inner {
+    padding: 0.8rem;
+  }
+
+  .dash-kpi-row {
+    grid-template-columns: 1fr;
   }
 }
 </style>
