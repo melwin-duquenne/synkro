@@ -171,7 +171,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="h-[calc(100vh-8rem)]">
+  <div class="h-[calc(100dvh-4rem)]">
     <div v-if="loading" class="flex justify-center items-center h-full">
       <span class="loading loading-spinner loading-lg"></span>
     </div>
@@ -349,26 +349,36 @@ onMounted(async () => {
       </template>
 
       <!-- Grid 2x2 Layout -->
+      <!-- Le wrapper absolu a overflow:hidden (pas auto) → sa hauteur est vraiment définie.
+           Le grid lui-même a h-full + overflow-y-auto : 1fr se résout correctement,
+           et le grid scroll en interne si trop de rangées. -->
       <div
         v-else-if="layoutType === 'grid-2x2'"
-        class="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 overflow-auto p-1"
+        class="flex-1 min-h-0 overflow-hidden relative"
       >
-        <div
-          v-for="mr in sortedModuleRooms"
-          :key="mr.id"
-          class="bg-[#0a1628] rounded-xl overflow-hidden shadow-lg flex flex-col h-[400px] sm:h-auto border border-white/10"
-        >
+        <div class="absolute inset-0 overflow-hidden p-1">
           <div
-            class="bg-[#1a3a52]/60 px-4 py-2 font-semibold border-b border-white/10 flex-shrink-0 text-[#dbe6f2]"
+            class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 h-full overflow-y-auto"
+            style="grid-auto-rows: minmax(350px, 1fr)"
           >
-            {{ mr.module.name }}
-          </div>
-          <div class="flex-1 overflow-auto">
-            <component
-              :is="getModuleComponent(mr.module.code)"
-              :room-id="roomId"
-              class="h-full"
-            />
+            <div
+              v-for="mr in sortedModuleRooms"
+              :key="mr.id"
+              class="bg-[#0a1628] rounded-xl overflow-hidden shadow-lg flex flex-col border border-white/10"
+            >
+              <div
+                class="bg-[#1a3a52]/60 px-4 py-2 font-semibold border-b border-white/10 shrink-0 text-[#dbe6f2]"
+              >
+                {{ mr.module.name }}
+              </div>
+              <div class="flex-1 min-h-0 overflow-auto">
+                <component
+                  :is="getModuleComponent(mr.module.code)"
+                  :room-id="roomId"
+                  class="h-full"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -376,51 +386,62 @@ onMounted(async () => {
       <!-- Split Horizontal Layout -->
       <div
         v-else-if="layoutType === 'split-horizontal'"
-        class="flex-1 flex flex-col gap-3 sm:gap-4 overflow-hidden p-1"
+        class="flex-1 min-h-0 overflow-hidden relative"
       >
-        <div
-          v-for="mr in sortedModuleRooms"
-          :key="mr.id"
-          class="flex-1 bg-[#0a1628] rounded-xl overflow-hidden shadow-lg flex flex-col border border-white/10"
-          style="min-height: 0; flex-basis: 0"
-        >
-          <div
-            class="bg-[#1a3a52]/60 px-4 py-2 font-semibold border-b border-white/10 flex-shrink-0 text-[#dbe6f2]"
-          >
-            {{ mr.module.name }}
-          </div>
-          <div class="flex-1 overflow-auto min-h-0">
-            <component
-              :is="getModuleComponent(mr.module.code)"
-              :room-id="roomId"
-              class="h-full"
-            />
+        <div class="absolute inset-0 overflow-hidden p-1">
+          <div class="flex flex-col gap-3 sm:gap-4 h-full overflow-y-auto">
+            <div
+              v-for="mr in sortedModuleRooms"
+              :key="mr.id"
+              class="bg-[#0a1628] rounded-xl overflow-hidden shadow-lg flex flex-col border border-white/10"
+              style="flex: 1 0 100%"
+            >
+              <div
+                class="bg-[#1a3a52]/60 px-4 py-2 font-semibold border-b border-white/10 shrink-0 text-[#dbe6f2]"
+              >
+                {{ mr.module.name }}
+              </div>
+              <div class="flex-1 min-h-0 overflow-auto">
+                <component
+                  :is="getModuleComponent(mr.module.code)"
+                  :room-id="roomId"
+                  class="h-full"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
       <!-- Split Vertical Layout -->
+      <!-- Le div absolu EST le conteneur flex : overflow-y-auto sur mobile (flex-col),
+           overflow-x-auto sur desktop (sm:flex-row). Les panneaux s'étirent en hauteur
+           via align-self:stretch (défaut) sur desktop. -->
       <div
         v-else-if="layoutType === 'split-vertical'"
-        class="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 overflow-hidden p-1"
+        class="flex-1 min-h-0 overflow-hidden relative"
       >
         <div
-          v-for="mr in sortedModuleRooms"
-          :key="mr.id"
-          class="bg-[#0a1628] rounded-xl overflow-hidden shadow-lg flex flex-col h-[400px] sm:h-auto border border-white/10"
-          style="min-height: 0; min-width: 0; flex-basis: 0"
+          class="absolute inset-0 p-1 flex flex-col sm:flex-row gap-3 sm:gap-4 overflow-y-auto sm:overflow-y-hidden sm:overflow-x-auto"
         >
           <div
-            class="bg-[#1a3a52]/60 px-4 py-2 font-semibold border-b border-white/10 flex-shrink-0 text-[#dbe6f2]"
+            v-for="mr in sortedModuleRooms"
+            :key="mr.id"
+            class="bg-[#0a1628] rounded-xl overflow-hidden shadow-lg flex flex-col border border-white/10"
+            style="flex: 1 0 100%"
           >
-            {{ mr.module.name }}
-          </div>
-          <div class="flex-1 overflow-auto min-h-0">
-            <component
-              :is="getModuleComponent(mr.module.code)"
-              :room-id="roomId"
-              class="h-full"
-            />
+            <div
+              class="bg-[#1a3a52]/60 px-4 py-2 font-semibold border-b border-white/10 shrink-0 text-[#dbe6f2]"
+            >
+              {{ mr.module.name }}
+            </div>
+            <div class="flex-1 min-h-0 overflow-auto">
+              <component
+                :is="getModuleComponent(mr.module.code)"
+                :room-id="roomId"
+                class="h-full"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -432,14 +453,14 @@ onMounted(async () => {
       >
         <div
           v-if="sortedModuleRooms[0]"
-          class="flex-none w-full sm:w-1/3 bg-[#0a1628] rounded-xl overflow-hidden shadow-lg flex flex-col min-h-[300px] sm:min-h-0 border border-white/10"
+          class="flex-none w-full sm:w-1/3 bg-[#0a1628] rounded-xl overflow-hidden shadow-lg flex flex-col min-h-75 sm:min-h-0 border border-white/10"
         >
           <div
-            class="bg-[#1a3a52]/60 px-3 sm:px-4 py-2 font-semibold text-sm sm:text-base border-b border-white/10 flex-shrink-0 text-[#dbe6f2]"
+            class="bg-[#1a3a52]/60 px-3 sm:px-4 py-2 font-semibold text-sm sm:text-base border-b border-white/10 shrink-0 text-[#dbe6f2]"
           >
             {{ sortedModuleRooms[0].module.name }}
           </div>
-          <div class="flex-1 overflow-auto min-h-0">
+          <div class="flex-1 min-h-0 overflow-auto">
             <component
               :is="getModuleComponent(sortedModuleRooms[0].module.code)"
               :room-id="roomId"
@@ -458,11 +479,11 @@ onMounted(async () => {
             style="min-height: 0; flex-basis: 0"
           >
             <div
-              class="bg-[#1a3a52]/60 px-4 py-2 font-semibold border-b border-white/10 flex-shrink-0 text-[#dbe6f2]"
+              class="bg-[#1a3a52]/60 px-4 py-2 font-semibold border-b border-white/10 shrink-0 text-[#dbe6f2]"
             >
               {{ mr.module.name }}
             </div>
-            <div class="flex-1 overflow-auto min-h-0">
+            <div class="flex-1 min-h-0 overflow-auto">
               <component
                 :is="getModuleComponent(mr.module.code)"
                 :room-id="roomId"
@@ -489,11 +510,11 @@ onMounted(async () => {
             style="min-height: 0; flex-basis: 0"
           >
             <div
-              class="bg-[#1a3a52]/60 px-4 py-2 font-semibold border-b border-white/10 flex-shrink-0 text-[#dbe6f2]"
+              class="bg-[#1a3a52]/60 px-4 py-2 font-semibold border-b border-white/10 shrink-0 text-[#dbe6f2]"
             >
               {{ mr.module.name }}
             </div>
-            <div class="flex-1 overflow-auto min-h-0">
+            <div class="flex-1 min-h-0 overflow-auto">
               <component
                 :is="getModuleComponent(mr.module.code)"
                 :room-id="roomId"
@@ -504,14 +525,14 @@ onMounted(async () => {
         </div>
         <div
           v-if="sortedModuleRooms[2]"
-          class="flex-none w-full sm:w-1/3 bg-[#0a1628] rounded-xl overflow-hidden shadow-lg flex flex-col min-h-[300px] sm:min-h-0 border border-white/10"
+          class="flex-none w-full sm:w-1/3 bg-[#0a1628] rounded-xl overflow-hidden shadow-lg flex flex-col min-h-75 sm:min-h-0 border border-white/10"
         >
           <div
-            class="bg-[#1a3a52]/60 px-3 sm:px-4 py-2 font-semibold text-sm sm:text-base border-b border-white/10 flex-shrink-0 text-[#dbe6f2]"
+            class="bg-[#1a3a52]/60 px-3 sm:px-4 py-2 font-semibold text-sm sm:text-base border-b border-white/10 shrink-0 text-[#dbe6f2]"
           >
             {{ sortedModuleRooms[2].module.name }}
           </div>
-          <div class="flex-1 overflow-auto min-h-0">
+          <div class="flex-1 min-h-0 overflow-auto">
             <component
               :is="getModuleComponent(sortedModuleRooms[2].module.code)"
               :room-id="roomId"
@@ -528,14 +549,14 @@ onMounted(async () => {
       >
         <div
           v-if="sortedModuleRooms[0]"
-          class="flex-1 bg-[#0a1628] rounded-xl overflow-hidden shadow-lg flex flex-col min-h-[300px] lg:min-h-0 border border-white/10"
+          class="flex-1 bg-[#0a1628] rounded-xl overflow-hidden shadow-lg flex flex-col min-h-75 lg:min-h-0 border border-white/10"
         >
           <div
-            class="bg-[#1a3a52]/60 px-3 sm:px-4 py-2 font-semibold text-sm sm:text-base border-b border-white/10 flex-shrink-0 text-[#dbe6f2]"
+            class="bg-[#1a3a52]/60 px-3 sm:px-4 py-2 font-semibold text-sm sm:text-base border-b border-white/10 shrink-0 text-[#dbe6f2]"
           >
             {{ sortedModuleRooms[0].module.name }}
           </div>
-          <div class="flex-1 overflow-auto min-h-0">
+          <div class="flex-1 min-h-0 overflow-auto">
             <component
               :is="getModuleComponent(sortedModuleRooms[0].module.code)"
               :room-id="roomId"
@@ -554,11 +575,11 @@ onMounted(async () => {
             style="min-height: 0; flex-basis: 0"
           >
             <div
-              class="bg-[#1a3a52]/60 px-4 py-2 font-semibold text-sm border-b border-white/10 flex-shrink-0 text-[#dbe6f2]"
+              class="bg-[#1a3a52]/60 px-4 py-2 font-semibold text-sm border-b border-white/10 shrink-0 text-[#dbe6f2]"
             >
               {{ mr.module.name }}
             </div>
-            <div class="flex-1 overflow-auto min-h-0">
+            <div class="flex-1 min-h-0 overflow-auto">
               <component
                 :is="getModuleComponent(mr.module.code)"
                 :room-id="roomId"
