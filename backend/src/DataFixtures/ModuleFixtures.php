@@ -3,48 +3,15 @@
 namespace App\DataFixtures;
 
 use App\Entity\Module;
+use App\Service\DemoDataSeeder;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
 
 class ModuleFixtures extends Fixture
 {
-    public const MODULES = [
-        [
-            'code' => 'editor',
-            'name' => 'Éditeur',
-            'description' => 'Éditeur de texte collaboratif en temps réel avec TipTap et Yjs'
-        ],
-        [
-            'code' => 'whiteboard',
-            'name' => 'Tableau blanc',
-            'description' => 'Espace de dessin collaboratif pour brainstorming et schémas'
-        ],
-        [
-            'code' => 'chat',
-            'name' => 'Chat',
-            'description' => 'Messagerie instantanée en temps réel'
-        ],
-        [
-            'code' => 'video',
-            'name' => 'Visioconférence',
-            'description' => 'Appels audio et vidéo via WebRTC'
-        ],
-        [
-            'code' => 'files',
-            'name' => 'Fichiers',
-            'description' => 'Partage et gestion de fichiers'
-        ],
-        [
-            'code' => 'tasks',
-            'name' => 'Tâches',
-            'description' => 'Tableau Kanban pour la gestion des tâches'
-        ],
-        [
-            'code' => 'calendar',
-            'name' => 'Calendrier',
-            'description' => 'Agenda partagé avec réunions, absences et rappels'
-        ]
-    ];
+    // Source canonique : App\Service\DemoDataSeeder::MODULES (réutilisée aussi par
+    // le seeder de démo prod-safe, voir app:demo:seed).
+    public const MODULES = DemoDataSeeder::MODULES;
 
     public function load(ObjectManager $manager): void
     {
