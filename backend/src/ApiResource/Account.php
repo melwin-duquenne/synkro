@@ -11,15 +11,20 @@ use ApiPlatform\Metadata\Post;
 use App\Dto\Account\AdminUpdateUserInput;
 use App\Dto\Account\AdminUserOutput;
 use App\Dto\Account\ConfirmDeleteAccountInput;
+use App\Dto\Account\CreateEntrepriseInput;
 use App\Dto\Account\ProfileOutput;
 use App\Dto\Account\RequestResetPasswordInput;
 use App\Dto\Account\ResetPasswordInput;
 use App\Dto\Account\UpdateProfileInput;
+use App\Dto\EntrepriseSimpleOutput;
+use App\Dto\Entreprise\AiSettingsInput;
 use App\Dto\Entreprise\EntrepriseOutput;
 use App\Dto\Entreprise\UpdateEntrepriseInput;
 use App\State\AdminUserProcessor;
+use App\State\AiSettingsProcessor;
 use App\State\AdminUsersProvider;
 use App\State\AvatarProcessor;
+use App\State\CreateEntrepriseProcessor;
 use App\State\DeleteAccountProcessor;
 use App\State\EntrepriseProcessor;
 use App\State\ProfileProcessor;
@@ -85,13 +90,27 @@ use App\State\ResetPasswordProcessor;
             name: 'account_delete_confirm'
         ),
 
-        // Entreprise
+        // Entreprises
+        new Post(
+            uriTemplate: '/account/entreprises',
+            input: CreateEntrepriseInput::class,
+            output: EntrepriseSimpleOutput::class,
+            processor: CreateEntrepriseProcessor::class,
+            name: 'account_create_entreprise'
+        ),
         new Patch(
             uriTemplate: '/account/entreprise',
             input: UpdateEntrepriseInput::class,
             output: EntrepriseOutput::class,
             processor: EntrepriseProcessor::class,
             name: 'account_entreprise_update'
+        ),
+        new Patch(
+            uriTemplate: '/account/entreprise/ai',
+            input: AiSettingsInput::class,
+            output: EntrepriseOutput::class,
+            processor: AiSettingsProcessor::class,
+            name: 'account_entreprise_ai_settings'
         ),
 
         // Admin

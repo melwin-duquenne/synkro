@@ -1,9 +1,6 @@
 services:
-  # PHP-FPM (backend applicatif)
   backend-fpm:
-    build:
-      context: ./backend
-      target: prod
+    image: moignon/synkro-backend:latest
     container_name: synkro_backend_fpm
     restart: always
     environment:
@@ -18,15 +15,17 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI}
       MAILER_DSN: ${MAILER_DSN}
+      MAILER_FROM: ${MAILER_FROM}
       APP_FRONTEND_URL: ${APP_FRONTEND_URL}
     volumes:
       - backend_public:/var/www/public
+      - ./backend/config/jwt:/var/www/config/jwt:ro
+      - ./.env:/var/www/.env:ro
     depends_on:
       - postgres-synkro
     networks:
       - synkronet-prod
 
-  # Nginx devant PHP-FPM (nommé backend-synkro pour compatibilité avec frontend nginx.conf)
   backend-synkro:
     image: nginx:1.27-alpine
     container_name: synkro_backend_nginx
@@ -39,39 +38,31 @@ services:
     networks:
       - synkronet-prod
 
-  # Frontend Vue.js (nginx servant le build statique)
   frontend-synkro:
-    build:
-      context: ./frontend
-      target: prod
-      args:
-        VITE_API_URL: /api
-        VITE_WS_URL: ${VITE_WS_URL}
-        VITE_BACKEND_URL: ${APP_FRONTEND_URL}
+    image: moignon/synkro-frontend:latest
     container_name: synkro_frontend
     restart: always
     ports:
-      - "80:80"
+      - "${PORT_FRONTEND:-8080:80}"
     depends_on:
       - backend-synkro
       - websocket-synkro
     networks:
       - synkronet-prod
 
-  # Serveur WebSocket (Yjs + WebRTC signaling)
   websocket-synkro:
-    build:
-      context: ./server
-      target: prod
+    image: moignon/synkro-websocket:latest
     container_name: synkro_websocket
     restart: always
+    ports:
+      - "3001:3001"
     environment:
       NODE_ENV: production
       PORT: "3001"
+      BACKEND_INTERNAL_URL: "http://backend-synkro:8000"
     networks:
       - synkronet-prod
 
-  # Base de données PostgreSQL
   postgres-synkro:
     image: postgres:16
     container_name: synkro_postgres_prod
@@ -85,9 +76,50 @@ services:
     networks:
       - synkronet-prod
 
+  # ─── MONITORING ──────────────────────────────────────────────────────────
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: synkro_uptime_kuma
+    restart: always
+    ports:
+      - "127.0.0.1:3100:3001"
+    volumes:
+      - uptime_kuma_data:/app/data
+    networks:
+      - synkronet-prod
+
+  netdata:
+    image: netdata/netdata:stable
+    container_name: synkro_netdata
+    restart: always
+    ports:
+      - "127.0.0.1:9100:19999"
+    cap_add:
+      - SYS_PTRACE
+      - SYS_ADMIN
+    security_opt:
+      - apparmor:unconfined
+    volumes:
+      - netdata_config:/etc/netdata
+      - netdata_lib:/var/lib/netdata
+      - netdata_cache:/var/cache/netdata
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /etc/os-release:/host/etc/os-release:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - NETDATA_CLAIM_TOKEN=
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    networks:
+      - synkronet-prod
+
 volumes:
   postgres_data_prod:
   backend_public:
+  uptime_kuma_data:
+  netdata_config:
+  netdata_lib:
+  netdata_cache:
 
 networks:
   synkronet-prod:

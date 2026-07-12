@@ -85,7 +85,7 @@ class RoomMembersProcessor implements ProcessorInterface
 
                 $memberToAdd = $userRepo->find($userIdToAdd);
                 // Only add members from the same enterprise
-                if ($memberToAdd && $memberToAdd->getEntreprise() === $room->getEntreprise()) {
+                if ($memberToAdd && $room->getEntreprise() !== null && $memberToAdd->hasEntreprise($room->getEntreprise())) {
                     $permission = new UserRoomPermission();
                     $permission->setRoom($room);
                     $permission->setUser($memberToAdd);

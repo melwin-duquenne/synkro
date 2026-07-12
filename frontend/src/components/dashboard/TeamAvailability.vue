@@ -1,57 +1,49 @@
 <template>
-  <div class="card bg-base-100 shadow-xl">
-    <div class="card-body">
-      <h2 class="card-title">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-        </svg>
-        Disponibilité de l'équipe
-      </h2>
-      
-      <!-- État vide -->
-      <div v-if="!teamAvailability || teamAvailability.length === 0" class="text-center py-8 text-base-content/60">
-        <p>Aucune information d'équipe disponible.</p>
-      </div>
-      
-      <div v-else class="space-y-3">
-        <div 
-          v-for="member in teamAvailability" 
-          :key="member.id"
-          class="flex items-center gap-3 p-3 rounded-lg hover:bg-base-200 transition-colors"
-        >
-          <!-- Avatar -->
-          <div class="avatar">
-            <div class="w-10 h-10 rounded-full ring ring-offset-base-100 ring-offset-2"
-                 :class="getStatusRingClass(member.status)">
-              <img v-if="member.avatar" :src="`${API_URL}/uploads/avatars/${member.avatar}`" :alt="member.name" />
-              <div v-else class="bg-primary text-primary-content flex items-center justify-center text-sm font-bold">
-                {{ getInitials(member.name) }}
-              </div>
-            </div>
+  <div class="card">
+    <div class="card-header">
+      <svg class="header-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+      </svg>
+      Disponibilité de l'équipe
+    </div>
+
+    <div v-if="!teamAvailability || teamAvailability.length === 0" class="empty-state">
+      Aucune information d'équipe disponible.
+    </div>
+
+    <div v-else class="members-list">
+      <div v-for="member in teamAvailability" :key="member.id" class="member-row">
+        <!-- Avatar -->
+        <div class="avatar-wrap" :class="'ring-' + member.status">
+          <img v-if="member.avatar" :src="`${API_BASE}${member.avatar}`" :alt="member.name" class="avatar-img" />
+          <div v-else class="avatar-initials">{{ getInitials(member.name) }}</div>
+        </div>
+
+        <!-- Info -->
+        <div class="member-info">
+          <div class="member-name">{{ member.name }}</div>
+          <div class="member-status">
+            <span class="status-dot" :class="'dot-' + member.status"></span>
+            {{ getStatusLabel(member.status) }}
+            <span class="sep">·</span>
+            <span :class="getWorkloadColorClass(member.workload)">{{ Math.round(member.workload) }}%</span>
           </div>
-          
-          <!-- Info -->
-          <div class="flex-1 min-w-0">
-            <div class="font-medium truncate">{{ member.name }}</div>
-            <div class="flex items-center gap-2 text-xs text-base-content/70">
-              <span class="flex items-center gap-1">
-                <span v-html="getStatusIcon(member.status)"></span>
-                {{ getStatusLabel(member.status) }}
-              </span>
-              <span class="text-base-content/50">•</span>
-              <span :class="getWorkloadColorClass(member.workload)">
-                {{ Math.round(member.workload) }}% charge
-              </span>
-            </div>
-          </div>
-          
-          <!-- Indicateur de charge -->
-          <div class="radial-progress text-xs" 
-               :class="getWorkloadProgressClass(member.workload)"
-               :style="`--value:${Math.min(member.workload, 100)}; --size:3rem;`"
-               role="progressbar">
-            {{ Math.round(member.workload) }}%
-          </div>
+        </div>
+
+        <!-- Workload ring -->
+        <div class="workload-ring-wrap">
+          <svg class="workload-ring" viewBox="0 0 36 36">
+            <circle class="ring-track" cx="18" cy="18" r="15.9" fill="none" stroke-width="2.5" />
+            <circle
+              class="ring-fill"
+              :class="getWorkloadProgressClass(member.workload)"
+              cx="18" cy="18" r="15.9" fill="none" stroke-width="2.5"
+              stroke-linecap="round"
+              :stroke-dasharray="`${Math.min(member.workload, 100)} 100`"
+              transform="rotate(-90 18 18)"
+            />
+          </svg>
+          <span class="workload-value" :class="getWorkloadColorClass(member.workload)">{{ Math.round(member.workload) }}%</span>
         </div>
       </div>
     </div>
@@ -59,66 +51,123 @@
 </template>
 
 <script setup lang="ts">
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || ''
 
 interface TeamMember {
-  id: number
-  name: string
-  email: string
-  avatar: string | null
-  workload: number
-  status: 'available' | 'busy' | 'absent'
+  id: number;
+  name: string;
+  email: string;
+  avatar: string | null;
+  workload: number;
+  status: "available" | "busy" | "absent";
 }
 
 defineProps<{
-  teamAvailability?: TeamMember[]
-}>()
+  teamAvailability?: TeamMember[];
+}>();
 
 const getInitials = (name: string): string => {
   return name
-    .split(' ')
-    .map(n => n[0])
-    .join('')
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
     .toUpperCase()
-    .substring(0, 2)
-}
-
-const getStatusIcon = (status: string): string => {
-  const icons: Record<string, string> = {
-    available: '<span class="inline-block w-2 h-2 rounded-full bg-success"></span>',
-    busy: '<span class="inline-block w-2 h-2 rounded-full bg-error"></span>',
-    absent: '<span class="inline-block w-2 h-2 rounded-full bg-base-300"></span>'
-  }
-  return icons[status] || '<span class="inline-block w-2 h-2 rounded-full bg-base-300"></span>'
-}
+    .substring(0, 2);
+};
 
 const getStatusLabel = (status: string): string => {
   const labels: Record<string, string> = {
-    available: 'Disponible',
-    busy: 'Occupé',
-    absent: 'Absent'
-  }
-  return labels[status] || status
-}
-
-const getStatusRingClass = (status: string): string => {
-  const classes: Record<string, string> = {
-    available: 'ring-success',
-    busy: 'ring-error',
-    absent: 'ring-base-300'
-  }
-  return classes[status] || 'ring-base-300'
-}
+    available: "Disponible",
+    busy: "Occupé",
+    absent: "Absent",
+  };
+  return labels[status] || status;
+};
 
 const getWorkloadColorClass = (workload: number): string => {
-  if (workload > 100) return 'text-error font-bold'
-  if (workload >= 80) return 'text-warning'
-  return 'text-success'
-}
+  if (workload > 100) return "color-error";
+  if (workload >= 80) return "color-warn";
+  return "color-ok";
+};
 
 const getWorkloadProgressClass = (workload: number): string => {
-  if (workload > 100) return 'text-error'
-  if (workload >= 80) return 'text-warning'
-  return 'text-success'
-}
+  if (workload > 100) return "ring-error";
+  if (workload >= 80) return "color-warn";
+  return "color-ok";
+};
 </script>
+
+<style scoped>
+.card {
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: border-color 0.2s;
+}
+.card:hover { border-color: rgba(255, 255, 255, 0.1); }
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #c8daea;
+  margin-bottom: 1.25rem;
+}
+.header-icon { width: 16px; height: 16px; color: #5ba3e8; flex-shrink: 0; }
+.empty-state { text-align: center; padding: 2rem 0; color: #3d5060; font-size: 0.875rem; }
+.members-list { display: flex; flex-direction: column; gap: 0.375rem; }
+.member-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  transition: border-color 0.15s;
+}
+.member-row:hover { border-color: rgba(255, 255, 255, 0.1); }
+.avatar-wrap {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 2px solid transparent;
+}
+.ring-available { border-color: rgba(111, 221, 159, 0.5); }
+.ring-busy { border-color: rgba(248, 113, 113, 0.5); }
+.ring-absent { border-color: rgba(255, 255, 255, 0.1); }
+.avatar-img { width: 100%; height: 100%; object-fit: cover; }
+.avatar-initials {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(64, 142, 214, 0.2);
+  color: #5ba3e8;
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+.member-info { flex: 1; min-width: 0; }
+.member-name { font-size: 0.8125rem; font-weight: 500; color: #c8daea; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.member-status { display: flex; align-items: center; gap: 0.375rem; font-size: 0.6875rem; color: #6b8099; margin-top: 0.125rem; }
+.status-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.dot-available { background: #6fdd9f; }
+.dot-busy { background: #f87171; }
+.dot-absent { background: #3d5060; }
+.sep { color: #2a3a48; }
+.color-ok { color: #6fdd9f; }
+.color-warn { color: #f0a23e; }
+.color-error { color: #f87171; font-weight: 600; }
+.workload-ring-wrap { position: relative; width: 36px; height: 36px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+.workload-ring { width: 36px; height: 36px; position: absolute; }
+.ring-track { stroke: rgba(255,255,255,0.07); }
+.ring-ok { stroke: #6fdd9f; }
+.ring-warn { stroke: #f0a23e; }
+.ring-error { stroke: #f87171; }
+.workload-value { font-size: 0.5rem; font-weight: 700; position: relative; z-index: 1; }
+</style>

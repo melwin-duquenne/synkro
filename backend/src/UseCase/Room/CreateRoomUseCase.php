@@ -4,6 +4,7 @@ namespace App\UseCase\Room;
 
 use App\Dto\Room\CreateRoomInput;
 use App\Dto\Room\RoomOutput;
+use App\Entity\Entreprise;
 use App\Entity\KanbanColumn;
 use App\Entity\Module;
 use App\Entity\ModuleRoom;
@@ -14,7 +15,6 @@ use App\Exception\ErrorMessage;
 use App\Security\RoomAccessChecker;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
-use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 
 class CreateRoomUseCase
 {
@@ -23,13 +23,9 @@ class CreateRoomUseCase
         private RoomAccessChecker $accessChecker
     ) {}
 
-    public function execute(CreateRoomInput $input, User $user): RoomOutput
+    public function execute(CreateRoomInput $input, User $user, Entreprise $entreprise): RoomOutput
     {
-        if (!$user->getEntreprise()) {
-            throw new BadRequestHttpException(ErrorMessage::ROOM_CREATE_REQUIRES_ENTREPRISE);
-        }
-
-        if (!$this->accessChecker->canCreateRoom($user)) {
+        if (!$user->isAtLeastInEntreprise($entreprise, User::ROLE_EDITOR)) {
             throw new AccessDeniedHttpException(ErrorMessage::ROOM_CREATE_REQUIRES_EDITOR);
         }
 
@@ -38,7 +34,7 @@ class CreateRoomUseCase
         $room->setCreator($user);
         $room->setVisibility($input->visibility);
         $room->setIsTemporary($input->isTemporary);
-        $room->setEntreprise($user->getEntreprise());
+        $room->setEntreprise($entreprise);
 
         $this->entityManager->persist($room);
 
@@ -65,7 +61,7 @@ class CreateRoomUseCase
                     continue;
                 }
                 $member = $userRepo->find($memberId);
-                if ($member && $member->getEntreprise() === $user->getEntreprise()) {
+                if ($member && $member->hasEntreprise($entreprise)) {
                     $memberPermission = new UserRoomPermission();
                     $memberPermission->setRoom($room);
                     $memberPermission->setUser($member);

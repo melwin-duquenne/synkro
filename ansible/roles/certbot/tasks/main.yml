@@ -1,0 +1,72 @@
+---
+# Certbot — certificat unique pour synkro.ovh, www, status, netdata + cron renewal
+
+- name: Installer certbot + plugin nginx
+  apt:
+    name:
+      - certbot
+      - python3-certbot-nginx
+    state: present
+
+- name: Vérifier l'existence du certificat principal
+  stat:
+    path: "/etc/letsencrypt/live/{{ domain }}/fullchain.pem"
+  register: cert_main
+
+# Toujours actif pendant l'émission : c'est ce default_server:80 qui répond au
+# challenge ACME des sous-domaines dont le vrai vhost n'existe pas encore (le rôle
+# vhosts tourne APRÈS certbot). Indispensable pour AJOUTER un domaine au cert
+# (ex. wazuh), pas seulement à la première installation. Retiré en fin de rôle.
+- name: Challenge HTTP — vhost minimal pour Certbot (default_server :80)
+  copy:
+    dest: /etc/nginx/sites-available/01-certbot-bootstrap
+    mode: '0644'
+    content: |
+      server {
+          listen 80 default_server;
+          server_name _;
+          location /.well-known/acme-challenge/ {
+              root /var/www/certbot;
+          }
+          location / {
+              return 404;
+          }
+      }
+
+- name: Activer le vhost bootstrap
+  file:
+    src: /etc/nginx/sites-available/01-certbot-bootstrap
+    dest: /etc/nginx/sites-enabled/01-certbot-bootstrap
+    state: link
+  notify: Recharger Nginx
+
+- name: Flush handlers (Nginx prêt)
+  meta: flush_handlers
+
+- name: Émettre/renouveler le certificat
+  shell: |
+    certbot certonly --webroot -w /var/www/certbot \
+      -d {{ domain }} -d www.{{ domain }} \
+      -d status.{{ domain }} -d netdata.{{ domain }} \
+      -d wazuh.{{ domain }} -d dev.{{ domain }} \
+      --email {{ admin_email }} \
+      --agree-tos --non-interactive --expand --keep-until-expiring
+  register: certbot_run
+  changed_when: "'no action taken' not in certbot_run.stdout and 'not yet due for renewal' not in certbot_run.stdout"
+  failed_when:
+    - certbot_run.rc != 0
+    - "'no action taken' not in certbot_run.stdout"
+
+- name: Cron de renouvellement (lundi 03h00)
+  cron:
+    name: "Certbot renewal"
+    minute: "0"
+    hour: "3"
+    weekday: "1"
+    job: "certbot renew --quiet --post-hook 'systemctl reload nginx'"
+
+- name: Désactiver le vhost bootstrap (les vrais vhosts prendront le relais)
+  file:
+    path: /etc/nginx/sites-enabled/01-certbot-bootstrap
+    state: absent
+  notify: Recharger Nginx

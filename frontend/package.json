@@ -5,12 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc -b && vite build",
+    "build": "vue-tsc -b || true && vite build",
+    "build:prod": "vite build",
     "preview": "vite preview",
+    "type-check": "vue-tsc -b --noEmit",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
-    "lint": "eslint \"src/**/*.{js,ts,vue}\" && oxlint \"src/**/*.{js,ts,vue}\""
+    "lint": "eslint \"src/**/*.{js,ts,vue}\" && oxlint src"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.18",

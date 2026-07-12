@@ -12,8 +12,8 @@ class RoomAccessChecker
      */
     public function canAccess(User $user, Room $room): bool
     {
-        // Must be in the same enterprise
-        if ($user->getEntreprise() !== $room->getEntreprise()) {
+        // Must be a member of the room's enterprise
+        if ($room->getEntreprise() === null || !$user->hasEntreprise($room->getEntreprise())) {
             return false;
         }
 
@@ -23,7 +23,7 @@ class RoomAccessChecker
         }
 
         // Admin can access all rooms in their enterprise
-        if ($user->getRole() === User::ROLE_ADMIN) {
+        if ($user->getRoleInEntreprise($room->getEntreprise()) === User::ROLE_ADMIN) {
             return true;
         }
 
@@ -66,6 +66,9 @@ class RoomAccessChecker
         }
 
         // User with editor role or higher can edit
+        if ($room->getEntreprise() !== null) {
+            return $user->isAtLeastInEntreprise($room->getEntreprise(), User::ROLE_EDITOR);
+        }
         return $user->isAtLeast(User::ROLE_EDITOR);
     }
 
@@ -80,6 +83,9 @@ class RoomAccessChecker
         }
 
         // User with editor role or higher can delete
+        if ($room->getEntreprise() !== null) {
+            return $user->isAtLeastInEntreprise($room->getEntreprise(), User::ROLE_EDITOR);
+        }
         return $user->isAtLeast(User::ROLE_EDITOR);
     }
 
@@ -98,11 +104,14 @@ class RoomAccessChecker
         }
 
         // User with editor role or higher can manage members
+        if ($room->getEntreprise() !== null) {
+            return $user->isAtLeastInEntreprise($room->getEntreprise(), User::ROLE_EDITOR);
+        }
         return $user->isAtLeast(User::ROLE_EDITOR);
     }
 
     /**
-     * Check if user can create rooms (editor+)
+     * Check if user can create rooms (editor+) — requires enterprise context
      */
     public function canCreateRoom(User $user): bool
     {

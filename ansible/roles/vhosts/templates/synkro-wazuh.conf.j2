@@ -1,0 +1,61 @@
+# {{ ansible_managed }}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name wazuh.{{ domain }};
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl;
+    server_name wazuh.{{ domain }};
+
+    ssl_certificate     /etc/letsencrypt/live/{{ domain }}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{{ domain }}/privkey.pem;
+    ssl_trusted_certificate /etc/letsencrypt/live/{{ domain }}/chain.pem;
+
+    include snippets/tls-strong.conf;
+    include snippets/security-headers.conf;
+
+    # WAF en mode DetectionOnly pour ce vhost. ModSecurity/OWASP CRS est activé
+    # globalement (http{}) et bloque les requêtes légitimes du dashboard Wazuh
+    # (OpenSearch Dashboards) : ex. PUT /api/saved_objects/index-pattern/... →
+    # faux positifs 911100 (méthode PUT) + 930120 (LFI sur ".profile" dans le
+    # gros payload JSON de champs) → 403 → l'app boucle sur getPatternList/
+    # getConfiguration jusqu'au timeout 20s (blank-screen), et les 403 répétés
+    # font bannir l'IP par fail2ban (jail modsecurity) → PR_CONNECT_RESET.
+    # On hérite des règles CRS globales mais on passe le moteur en DetectionOnly
+    # (journalise sans bloquer). Le vhost reste protégé par Basic auth + TLS.
+    modsecurity_rules 'SecRuleEngine DetectionOnly';
+
+    auth_basic "SIEM";
+    auth_basic_user_file /etc/nginx/.htpasswd_monitoring;
+
+    location /.well-known/acme-challenge/ {
+        auth_basic off;
+        root /var/www/certbot;
+    }
+
+    location / {
+        # Le dashboard Wazuh sert en HTTPS (cert auto-signé interne) sur 5601
+        proxy_pass https://127.0.0.1:{{ port_wazuh }};
+        proxy_ssl_verify off;
+        # Ne pas transmettre le Basic auth nginx au dashboard : sinon OpenSearch
+        # tente de s'authentifier avec (et renvoie 401) au lieu d'afficher son login.
+        proxy_set_header Authorization    "";
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_read_timeout 300s;
+    }
+}

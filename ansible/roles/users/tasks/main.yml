@@ -1,0 +1,42 @@
+---
+# Vérifie que l'utilisateur sysadmin existe, configure sudoers, désactive root login
+# (la désactivation du login root SSH est faite par ssh-hardening)
+
+- name: Vérifier que l'utilisateur sysadmin existe
+  getent:
+    database: passwd
+    key: "{{ sysadmin_user }}"
+  register: sysadmin_check
+  failed_when: getent_passwd[sysadmin_user] is not defined
+
+- name: S'assurer que sysadmin est dans le groupe sudo
+  user:
+    name: "{{ sysadmin_user }}"
+    groups: sudo
+    append: yes
+
+- name: Configurer sudoers pour sysadmin (sans mot de passe pour ansible)
+  copy:
+    dest: "/etc/sudoers.d/90-{{ sysadmin_user }}"
+    content: "{{ sysadmin_user }} ALL=(ALL) NOPASSWD:ALL\n"
+    mode: '0440'
+    validate: 'visudo -cf %s'
+
+- name: Verrouiller le mot de passe root (login mot de passe désactivé)
+  user:
+    name: root
+    password_lock: yes
+
+- name: Vérifier que /etc/sudoers a Defaults use_pty
+  lineinfile:
+    path: /etc/sudoers
+    regexp: '^Defaults\s+use_pty'
+    line: 'Defaults    use_pty'
+    validate: 'visudo -cf %s'
+
+- name: Vérifier que /etc/sudoers a Defaults logfile
+  lineinfile:
+    path: /etc/sudoers
+    regexp: '^Defaults\s+logfile'
+    line: 'Defaults    logfile="/var/log/sudo.log"'
+    validate: 'visudo -cf %s'

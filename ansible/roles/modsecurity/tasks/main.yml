@@ -1,0 +1,100 @@
+---
+# ModSecurity v3 + OWASP Core Rule Set (CRS) — WAF en front de Nginx
+
+- name: Installer ModSecurity v3 pour Nginx
+  apt:
+    name:
+      - libnginx-mod-http-modsecurity
+      - modsecurity-crs
+    state: present
+  register: modsec_install
+  failed_when: false
+
+- name: Configurer ModSecurity (uniquement si installé avec succès)
+  when: not (modsec_install.failed | default(false))
+  block:
+    - name: Créer le répertoire ModSecurity
+      file:
+        path: /etc/nginx/modsec
+        state: directory
+        mode: '0755'
+
+    - name: Chercher le modsecurity.conf-recommended fourni par le paquet
+      stat:
+        path: "{{ item }}"
+      loop:
+        - /etc/modsecurity/modsecurity.conf-recommended
+        - /usr/share/modsecurity/modsecurity.conf-recommended
+      register: modsec_reco
+
+    - name: Copier modsecurity.conf depuis le paquet (si présent)
+      copy:
+        src: "{{ modsec_reco.results | selectattr('stat.exists') | map(attribute='item') | first }}"
+        dest: /etc/nginx/modsec/modsecurity.conf
+        mode: '0644'
+        remote_src: yes
+        force: no
+      when: modsec_reco.results | selectattr('stat.exists') | list | length > 0
+
+    - name: Sinon, écrire un modsecurity.conf minimal (paquet sans fichier recommandé)
+      copy:
+        dest: /etc/nginx/modsec/modsecurity.conf
+        mode: '0644'
+        force: no
+        content: |
+          SecRuleEngine On
+          SecRequestBodyAccess On
+          SecRequestBodyLimit 13107200
+          SecRequestBodyNoFilesLimit 131072
+          SecRequestBodyLimitAction Reject
+          SecResponseBodyAccess Off
+          SecAuditEngine RelevantOnly
+          SecAuditLogParts ABIJDEFHZ
+          SecAuditLogType Serial
+          SecAuditLog /var/log/nginx/modsec_audit.log
+          SecArgumentSeparator &
+          SecCookieFormat 0
+          SecStatusEngine Off
+      when: modsec_reco.results | selectattr('stat.exists') | list | length == 0
+
+    - name: Activer ModSecurity (mode On)
+      lineinfile:
+        path: /etc/nginx/modsec/modsecurity.conf
+        regexp: '^SecRuleEngine'
+        line: 'SecRuleEngine On'
+      notify: Recharger Nginx
+
+    # On inclut les pièces CRS directement avec Include (le loader owasp-crs.load
+    # utilise IncludeOptional, une directive Apache que le connecteur ModSecurity-nginx
+    # ne supporte pas). crs-setup.conf est géré ici (version CRS + content-types dont
+    # ld+json/merge-patch pour l'API Symfony) ; les rules viennent du paquet.
+    - name: Répertoire de config CRS
+      file:
+        path: /etc/modsecurity/crs
+        state: directory
+        mode: '0755'
+
+    - name: crs-setup.conf géré (version CRS + content-types autorisés)
+      copy:
+        dest: /etc/modsecurity/crs/crs-setup.conf
+        mode: '0644'
+        content: |
+          # Géré par Ansible — setup CRS minimal
+          SecAction "id:900990,phase:1,nolog,pass,t:none,setvar:tx.crs_setup_version=400"
+          SecAction "id:900220,phase:1,nolog,pass,t:none,setvar:'tx.allowed_request_content_type=|application/x-www-form-urlencoded| |multipart/form-data| |multipart/related| |text/xml| |application/xml| |application/soap+xml| |application/json| |application/cloudevents+json| |application/cloudevents-batch+json| |application/ld+json| |application/merge-patch+json|'"
+      notify: Recharger Nginx
+
+    - name: Fichier d'inclusion principal main.conf
+      copy:
+        dest: /etc/nginx/modsec/main.conf
+        mode: '0644'
+        content: |
+          Include /etc/nginx/modsec/modsecurity.conf
+          Include /etc/modsecurity/crs/crs-setup.conf
+          Include /usr/share/modsecurity-crs/rules/*.conf
+      notify: Recharger Nginx
+
+- name: ModSecurity non disponible — WAF skippé
+  debug:
+    msg: "ATTENTION : ModSecurity n'a pas pu être installé sur cette distribution. Le WAF est désactivé."
+  when: modsec_install.failed | default(false)

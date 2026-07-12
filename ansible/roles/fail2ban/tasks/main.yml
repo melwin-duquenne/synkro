@@ -1,0 +1,230 @@
+---
+# Fail2ban — jails SSH, Nginx (auth, rate, login API, register, ModSecurity, scanners)
+
+- name: Installer fail2ban
+  apt:
+    name: fail2ban
+    state: present
+
+- name: Configuration globale fail2ban (jail.local)
+  copy:
+    dest: /etc/fail2ban/jail.local
+    mode: '0644'
+    content: |
+      [DEFAULT]
+      bantime  = {{ fail2ban_default_bantime }}
+      findtime = {{ fail2ban_default_findtime }}
+      maxretry = {{ fail2ban_default_maxretry }}
+      banaction = ufw
+      # backend = auto : les jails nginx/modsec surveillent des FICHIERS
+      # (/var/log/nginx/*.log). Avec 'systemd' ils liraient journald et ne
+      # verraient jamais ces logs → jails dormants (0 ban). sshd force son
+      # propre backend (systemd/journald) plus bas via %(sshd_backend)s.
+      backend = auto
+      # 172.16.0.0/12 : réseau bridge Docker — Uptime Kuma sonde les URL
+      # publiques (Site, API, Wazuh) depuis son conteneur ; sans ça son IP
+      # d'egress se fait bannir (ECONNREFUSED sur tous les checks publics).
+      # ansible_default_ipv4.address : au cas où le trafic hairpin est masqué
+      # derrière l'IP publique du serveur. Aucun attaquant réel ne vient de 172.x.
+      ignoreip = 127.0.0.1/8 ::1 172.16.0.0/12 {{ ansible_default_ipv4.address }}
+      destemail = {{ admin_email }}
+      sender = fail2ban@{{ domain }}
+      mta = sendmail
+      action = %(action_)s
+
+      [sshd]
+      enabled  = true
+      port     = ssh,{{ ssh_port }}
+      filter   = sshd
+      logpath  = %(sshd_log)s
+      backend  = %(sshd_backend)s
+      maxretry = {{ fail2ban_ssh_maxretry }}
+      bantime  = {{ fail2ban_ssh_bantime }}
+  notify: Redémarrer fail2ban
+
+- name: Jail Nginx HTTP Auth
+  copy:
+    dest: /etc/fail2ban/jail.d/nginx-http-auth.conf
+    mode: '0644'
+    content: |
+      [nginx-http-auth]
+      enabled = true
+      port    = http,https
+      filter  = nginx-http-auth
+      logpath = /var/log/nginx/error.log
+      maxretry = 5
+      bantime  = 1h
+  notify: Redémarrer fail2ban
+
+- name: Jail Nginx rate-limit
+  copy:
+    dest: /etc/fail2ban/jail.d/nginx-limit-req.conf
+    mode: '0644'
+    content: |
+      [nginx-limit-req]
+      enabled = true
+      port    = http,https
+      filter  = nginx-limit-req
+      logpath = /var/log/nginx/error.log
+      maxretry = 10
+      findtime = 1m
+      bantime  = 1h
+  notify: Redémarrer fail2ban
+
+- name: Jail Nginx scanners (404 abusifs)
+  copy:
+    dest: /etc/fail2ban/jail.d/nginx-noscript.conf
+    mode: '0644'
+    content: |
+      [nginx-noscript]
+      enabled = true
+      port    = http,https
+      # apache-noscript est le filtre fourni par fail2ban (il n'existe PAS de
+      # filtre 'nginx-noscript' → jail muet jusqu'ici). Il matche les requêtes
+      # de scripts (.php/.asp/.exe…) sur le combined log nginx. Même convention
+      # que nginx-badbots qui utilise le filtre apache-badbots.
+      filter  = apache-noscript
+      logpath = /var/log/nginx/access.log
+      maxretry = 6
+      findtime = 10m
+      bantime  = 24h
+  notify: Redémarrer fail2ban
+
+- name: Jail Nginx bad bots
+  copy:
+    dest: /etc/fail2ban/jail.d/nginx-badbots.conf
+    mode: '0644'
+    content: |
+      [nginx-badbots]
+      enabled = true
+      port    = http,https
+      filter  = apache-badbots
+      logpath = /var/log/nginx/access.log
+      maxretry = 2
+      bantime  = 7d
+  notify: Redémarrer fail2ban
+
+- name: Filtre login API Synkro
+  copy:
+    dest: /etc/fail2ban/filter.d/synkro-login.conf
+    mode: '0644'
+    content: |
+      [Definition]
+      failregex = ^<HOST> .* "POST /api/auth/login HTTP.*" 401
+      ignoreregex =
+  notify: Redémarrer fail2ban
+
+- name: Jail login API (bruteforce)
+  copy:
+    dest: /etc/fail2ban/jail.d/synkro-login.conf
+    mode: '0644'
+    content: |
+      [synkro-login]
+      enabled = true
+      port    = http,https
+      filter  = synkro-login
+      logpath = /var/log/nginx/access.log
+      maxretry = 5
+      findtime = 5m
+      bantime  = 30m
+  notify: Redémarrer fail2ban
+
+- name: Filtre register API Synkro
+  copy:
+    dest: /etc/fail2ban/filter.d/synkro-register.conf
+    mode: '0644'
+    content: |
+      [Definition]
+      failregex = ^<HOST> .* "POST /api/auth/register HTTP.*" (4[0-9]{2}|5[0-9]{2})
+      ignoreregex =
+  notify: Redémarrer fail2ban
+
+- name: Jail register API (anti-spam)
+  copy:
+    dest: /etc/fail2ban/jail.d/synkro-register.conf
+    mode: '0644'
+    content: |
+      [synkro-register]
+      enabled = true
+      port    = http,https
+      filter  = synkro-register
+      logpath = /var/log/nginx/access.log
+      maxretry = 3
+      findtime = 1h
+      bantime  = 24h
+  notify: Redémarrer fail2ban
+
+# ── WAF ModSecurity : 2 jails complémentaires (lisent nginx error.log) ──────
+# bot   : scanners évidents (.env, .git/config, wp-login, PROPFIND) → tolérance
+#         nulle, ban long. human : tout autre 403 CRS (faux positif d'un vrai
+#         utilisateur) → ban court incrémental. Le filtre human EXCLUT les
+#         chemins bot (ignoreregex) pour ne pas compter deux fois le même 403.
+# banaction héritée du [DEFAULT] (ufw) → cohérent avec les autres jails.
+# NB : le dashboard Wazuh tourne en SecRuleEngine DetectionOnly (voir le vhost
+#      synkro-wazuh) donc il n'émet plus "Access denied" et ne peut plus
+#      alimenter ces jails — plus de lockout accidentel sur le SIEM.
+- name: Filtre ModSecurity — scanners/bots
+  copy:
+    dest: /etc/fail2ban/filter.d/modsecurity-bot.conf
+    mode: '0644'
+    content: |
+      [Definition]
+      failregex = ^.*\[client <HOST>\] ModSecurity: Access denied with code 403.*(\/\.env|\/\.git\/config|wp-login\.php|PROPFIND).*$
+      ignoreregex =
+  notify: Redémarrer fail2ban
+
+- name: Filtre ModSecurity — humains (403 CRS hors scanners)
+  copy:
+    dest: /etc/fail2ban/filter.d/modsecurity-human.conf
+    mode: '0644'
+    content: |
+      [Definition]
+      failregex   = ^.*\[client <HOST>\] ModSecurity: Access denied with code 403.*$
+      ignoreregex = ^.*\[client <HOST>\] ModSecurity: Access denied with code 403.*(\/\.env|\/\.git\/config|wp-login\.php|PROPFIND).*$
+  notify: Redémarrer fail2ban
+
+- name: Jails ModSecurity (bot + human)
+  copy:
+    dest: /etc/fail2ban/jail.d/modsecurity.conf
+    mode: '0644'
+    content: |
+      [modsecurity-bot]
+      enabled  = true
+      port     = http,https
+      filter   = modsecurity-bot
+      logpath  = /var/log/nginx/error.log
+      findtime = 60
+      maxretry = 1
+      bantime  = 24h
+
+      [modsecurity-human]
+      enabled  = true
+      port     = http,https
+      filter   = modsecurity-human
+      logpath  = /var/log/nginx/error.log
+      findtime = 5m
+      maxretry = 5
+      bantime  = 10m
+      bantime.increment = true
+      bantime.factor    = 2
+      bantime.max       = 1h
+  notify: Redémarrer fail2ban
+
+# Nettoyage : ancien filtre générique + fichiers .local/.save ajoutés à la main
+# (jails empilés en double, banaction nftables incohérente avec ufw). Le rôle
+# est désormais la seule source de vérité pour les jails modsec.
+- name: Nettoyer les fichiers modsec legacy/manuels
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/fail2ban/filter.d/modsecurity.conf
+    - /etc/fail2ban/jail.d/modsecurity.local
+    - /etc/fail2ban/jail.d/modsecurity.local.save
+  notify: Redémarrer fail2ban
+
+- name: Activer fail2ban
+  systemd:
+    name: fail2ban
+    state: started
+    enabled: yes

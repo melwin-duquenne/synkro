@@ -93,6 +93,7 @@ export const useInvitationStore = defineStore('invitation', () => {
     accepted: boolean
     message: string
     entrepriseName?: string
+    entrepriseSlug?: string
     email?: string
   }
 

@@ -1,0 +1,131 @@
+---
+# AIDE (file integrity) + rkhunter + chkrootkit + cron quotidien
+
+# ─── AIDE ────────────────────────────────────────────────────────────────
+- name: Installer AIDE
+  apt:
+    name: aide
+    state: present
+
+# Sans exclusions, aideinit hashe TOUT /var/lib/docker (images + volumes) → l'init
+# dépasse le timeout et le check quotidien est noyé sous le churn docker. On dépose
+# un fragment lu par update-aide.conf (nom sans point : regex ^[a-zA-Z0-9_-]+$).
+- name: Exclusions AIDE — dossiers volumineux/volatils (docker, db AIDE)
+  copy:
+    dest: /etc/aide/aide.conf.d/99_synkro_exclude
+    mode: '0644'
+    content: |
+      !/var/lib/docker
+      !/var/lib/containerd
+      !/var/lib/aide
+
+- name: Vérifier si la base AIDE existe
+  stat:
+    path: /var/lib/aide/aide.db.gz
+  register: aide_db
+
+- name: Initialiser la base AIDE (long — ne tourne qu'une fois)
+  shell: |
+    # Tue un éventuel 'aide' resté en fond après un timeout précédent (évite 2 scans concurrents).
+    # NE PAS utiliser 'pkill -f aideinit' : le -f matcherait la cmdline de CE script
+    # (qui contient "aideinit") et le tuerait lui-même (rc -9). Le -x sur le binaire est sûr.
+    pkill -9 -x aide 2>/dev/null || true
+    aideinit -y -f
+    cp -f /var/lib/aide/aide.db.new /var/lib/aide/aide.db
+    cp -f /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz 2>/dev/null || true
+  when: not aide_db.stat.exists
+  async: 3600
+  poll: 60
+
+- name: Cron AIDE — vérification quotidienne (rapport dans /var/log/aide/)
+  copy:
+    dest: /etc/cron.daily/aide-check
+    mode: '0755'
+    content: |
+      #!/bin/bash
+      mkdir -p /var/log/aide
+      LOG="/var/log/aide/aide-$(date +%Y-%m-%d).log"
+      /usr/bin/aide --check > "$LOG" 2>&1
+      # Garde 30 jours de rapports
+      find /var/log/aide -name 'aide-*.log' -mtime +30 -delete
+
+# ─── RKHunter ────────────────────────────────────────────────────────────
+- name: Installer rkhunter
+  apt:
+    name: rkhunter
+    state: present
+
+- name: Vérifier la présence du conffile principal rkhunter
+  stat:
+    path: /etc/rkhunter.conf
+  register: rkhunter_conf
+
+- name: Restaurer le conffile rkhunter s'il manque (réinstall --force-confmiss)
+  # Cas Debian : un paquet déjà installé puis supprimé laisse dpkg "se souvenir"
+  # d'un conffile effacé ; un simple apt install ne le restaure pas. On force.
+  command: apt-get install --reinstall -y -o Dpkg::Options::=--force-confmiss rkhunter
+  when: not rkhunter_conf.stat.exists
+
+- name: Configurer rkhunter (overrides dans le .local, lu automatiquement par rkhunter)
+  # On écrit dans /etc/rkhunter.conf.local (créé si absent) plutôt que dans le
+  # conffile principal /etc/rkhunter.conf : rkhunter merge le .local par-dessus,
+  # ça évite de dépendre de la présence du conffile paquet et les prompts dpkg.
+  lineinfile:
+    path: /etc/rkhunter.conf.local
+    regexp: "^{{ item.k }}="
+    line: "{{ item.k }}={{ item.v }}"
+    create: yes
+    mode: '0644'
+  loop:
+    - { k: 'MIRRORS_MODE', v: '0' }
+    - { k: 'UPDATE_MIRRORS', v: '1' }
+    - { k: 'WEB_CMD', v: '""' }
+    - { k: 'ALLOW_SSH_ROOT_USER', v: 'no' }
+    - { k: 'ALLOW_SSH_PROT_V1', v: '0' }
+
+- name: Rkhunter — propupd (baseline initiale)
+  shell: rkhunter --propupd --quiet
+  args:
+    creates: /var/lib/rkhunter/db/rkhunter.dat
+
+- name: Cron rkhunter — scan quotidien
+  copy:
+    dest: /etc/cron.daily/rkhunter-scan
+    mode: '0755'
+    content: |
+      #!/bin/bash
+      mkdir -p /var/log/rkhunter
+      LOG="/var/log/rkhunter/rkhunter-$(date +%Y-%m-%d).log"
+      /usr/bin/rkhunter --check --skip-keypress --report-warnings-only > "$LOG" 2>&1 || true
+      find /var/log/rkhunter -name 'rkhunter-*.log' -mtime +30 -delete
+
+# ─── chkrootkit ──────────────────────────────────────────────────────────
+- name: Installer chkrootkit
+  apt:
+    name: chkrootkit
+    state: present
+
+- name: Cron chkrootkit — scan quotidien
+  copy:
+    dest: /etc/cron.daily/chkrootkit-scan
+    mode: '0755'
+    content: |
+      #!/bin/bash
+      mkdir -p /var/log/chkrootkit
+      LOG="/var/log/chkrootkit/chkrootkit-$(date +%Y-%m-%d).log"
+      /usr/sbin/chkrootkit > "$LOG" 2>&1 || true
+      find /var/log/chkrootkit -name 'chkrootkit-*.log' -mtime +30 -delete
+
+- name: Logrotate — AIDE/rkhunter/chkrootkit
+  copy:
+    dest: /etc/logrotate.d/synkro-ids
+    mode: '0644'
+    content: |
+      /var/log/aide/*.log /var/log/rkhunter/*.log /var/log/chkrootkit/*.log {
+          weekly
+          rotate 8
+          compress
+          delaycompress
+          missingok
+          notifempty
+      }

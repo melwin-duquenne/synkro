@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/auth'
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
+    // Routes publiques / non-entreprise
     {
       path: '/',
       name: 'landing',
@@ -29,30 +30,6 @@ const router = createRouter({
       meta: { guest: true }
     },
     {
-      path: '/dashboard',
-      name: 'dashboard',
-      component: () => import('@/pages/DashboardPage.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/rooms',
-      name: 'rooms',
-      component: () => import('@/pages/room/RoomsPage.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/room/:id',
-      name: 'room',
-      component: () => import('@/pages/room/RoomPage.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/calendar',
-      name: 'calendar',
-      component: () => import('@/pages/calendar/CalendarPage.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
       path: '/forgot-password',
       name: 'forgot-password',
       component: () => import('@/pages/auth/ForgotPasswordPage.vue'),
@@ -70,28 +47,76 @@ const router = createRouter({
       component: () => import('@/pages/invitation/AcceptInvitationPage.vue')
     },
     {
-      path: '/invitation/create',
-      name: 'invitation-create',
-      component: () => import('@/pages/invitation/CreateInvitationPage.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
       path: '/confirm-delete',
       name: 'confirm-delete',
       component: () => import('@/pages/account/ConfirmDeletePage.vue')
     },
     {
-      path: '/profile',
-      name: 'profile',
-      component: () => import('@/pages/account/ProfilePage.vue'),
-      meta: { requiresAuth: true }
+      path: '/unauthorized',
+      name: 'unauthorized',
+      component: () => import('@/pages/UnauthorizedPage.vue')
     },
     {
-      path: '/admin/users',
-      name: 'admin-users',
-      component: () => import('@/pages/admin/UsersPage.vue'),
-      meta: { requiresAuth: true, requiresAdmin: true }
+      // Connecté mais membre d'aucune entreprise (design : on rejoint par invitation).
+      // Layout minimal pour ne pas monter la nav scopée entreprise.
+      path: '/no-entreprise',
+      name: 'no-entreprise',
+      component: () => import('@/pages/NoEntreprisePage.vue'),
+      meta: { requiresAuth: true, layout: 'blank' }
     },
+
+    // Routes entreprise-scoped — préfixées par /:entrepriseSlug
+    {
+      path: '/:entrepriseSlug',
+      meta: { requiresAuth: true, requiresEntreprise: true },
+      children: [
+        {
+          path: 'dashboard',
+          name: 'dashboard',
+          component: () => import('@/pages/DashboardPage.vue')
+        },
+        {
+          path: 'rooms',
+          name: 'rooms',
+          component: () => import('@/pages/room/RoomsPage.vue')
+        },
+        {
+          path: 'room/:id',
+          name: 'room',
+          component: () => import('@/pages/room/RoomPage.vue')
+        },
+        {
+          path: 'calendar',
+          name: 'calendar',
+          component: () => import('@/pages/calendar/CalendarPage.vue')
+        },
+        {
+          path: 'invitation/create',
+          name: 'invitation-create',
+          component: () => import('@/pages/invitation/CreateInvitationPage.vue'),
+          meta: { requiresAdmin: true }
+        },
+        {
+          path: 'profile',
+          name: 'profile',
+          component: () => import('@/pages/account/ProfilePage.vue')
+        },
+        {
+          path: 'admin/users',
+          name: 'admin-users',
+          component: () => import('@/pages/admin/UsersPage.vue'),
+          meta: { requiresAdmin: true }
+        },
+        {
+          path: 'admin/ai-settings',
+          name: 'admin-ai-settings',
+          component: () => import('@/pages/admin/AiSettingsPage.vue'),
+          meta: { requiresAdmin: true }
+        }
+      ]
+    },
+
+    // 404
     {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
@@ -100,24 +125,50 @@ const router = createRouter({
   ]
 })
 
-router.beforeEach((to, _from, next) => {
+router.beforeEach(async (to, _from, next) => {
   const authStore = useAuthStore()
 
-  // Si connecté et qu'on essaie d'aller sur landing ou pages guest → redirect vers rooms
+  // Attendre que le store soit initialisé (fetchUser terminé) avant toute décision
+  await authStore.waitForInit()
+
+  // Connecté → landing ou pages guest → rediriger vers dashboard entreprise
   if (authStore.isAuthenticated && (to.name === 'landing' || to.meta.guest)) {
-    next({ name: 'rooms' })
+    const slug = authStore.getFirstEntrepriseSlug()
+    // Si user chargé avec une entreprise → dashboard, sinon rester sur landing (API peut-être down)
+    if (slug) return next({ name: 'dashboard', params: { entrepriseSlug: slug } })
+    if (authStore.user) return next({ name: 'no-entreprise' }) // connecté sans entreprise → écran dédié
+    return next() // API down mais token valide → landing (pas de déconnexion forcée)
   }
-  // Si non connecté et page protégée → redirect vers landing
-  else if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    next({ name: 'landing' })
+
+  // Non connecté → page protégée → landing
+  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+    return next({ name: 'landing' })
   }
-  // Si pas admin et page admin → redirect vers rooms
-  else if (to.meta.requiresAdmin && authStore.user?.role !== 'admin') {
-    next({ name: 'rooms' })
+
+  // Vérification du slug entreprise pour les routes /:entrepriseSlug/*
+  if (to.params.entrepriseSlug) {
+    // Connecté sans aucune entreprise → écran dédié (évite le crash de la nav scopée)
+    if (authStore.user && authStore.user.entreprises.length === 0) {
+      return next({ name: 'no-entreprise' })
+    }
+    const slug = to.params.entrepriseSlug as string
+    const membership = authStore.user?.entreprises.find(e => e.slug === slug)
+    if (!membership) {
+      return next({ name: 'unauthorized' })
+    }
+    authStore.setCurrentEntreprise(slug)
   }
-  else {
-    next()
+
+  // Vérification du rôle admin (per-enterprise)
+  if (to.meta.requiresAdmin) {
+    const slug = to.params.entrepriseSlug as string
+    const membership = authStore.user?.entreprises.find(e => e.slug === slug)
+    if (membership?.role !== 'admin') {
+      return next({ name: 'rooms', params: { entrepriseSlug: slug } })
+    }
   }
+
+  next()
 })
 
 export default router

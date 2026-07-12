@@ -6,13 +6,13 @@ use App\Dto\Calendar\CalendarEventOutput;
 use App\Dto\Calendar\CreateCalendarEventInput;
 use App\Entity\CalendarEvent;
 use App\Entity\CalendarEventParticipant;
+use App\Entity\Entreprise;
 use App\Entity\Room;
 use App\Entity\User;
 use App\Exception\ErrorMessage;
 use App\Security\RoomAccessChecker;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
-use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class CreateCalendarEventUseCase
@@ -22,15 +22,11 @@ class CreateCalendarEventUseCase
         private RoomAccessChecker $accessChecker
     ) {}
 
-    public function execute(CreateCalendarEventInput $input, User $user): CalendarEventOutput
+    public function execute(CreateCalendarEventInput $input, User $user, Entreprise $entreprise): CalendarEventOutput
     {
-        if (!$user->getEntreprise()) {
-            throw new BadRequestHttpException(ErrorMessage::EVENT_REQUIRES_ENTREPRISE);
-        }
-
         $event = new CalendarEvent();
         $event->setUser($user);
-        $event->setEntreprise($user->getEntreprise());
+        $event->setEntreprise($entreprise);
         $event->setTitle($input->title);
         $event->setDescription($input->description);
         $event->setEventType($input->eventType);
@@ -55,21 +51,19 @@ class CreateCalendarEventUseCase
 
         $this->entityManager->persist($event);
 
-        $this->addParticipants($event, $input->participantIds, $user);
+        $this->addParticipants($event, $input->participantIds, $user, $entreprise);
 
         $this->entityManager->flush();
 
         return CalendarEventOutput::fromEntity($event);
     }
 
-    private function addParticipants(CalendarEvent $event, array $participantIds, User $currentUser): void
+    private function addParticipants(CalendarEvent $event, array $participantIds, User $currentUser, Entreprise $entreprise): void
     {
-        $entreprise = $currentUser->getEntreprise();
-
         foreach ($participantIds as $userId) {
             $participantUser = $this->entityManager->getRepository(User::class)->find($userId);
 
-            if ($participantUser && $participantUser->getEntreprise()?->getId() === $entreprise?->getId()) {
+            if ($participantUser && $participantUser->hasEntreprise($entreprise)) {
                 $participant = new CalendarEventParticipant();
                 $participant->setUser($participantUser);
                 $participant->setStatus(CalendarEventParticipant::STATUS_PENDING);

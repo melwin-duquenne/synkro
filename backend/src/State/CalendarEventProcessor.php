@@ -8,6 +8,7 @@ use ApiPlatform\Metadata\Patch;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\State\ProcessorInterface;
 use App\Entity\User;
+use App\Service\EntrepriseContext;
 use App\UseCase\Calendar\CreateCalendarEventUseCase;
 use App\UseCase\Calendar\DeleteCalendarEventUseCase;
 use App\Exception\ErrorMessage;
@@ -21,6 +22,7 @@ class CalendarEventProcessor implements ProcessorInterface
 {
     public function __construct(
         private Security $security,
+        private EntrepriseContext $entrepriseContext,
         private CreateCalendarEventUseCase $createCalendarEventUseCase,
         private UpdateCalendarEventUseCase $updateCalendarEventUseCase,
         private DeleteCalendarEventUseCase $deleteCalendarEventUseCase
@@ -33,13 +35,15 @@ class CalendarEventProcessor implements ProcessorInterface
             throw new AccessDeniedHttpException(ErrorMessage::AUTH_REQUIRED);
         }
 
+        $entreprise = $this->entrepriseContext->getEntreprise();
+
         try {
             if ($operation instanceof Post) {
-                return $this->createCalendarEventUseCase->execute($data, $user);
+                return $this->createCalendarEventUseCase->execute($data, $user, $entreprise);
             }
 
             if ($operation instanceof Patch) {
-                return $this->updateCalendarEventUseCase->execute($data, $uriVariables['id'], $user);
+                return $this->updateCalendarEventUseCase->execute($data, $uriVariables['id'], $user, $entreprise);
             }
 
             if ($operation instanceof Delete) {

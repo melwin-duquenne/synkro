@@ -6,6 +6,7 @@ use App\Dto\Calendar\CalendarEventOutput;
 use App\Dto\Calendar\UpdateCalendarEventInput;
 use App\Entity\CalendarEvent;
 use App\Entity\CalendarEventParticipant;
+use App\Entity\Entreprise;
 use App\Entity\User;
 use App\Exception\ErrorMessage;
 use Doctrine\ORM\EntityManagerInterface;
@@ -18,7 +19,7 @@ class UpdateCalendarEventUseCase
         private EntityManagerInterface $entityManager
     ) {}
 
-    public function execute(UpdateCalendarEventInput $input, int $id, User $user): CalendarEventOutput
+    public function execute(UpdateCalendarEventInput $input, int $id, User $user, Entreprise $entreprise): CalendarEventOutput
     {
         $event = $this->entityManager->getRepository(CalendarEvent::class)->find($id);
 
@@ -62,7 +63,7 @@ class UpdateCalendarEventUseCase
         }
 
         if ($input->participantIds !== null) {
-            $this->syncParticipants($event, $input->participantIds, $user);
+            $this->syncParticipants($event, $input->participantIds, $user, $entreprise);
         }
 
         $this->entityManager->flush();
@@ -70,9 +71,8 @@ class UpdateCalendarEventUseCase
         return CalendarEventOutput::fromEntity($event);
     }
 
-    private function syncParticipants(CalendarEvent $event, array $participantIds, User $currentUser): void
+    private function syncParticipants(CalendarEvent $event, array $participantIds, User $currentUser, Entreprise $entreprise): void
     {
-        $entreprise = $currentUser->getEntreprise();
         $existingParticipants = $event->getParticipants();
 
         $existingUserIds = [];
@@ -93,7 +93,7 @@ class UpdateCalendarEventUseCase
 
             $participantUser = $this->entityManager->getRepository(User::class)->find($userId);
 
-            if ($participantUser && $participantUser->getEntreprise()?->getId() === $entreprise?->getId()) {
+            if ($participantUser && $participantUser->hasEntreprise($entreprise)) {
                 $participant = new CalendarEventParticipant();
                 $participant->setUser($participantUser);
                 $participant->setStatus(CalendarEventParticipant::STATUS_PENDING);

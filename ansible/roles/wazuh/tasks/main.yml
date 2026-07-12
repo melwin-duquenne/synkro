@@ -1,0 +1,165 @@
+---
+# ===========================================================================
+# Wazuh SIEM — single-node Docker (manager + indexer + dashboard)
+#   + relais mail conteneurisé (Brevo) pour les alertes email (sévérité ≥ 10)
+#   + lecture des logs de l'hôte (nginx, ssh, auditd, fail2ban) montés en RO
+#
+# ⚠️  NON TESTÉ depuis le poste de dev (Windows). À valider sur le VPS :
+#     ansible-playbook site.yml --tags wazuh
+#
+# Pré-requis côté toi :
+#   - DNS : un enregistrement A  wazuh.{{ domain }}  -> IP du VPS
+#   - Brevo : compte gratuit, clé SMTP créée, expéditeur {{ wazuh_email_from }}
+#             validé (sinon Brevo refuse l'envoi)
+#   - .env  : BREVO_SMTP_USER + BREVO_SMTP_KEY renseignés
+# ===========================================================================
+
+- name: Vérifier que les identifiants Brevo sont renseignés
+  assert:
+    that:
+      - brevo_smtp_user | length > 0
+      - brevo_smtp_password | length > 0
+    fail_msg: "BREVO_SMTP_USER et BREVO_SMTP_KEY doivent être définis dans .env"
+  when: wazuh_email_enabled
+
+# OpenSearch (indexer) refuse de démarrer sans ce réglage kernel
+- name: Régler vm.max_map_count pour l'indexer
+  sysctl:
+    name: vm.max_map_count
+    value: '262144'
+    state: present
+    reload: yes
+
+# Clone UNE SEULE FOIS : les tâches suivantes modifient les fichiers du repo
+# (manager.conf, override, certs générés) → au 2ᵉ run, git verrait des
+# "local modifications" et échouerait. update:no = ne rien repuller si le repo
+# existe déjà (version pinnée, on ne met jamais à jour en place de toute façon).
+- name: Cloner wazuh-docker (version pinnée, clone unique)
+  git:
+    repo: https://github.com/wazuh/wazuh-docker.git
+    dest: "{{ wazuh_dir }}"
+    version: "v{{ wazuh_version }}"
+    single_branch: yes
+    depth: 1
+    force: no
+    update: no
+
+# Génère les certificats TLS internes du cluster (indexer/manager/dashboard).
+# One-shot : ne tourne qu'à la première installation.
+- name: Générer les certificats internes du cluster
+  command:
+    cmd: docker compose -f generate-indexer-certs.yml run --rm generator
+    chdir: "{{ wazuh_dir }}/single-node"
+    creates: "{{ wazuh_dir }}/single-node/config/wazuh_indexer_ssl_certs/root-ca.pem"
+
+# Surcharge : bind tous les ports sur 127.0.0.1 (IMPORTANT — Docker contourne ufw,
+# sans ça l'indexer/manager seraient exposés publiquement), heap indexer bridé,
+# et ajoute le conteneur mail-relay (Brevo) sur le réseau du SIEM.
+- name: Déposer le docker-compose.override.yml
+  template:
+    src: docker-compose.override.yml.j2
+    dest: "{{ wazuh_dir }}/single-node/docker-compose.override.yml"
+    mode: '0640'
+
+# ─── Config du manager : logs de l'hôte + email ───────────────────────────
+- name: Lecture des logs de l'hôte (montés en RO via l'override)
+  blockinfile:
+    path: "{{ wazuh_dir }}/single-node/config/wazuh_cluster/wazuh_manager.conf"
+    marker: "  <!-- {mark} ANSIBLE : logs hôte -->"
+    insertbefore: "</ossec_config>"
+    block: |
+      <localfile><log_format>syslog</log_format><location>/var/log/nginx/access.log</location></localfile>
+      <localfile><log_format>syslog</log_format><location>/var/log/nginx/error.log</location></localfile>
+      <localfile><log_format>syslog</log_format><location>/var/log/auth.log</location></localfile>
+      <localfile><log_format>syslog</log_format><location>/var/log/fail2ban.log</location></localfile>
+      <localfile><log_format>audit</log_format><location>/var/log/audit/audit.log</location></localfile>
+  notify: Redémarrer le manager Wazuh
+
+# Nettoyage des blocs empilés par l'ancienne version du rôle (blockinfile +
+# insertafter) : sans ça, un re-provision laisse des réglages email en double.
+- name: Email — retirer l'ancien bloc 'email global' empilé (legacy)
+  blockinfile:
+    path: "{{ wazuh_dir }}/single-node/config/wazuh_cluster/wazuh_manager.conf"
+    marker: "    <!-- {mark} ANSIBLE : email global -->"
+    state: absent
+  notify: Redémarrer le manager Wazuh
+
+- name: Email — retirer l'ancien bloc 'seuil email' empilé (legacy)
+  blockinfile:
+    path: "{{ wazuh_dir }}/single-node/config/wazuh_cluster/wazuh_manager.conf"
+    marker: "    <!-- {mark} ANSIBLE : seuil email -->"
+    state: absent
+  notify: Redémarrer le manager Wazuh
+
+# ⚠️ Le wazuh_manager.conf du dépôt wazuh-docker contient DÉJÀ un bloc email
+# d'exemple (email_notification=no, smtp.example.wazuh.com…). On REMPLACE ces
+# valeurs en place — surtout pas un blockinfile qui empilerait un 2ᵉ bloc :
+# le <email_notification>no</email_notification> d'origine resterait et
+# wazuh-maild ne démarrerait pas (aucune alerte envoyée). Valeurs stock stables
+# car version Wazuh pinnée ({{ wazuh_version }}).
+- name: Email — activer/désactiver les notifications selon wazuh_email_enabled
+  replace:
+    path: "{{ wazuh_dir }}/single-node/config/wazuh_cluster/wazuh_manager.conf"
+    regexp: '<email_notification>(yes|no)</email_notification>'
+    replace: "<email_notification>{{ 'yes' if wazuh_email_enabled else 'no' }}</email_notification>"
+  notify: Redémarrer le manager Wazuh
+
+- name: Email — serveur SMTP = mail-relay
+  replace:
+    path: "{{ wazuh_dir }}/single-node/config/wazuh_cluster/wazuh_manager.conf"
+    regexp: '<smtp_server>smtp\.example\.wazuh\.com</smtp_server>'
+    replace: '<smtp_server>mail-relay</smtp_server>'
+  notify: Redémarrer le manager Wazuh
+
+- name: Email — expéditeur
+  replace:
+    path: "{{ wazuh_dir }}/single-node/config/wazuh_cluster/wazuh_manager.conf"
+    regexp: '<email_from>wazuh@example\.wazuh\.com</email_from>'
+    replace: '<email_from>{{ wazuh_email_from }}</email_from>'
+  notify: Redémarrer le manager Wazuh
+
+- name: Email — destinataire
+  replace:
+    path: "{{ wazuh_dir }}/single-node/config/wazuh_cluster/wazuh_manager.conf"
+    regexp: '<email_to>recipient@example\.wazuh\.com</email_to>'
+    replace: '<email_to>{{ wazuh_email_to }}</email_to>'
+  notify: Redémarrer le manager Wazuh
+
+- name: Email — débit max/heure
+  replace:
+    path: "{{ wazuh_dir }}/single-node/config/wazuh_cluster/wazuh_manager.conf"
+    regexp: '<email_maxperhour>\d+</email_maxperhour>'
+    replace: '<email_maxperhour>{{ wazuh_email_maxperhour }}</email_maxperhour>'
+  notify: Redémarrer le manager Wazuh
+
+- name: Email — seuil d'alerte (remplace le niveau d'origine dans <alerts>)
+  replace:
+    path: "{{ wazuh_dir }}/single-node/config/wazuh_cluster/wazuh_manager.conf"
+    regexp: '<email_alert_level>\d+</email_alert_level>'
+    replace: '<email_alert_level>{{ wazuh_email_alert_level }}</email_alert_level>'
+  notify: Redémarrer le manager Wazuh
+
+# ─── Alertes via webhook Slack/Discord (canal principal) ──────────────────
+# Wazuh envoie les alertes de niveau ≥ wazuh_slack_alert_level vers le webhook.
+# Discord fonctionne via son endpoint compatible Slack (URL se terminant par /slack).
+- name: Alertes webhook Slack/Discord — intégration
+  blockinfile:
+    path: "{{ wazuh_dir }}/single-node/config/wazuh_cluster/wazuh_manager.conf"
+    marker: "  <!-- {mark} ANSIBLE : webhook slack/discord -->"
+    insertbefore: "</ossec_config>"
+    block: |
+      <integration>
+        <name>slack</name>
+        <hook_url>{{ wazuh_slack_hook_url }}</hook_url>
+        <level>{{ wazuh_slack_alert_level }}</level>
+        <alert_format>json</alert_format>
+      </integration>
+  when: wazuh_slack_hook_url | length > 0
+  notify: Redémarrer le manager Wazuh
+
+- name: Démarrer / mettre à jour la stack Wazuh
+  command:
+    cmd: docker compose up -d
+    chdir: "{{ wazuh_dir }}/single-node"
+  register: wazuh_up
+  changed_when: "'Started' in wazuh_up.stderr or 'Created' in wazuh_up.stderr or 'Recreate' in wazuh_up.stderr"

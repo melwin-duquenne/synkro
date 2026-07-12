@@ -40,6 +40,7 @@ describe('useAuthStore — login', () => {
   it('sets error and returns false on failed login', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
+      headers: { get: () => 'application/json' },
       json: async () => ({ message: 'Invalid credentials' }),
     })
 
@@ -55,6 +56,7 @@ describe('useAuthStore — login', () => {
   it('sets generic error message when API response has no message', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
+      headers: { get: () => 'application/json' },
       json: async () => ({}),
     })
 
@@ -68,6 +70,7 @@ describe('useAuthStore — login', () => {
   it('resets loading to false after login attempt', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
+      headers: { get: () => 'application/json' },
       json: async () => ({ message: 'fail' }),
     })
 

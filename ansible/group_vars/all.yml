@@ -1,0 +1,99 @@
+---
+# ===========================================================================
+# Variables globales — toutes les valeurs sensibles viennent du .env local
+# (lu via lookup), jamais en dur. Aucun doublon avec les secrets GitHub.
+# ===========================================================================
+
+# Application
+backup_dir: /opt/synkro-backups
+domain: synkro.ovh
+admin_email: "admin@{{ domain }}"
+sysadmin_user: sysadmin
+
+# ─── Environnement de déploiement (prod par défaut ; staging via -e) ──────
+deploy_env: prod
+env_config:
+  prod:
+    app_dir: /opt/synkro
+    compose_src: docker-compose.prod.yml
+    project: synkro
+    port_frontend: 8080
+  staging:
+    app_dir: /opt/synkro-staging
+    compose_src: docker-compose.staging.yml
+    project: synkro-staging
+    port_frontend: 8081
+
+app_dir: "{{ env_config[deploy_env].app_dir }}"
+compose_src: "{{ env_config[deploy_env].compose_src }}"
+compose_project: "{{ env_config[deploy_env].project }}"
+compose_file: "{{ app_dir }}/{{ compose_src }}"
+compose_cmd: "docker compose -p {{ compose_project }} --env-file {{ app_dir }}/.env -f {{ compose_file }}"
+
+# ─── Vhost staging dev.synkro.ovh (toujours défini, indépendant de deploy_env) ──
+staging_domain: "dev.{{ domain }}"
+staging_port_frontend: 8081
+staging_port_websocket: 3002
+dev_modsec_engine: DetectionOnly   # passer à "On" pour le volet WAF du pentest
+
+# SSH — change le port 22 -> 2222
+# Pour fermer le 22 après vérification : ansible-playbook ... -e ssh_close_old_port=true
+ssh_port: 2222
+ssh_close_old_port: false
+
+# Lecture BRUTE du .env local (pas de ConfigParser). Le lookup 'ini' interprétait
+# les '%' des valeurs (ConfigParser → InterpolationSyntaxError, ex. passphrase JWT
+# contenant un '%') et cassait sur un environnement neuf (staging) où la clé JWT
+# n'existe pas encore et où la passphrase est donc réellement évaluée. La regex ne
+# fait aucune interprétation : pour toute valeur sans '%' elle renvoie l'identique.
+_env_raw: "{{ lookup('ansible.builtin.file', playbook_dir ~ '/../.env', errors='ignore') | default('', true) }}"
+
+# Monitoring (lu depuis .env — ajoute MONITORING_HTPASSWD_PASSWORD à .env.prod)
+monitoring_user: admin
+monitoring_password: "{{ (_env_raw | regex_findall('(?m)^MONITORING_HTPASSWD_PASSWORD=(.*)$') + ['changeme']) | first }}"
+
+# JWT passphrase — lue depuis le .env
+jwt_passphrase: "{{ (_env_raw | regex_findall('(?m)^JWT_PASSPHRASE=(.*)$') + ['']) | first }}"
+
+# Fail2ban — durées
+fail2ban_default_bantime: 1h
+fail2ban_default_findtime: 10m
+fail2ban_default_maxretry: 5
+fail2ban_ssh_bantime: 24h
+fail2ban_ssh_maxretry: 3
+
+# Ports applicatifs (en localhost via Nginx host)
+port_frontend: "{{ env_config[deploy_env].port_frontend }}"
+port_websocket: 3001
+port_kuma: 3100
+port_netdata: 9100
+port_wazuh: 8443
+
+# ─── Wazuh SIEM ─────────────────────────────────────────────────────────
+wazuh_version: "4.9.2"
+wazuh_dir: /opt/wazuh-docker
+wazuh_indexer_heap: 2g
+# Email d'alerte. ENVOI via Brevo (domaine synkro.ovh authentifié dans Brevo via
+# DKIM/SPF DNS — n'exige aucune boîte mail OVH). RÉCEPTION sur la boîte Proton
+# (seule boîte réellement consultable). from ne marche qu'une fois le domaine
+# authentifié dans Brevo ; sinon repasser temporairement à admin.synkro@proton.me.
+wazuh_email_from: "alertes@{{ domain }}"
+wazuh_email_to: "admin.synkro@proton.me"
+wazuh_email_alert_level: 10        # 10 = on n'alerte que sur du sérieux
+wazuh_email_maxperhour: 12
+# Relais SMTP Brevo (identifiants lus depuis .env — jamais en dur)
+brevo_smtp_host: smtp-relay.brevo.com
+brevo_smtp_port: 587
+brevo_smtp_user: "{{ (_env_raw | regex_findall('(?m)^BREVO_SMTP_USER=(.*)$') + ['']) | first }}"
+brevo_smtp_password: "{{ (_env_raw | regex_findall('(?m)^BREVO_SMTP_KEY=(.*)$') + ['']) | first }}"
+
+# ─── Alertes Wazuh via webhook Slack/Discord (remplace l'email) ──────────
+# Canal principal des alertes. Hook lu depuis .env (jamais en dur).
+# Discord : crée un webhook dans le salon puis AJOUTE "/slack" à la fin de l'URL
+#           (ex: https://discord.com/api/webhooks/ID/TOKEN/slack).
+# Slack   : "Incoming Webhook" → colle l'URL telle quelle.
+wazuh_slack_hook_url: "{{ (_env_raw | regex_findall('(?m)^WAZUH_SLACK_HOOK_URL=(.*)$') + ['']) | first }}"
+wazuh_slack_alert_level: 7         # 7 = alertes régulières pour la démo (≥10 = sérieux uniquement ; 5 = encore plus)
+
+# Email désactivé : on utilise le webhook. Repasse à true + renseigne Brevo pour réactiver.
+wazuh_email_enabled: false

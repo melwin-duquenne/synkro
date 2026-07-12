@@ -1,0 +1,45 @@
+# {{ ansible_managed }}
+# Surcharge Ansible du wazuh-docker single-node :
+#  - tous les ports liés à 127.0.0.1 (Docker contourne ufw → sinon exposés au net)
+#  - heap JVM de l'indexer bridé ({{ wazuh_indexer_heap }})
+#  - logs de l'hôte montés en lecture seule dans le manager
+#  - conteneur mail-relay : relaie les alertes vers Brevo (SASL + STARTTLS)
+
+services:
+  wazuh.indexer:
+    environment:
+      - "OPENSEARCH_JAVA_OPTS=-Xms{{ wazuh_indexer_heap }} -Xmx{{ wazuh_indexer_heap }}"
+    ports: !override
+      - "127.0.0.1:9200:9200"
+
+  wazuh.manager:
+    depends_on:
+      - mail-relay
+    volumes:
+      - /var/log/nginx:/var/log/nginx:ro
+      - /var/log/auth.log:/var/log/auth.log:ro
+      - /var/log/fail2ban.log:/var/log/fail2ban.log:ro
+      - /var/log/audit:/var/log/audit:ro
+    ports: !override
+      - "127.0.0.1:1514:1514"
+      - "127.0.0.1:1515:1515"
+      - "127.0.0.1:514:514/udp"
+      - "127.0.0.1:55000:55000"
+
+  wazuh.dashboard:
+    ports: !override
+      - "127.0.0.1:{{ port_wazuh }}:5601"
+
+  # Relais SMTP conteneurisé : Wazuh envoie à mail-relay:25, qui relaie vers Brevo.
+  mail-relay:
+    image: boky/postfix:latest
+    container_name: synkro_wazuh_mailrelay
+    restart: always
+    hostname: "{{ domain }}"
+    environment:
+      - "RELAYHOST=[{{ brevo_smtp_host }}]:{{ brevo_smtp_port }}"
+      - "RELAYHOST_USERNAME={{ brevo_smtp_user }}"
+      - "RELAYHOST_PASSWORD={{ brevo_smtp_password }}"
+      - "ALLOWED_SENDER_DOMAINS={{ wazuh_email_from.split('@')[1] }}"
+    networks:
+      - default

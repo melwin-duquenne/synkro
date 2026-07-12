@@ -1,0 +1,5 @@
+---
+- name: Redémarrer le manager Wazuh
+  command:
+    cmd: docker compose restart wazuh.manager
+    chdir: "{{ wazuh_dir }}/single-node"

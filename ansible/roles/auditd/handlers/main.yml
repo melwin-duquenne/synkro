@@ -1,0 +1,9 @@
+---
+- name: Redémarrer auditd
+  # auditd refuse SIGHUP — on utilise service.
+  # failed_when: false → si le kernel est encore en mode immutable (-e 2 d'un run
+  # précédent, avant reboot), le rechargement échoue : on ne casse pas le run pour
+  # autant, la conf mutable (-e 1) s'appliquera au prochain reboot.
+  shell: service auditd restart
+  changed_when: true
+  failed_when: false

@@ -1,0 +1,5 @@
+---
+- name: Recharger Nginx
+  # Valide la config AVANT toute action. Si nginx est arrêté (ex. coupé par le
+  # postinst d'un paquet), on le redémarre — mais jamais avec une config invalide.
+  shell: nginx -t && (systemctl reload nginx || systemctl start nginx)

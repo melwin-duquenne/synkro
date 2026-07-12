@@ -1,0 +1,73 @@
+# {{ ansible_managed }}
+
+# Redirection HTTP → HTTPS
+server {
+    listen 80;
+    listen [::]:80;
+    server_name {{ staging_domain }};
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# Vhost staging HTTPS (protégé par Basic-auth)
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl;
+    server_name {{ staging_domain }};
+
+    ssl_certificate     /etc/letsencrypt/live/{{ domain }}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{{ domain }}/privkey.pem;
+    ssl_trusted_certificate /etc/letsencrypt/live/{{ domain }}/chain.pem;
+
+    include snippets/tls-strong.conf;
+    include snippets/security-headers.conf;
+
+    # WAF hérité du global (http{}), forcé en {{ dev_modsec_engine }} sur ce vhost
+    # pour ne pas bloquer le code non stabilisé de develop (cf. wazuh-dashboard-modsec).
+    modsecurity_rules 'SecRuleEngine {{ dev_modsec_engine }}';
+
+    # Basic-auth (réutilise le htpasswd monitoring). Challenge ACME exclu.
+    auth_basic "Synkro staging";
+    auth_basic_user_file /etc/nginx/.htpasswd_monitoring;
+
+    location /.well-known/acme-challenge/ {
+        auth_basic off;
+        root /var/www/certbot;
+    }
+
+    limit_conn conn_per_ip 30;
+
+    # ─── Frontend Vue (staging) ──────────────────────────────────────────
+    location / {
+        proxy_pass http://127.0.0.1:{{ staging_port_frontend }};
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+
+    # ─── WebSocket Yjs (staging) ─────────────────────────────────────────
+    location /ws {
+        access_log /var/log/nginx/synkro-dev-ws.access.log ws_noquery;
+        proxy_pass http://127.0.0.1:{{ staging_port_websocket }};
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade           $http_upgrade;
+        proxy_set_header Connection        $connection_upgrade;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_read_timeout 86400;
+    }
+
+    location ~ /\.(env|git|htaccess|htpasswd|svn|hg|DS_Store) {
+        deny all;
+        return 404;
+    }
+}

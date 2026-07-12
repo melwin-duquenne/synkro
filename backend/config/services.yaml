@@ -18,8 +18,6 @@ services:
     # this creates a service per class whose id is the fully-qualified class name
     App\:
         resource: '../src/'
-        exclude:
-            - '../src/DataFixtures/'
 
     App\State\AvatarProcessor:
         arguments:
@@ -36,6 +34,25 @@ services:
     App\Service\MailerService:
         arguments:
             $frontendUrl: '%env(APP_FRONTEND_URL)%'
+            $fromAddress: '%env(MAILER_FROM)%'
+
+    App\Ai\Provider\MistralProvider:
+        tags: ['ai.provider']
+
+    App\Ai\AiService:
+        arguments:
+            $providers: !tagged_iterator ai.provider
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
+
+# DoctrineFixturesBundle est require-dev et seulement enregistré dans bundles.php
+# pour dev/test ; le Dockerfile prod supprime src/DataFixtures/. On scope donc
+# l'enregistrement des fixtures aux environnements où le dossier et le bundle existent.
+when@dev: &fixtures_services
+    services:
+        App\DataFixtures\:
+            resource: '../src/DataFixtures/'
+            tags: ['doctrine.fixture.orm']
+
+when@test: *fixtures_services

@@ -1,0 +1,128 @@
+---
+# Installation Nginx + config globale durcie + dhparam + headers + rate limiting
+
+- name: Installer Nginx + outils
+  apt:
+    name:
+      - nginx
+      - apache2-utils
+    state: present
+
+- name: Supprimer la config par défaut
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/nginx/sites-enabled/default
+
+- name: Créer le webroot Certbot
+  file:
+    path: /var/www/certbot
+    state: directory
+    mode: '0755'
+
+- name: Vérifier si dhparam existe
+  stat:
+    path: /etc/nginx/dhparam.pem
+  register: dhparam_stat
+
+- name: Générer dhparam 2048 (rapide, une seule fois ; 2048 = minimum NIST, ECDHE prioritaire)
+  shell: openssl dhparam -out /etc/nginx/dhparam.pem 2048
+  args:
+    creates: /etc/nginx/dhparam.pem
+  async: 900
+  poll: 30
+
+# Ancienne conf (nom security.conf) d'une version précédente du rôle : elle
+# redéfinit les mêmes limit_req_zone que 00-security.conf → nginx -t échoue
+# ("already bound"). On la retire avant d'écrire la version actuelle.
+- name: Retirer l'ancienne conf de sécurité en doublon
+  file:
+    path: /etc/nginx/conf.d/security.conf
+    state: absent
+
+- name: Conf Nginx — sécurité globale (rate limit, body size, timeouts, tokens)
+  copy:
+    dest: /etc/nginx/conf.d/00-security.conf
+    mode: '0644'
+    content: |
+      # ─── Rate limit zones ────────────────────────────────────────────
+      limit_req_zone $binary_remote_addr zone=api_login:10m rate=5r/m;
+      limit_req_zone $binary_remote_addr zone=api_register:10m rate=3r/m;
+      limit_req_zone $binary_remote_addr zone=api_general:10m rate=30r/s;
+      limit_conn_zone $binary_remote_addr zone=conn_per_ip:10m;
+
+      # ─── Limites requêtes ────────────────────────────────────────────
+      client_max_body_size 50m;
+      client_body_buffer_size 128k;
+      client_header_buffer_size 1k;
+      large_client_header_buffers 4 8k;
+      client_body_timeout 12s;
+      client_header_timeout 12s;
+      keepalive_timeout 15s;
+      send_timeout 10s;
+
+      # ─── Proxy timeouts ──────────────────────────────────────────────
+      proxy_connect_timeout 10s;
+      proxy_read_timeout 30s;
+      proxy_send_timeout 30s;
+
+      # ─── Masquer la version ──────────────────────────────────────────
+      server_tokens off;
+
+      # ─── Map upgrade WebSocket ───────────────────────────────────────
+      map $http_upgrade $connection_upgrade {
+          default upgrade;
+          ''      close;
+      }
+
+      # ─── Log WebSocket sans query string (masque le ?token=) ─────────
+      log_format ws_noquery '$remote_addr - $remote_user [$time_local] '
+                            '"$request_method $uri $server_protocol" '
+                            '$status $body_bytes_sent "$http_referer" "$http_user_agent"';
+
+  notify: Recharger Nginx
+
+- name: Conf Nginx — security headers (snippet réutilisable)
+  copy:
+    dest: /etc/nginx/snippets/security-headers.conf
+    mode: '0644'
+    content: |
+      # Security headers (à inclure dans chaque server { } TLS)
+      add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+      add_header X-Frame-Options DENY always;
+      add_header X-Content-Type-Options nosniff always;
+      add_header X-XSS-Protection "1; mode=block" always;
+      add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+      add_header Permissions-Policy "camera=(self), microphone=(self), display-capture=(self), geolocation=(), interest-cohort=()" always;
+      add_header Cross-Origin-Opener-Policy "same-origin" always;
+      add_header Cross-Origin-Resource-Policy "same-origin" always;
+      add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' wss: https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
+  notify: Recharger Nginx
+
+- name: Conf Nginx — TLS strong (snippet)
+  copy:
+    dest: /etc/nginx/snippets/tls-strong.conf
+    mode: '0644'
+    content: |
+      # TLS hardening (à inclure dans chaque server { } TLS)
+      ssl_protocols TLSv1.2 TLSv1.3;
+      ssl_ciphers 'ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256';
+      ssl_prefer_server_ciphers on;
+      ssl_session_cache shared:SSL:10m;
+      ssl_session_timeout 1d;
+      ssl_session_tickets off;
+      ssl_dhparam /etc/nginx/dhparam.pem;
+
+      # OCSP stapling
+      ssl_stapling on;
+      ssl_stapling_verify on;
+      resolver 1.1.1.1 8.8.8.8 valid=300s;
+      resolver_timeout 5s;
+  notify: Recharger Nginx
+
+- name: Activer Nginx
+  systemd:
+    name: nginx
+    state: started
+    enabled: yes

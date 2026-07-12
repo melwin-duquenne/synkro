@@ -11,7 +11,8 @@ class MailerService
 {
     public function __construct(
         private MailerInterface $mailer,
-        private string $frontendUrl
+        private string $frontendUrl,
+        private string $fromAddress
     ) {}
 
     public function sendResetPasswordEmail(User $user, string $token): void
@@ -19,7 +20,7 @@ class MailerService
         $resetLink = $this->frontendUrl . '/reset-password?token=' . $token;
 
         $email = (new Email())
-            ->from('noreply@synkro.app')
+            ->from($this->fromAddress)
             ->to($user->getEmail())
             ->subject('Synkro — Réinitialisation de votre mot de passe')
             ->text(
@@ -40,7 +41,7 @@ class MailerService
         $confirmLink = $this->frontendUrl . '/confirm-delete?token=' . $token;
 
         $email = (new Email())
-            ->from('noreply@synkro.app')
+            ->from($this->fromAddress)
             ->to($user->getEmail())
             ->subject('Synkro — Confirmation de suppression de compte')
             ->text(
@@ -62,7 +63,7 @@ class MailerService
         $entrepriseName = $invitation->getEntreprise()->getName();
 
         $email = (new Email())
-            ->from('noreply@synkro.app')
+            ->from($this->fromAddress)
             ->to($invitation->getEmail())
             ->subject("Synkro — Invitation a rejoindre {$entrepriseName}")
             ->text(

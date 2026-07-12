@@ -1,0 +1,63 @@
+---
+# SSH durci avec bascule sécurisée du port 22 -> 2222
+# Idempotent : on garde 22 + 2222 actifs ensemble. Pour fermer 22 :
+#   ansible-playbook site.yml -e ssh_close_old_port=true
+
+- name: Détecter le port SSH actuellement actif (depuis sshd_config)
+  shell: |
+    set -o pipefail
+    (grep -E '^Port ' /etc/ssh/sshd_config | awk '{print $2}') || echo 22
+  args:
+    executable: /bin/bash
+  register: current_ssh_ports
+  changed_when: false
+
+- name: Déployer le sshd_config durci
+  template:
+    src: sshd_config.j2
+    dest: /etc/ssh/sshd_config
+    mode: '0600'
+    owner: root
+    group: root
+    validate: '/usr/sbin/sshd -t -f %s'
+  notify: Redémarrer SSH
+
+- name: S'assurer qu'aucun fichier sshd_config.d ne ré-active les options désactivées
+  copy:
+    dest: /etc/ssh/sshd_config.d/00-synkro-overrides.conf
+    content: |
+      # Synkro overrides (ce fichier est inclus en premier alphabétiquement)
+      PasswordAuthentication no
+      PermitRootLogin no
+      KbdInteractiveAuthentication no
+      ChallengeResponseAuthentication no
+    mode: '0600'
+  notify: Redémarrer SSH
+
+- name: Désactiver la socket-activation SSH (Ubuntu 24.04 ignore les directives Port sinon)
+  # Tant que ssh.socket est actif, c'est lui qui décide du port (22) et les lignes
+  # "Port 2222" de sshd_config sont ignorées → 2222 n'écoute jamais → lockout au
+  # moment de fermer le 22. On repasse au ssh.service classique qui lit sshd_config.
+  systemd:
+    name: ssh.socket
+    state: stopped
+    enabled: no
+    daemon_reload: yes
+  failed_when: false   # la socket peut ne pas exister selon l'image
+  notify: Redémarrer SSH
+
+- name: S'assurer que ssh.service est activé (écoute 22 + {{ ssh_port }} via sshd_config)
+  systemd:
+    name: ssh.service
+    enabled: yes
+
+- name: Forcer l'application immédiate (handler flush avant tests réseau)
+  meta: flush_handlers
+
+- name: AVERTISSEMENT — vérifier l'accès SSH sur le nouveau port avant de fermer le 22
+  debug:
+    msg:
+      - "SSH écoute désormais sur les ports 22 ET {{ ssh_port }}."
+      - "Teste la connexion : ssh -p {{ ssh_port }} {{ sysadmin_user }}@{{ ansible_host }}"
+      - "Quand c'est OK : ansible-playbook site.yml -e ssh_close_old_port=true"
+  when: not ssh_close_old_port | bool
