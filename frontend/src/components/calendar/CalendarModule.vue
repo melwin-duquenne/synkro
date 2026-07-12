@@ -240,19 +240,18 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="calendar-module h-full flex flex-col bg-[#0a1628] p-4">
+  <div class="calendar-module h-full flex flex-col p-4">
     <!-- Header -->
-    <div class="flex flex-col gap-4 mb-4">
-      <div class="flex items-center justify-between">
+    <div class="calendar-header-wrap flex flex-col gap-4 mb-4">
+      <div
+        class="calendar-toolbar section-panel flex items-center justify-between"
+      >
         <div class="flex items-center gap-4">
-          <h3 class="font-semibold text-lg capitalize text-[#e0e0e0]">
+          <h3 class="font-semibold text-lg capitalize calendar-title">
             {{ monthName }}
           </h3>
           <div class="flex gap-1">
-            <button
-              class="px-3 py-2 rounded-lg bg-[#1a3a52] text-[#b0b0b0] hover:text-[#e0e0e0] hover:bg-[#2a4a62] transition-colors"
-              @click="previousMonth"
-            >
+            <button class="calendar-nav-btn" @click="previousMonth">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 class="h-4 w-4"
@@ -268,16 +267,10 @@ onMounted(() => {
                 />
               </svg>
             </button>
-            <button
-              class="px-3 py-2 rounded-lg bg-[#1a3a52] text-[#b0b0b0] hover:text-[#e0e0e0] hover:bg-[#2a4a62] transition-colors"
-              @click="goToToday"
-            >
+            <button class="calendar-nav-btn" @click="goToToday">
               Aujourd'hui
             </button>
-            <button
-              class="px-3 py-2 rounded-lg bg-[#1a3a52] text-[#b0b0b0] hover:text-[#e0e0e0] hover:bg-[#2a4a62] transition-colors"
-              @click="nextMonth"
-            >
+            <button class="calendar-nav-btn" @click="nextMonth">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 class="h-4 w-4"
@@ -297,21 +290,15 @@ onMounted(() => {
         </div>
 
         <!-- Filters -->
-        <div class="flex items-center gap-2">
-          <select
-            v-model="filterUserId"
-            class="px-3 py-2 rounded-lg bg-[#1a3a52] border border-gray-600 text-[#e0e0e0] focus:outline-none focus:border-[#4115df] focus:ring-1 focus:ring-[#4115df]/30"
-          >
+        <div class="calendar-filters flex items-center gap-2">
+          <select v-model="filterUserId" class="calendar-filter-select">
             <option :value="null">Tous les utilisateurs</option>
             <option v-for="user in eventUsers" :key="user.id" :value="user.id">
               {{ user.displayName }}
             </option>
           </select>
 
-          <select
-            v-model="filterEventType"
-            class="px-3 py-2 rounded-lg bg-[#1a3a52] border border-gray-600 text-[#e0e0e0] focus:outline-none focus:border-[#4115df] focus:ring-1 focus:ring-[#4115df]/30"
-          >
+          <select v-model="filterEventType" class="calendar-filter-select">
             <option :value="null">Tous les types</option>
             <option
               v-for="type in eventTypes"
@@ -323,7 +310,7 @@ onMounted(() => {
           </select>
 
           <button
-            class="px-4 py-2 rounded-lg bg-[#4115df] text-white hover:bg-[#6a3fe8] transition-colors"
+            class="calendar-primary-btn"
             @click="openCreateModal(new Date())"
           >
             + Nouvel événement
@@ -334,9 +321,9 @@ onMounted(() => {
       <!-- Workload Indicator for Selected User -->
       <div
         v-if="filterUserId && (dailyWorkload || weeklyWorkload)"
-        class="flex items-center gap-3 px-2"
+        class="calendar-workload-strip section-panel flex items-center gap-3 px-2"
       >
-        <span class="text-sm font-medium text-[#b0b0b0]"
+        <span class="text-sm font-medium text-[#9fb5cc]"
           >Charge de travail</span
         >
 
@@ -345,12 +332,12 @@ onMounted(() => {
           v-if="dailyWorkload"
           @click="showWorkloadDetail = true"
           :class="[
-            'px-3 py-1 rounded-lg font-semibold text-white gap-2 cursor-pointer transition-all inline-flex items-center',
+            'calendar-workload-badge',
             dailyWorkload.status === 'normal'
-              ? 'bg-[#6fdd9f]'
+              ? 'calendar-workload-badge--normal'
               : dailyWorkload.status === 'busy'
-                ? 'bg-yellow-500'
-                : 'bg-red-500',
+                ? 'calendar-workload-badge--busy'
+                : 'calendar-workload-badge--overload',
           ]"
           :title="`Aujourd'hui: ${dailyWorkload.totalHours}h / ${dailyWorkload.standardHours}h`"
         >
@@ -372,12 +359,12 @@ onMounted(() => {
           v-if="weeklyWorkload"
           @click="showWorkloadDetail = true"
           :class="[
-            'px-3 py-1 rounded-lg font-semibold text-white gap-2 cursor-pointer transition-all inline-flex items-center',
+            'calendar-workload-badge',
             weeklyWorkload.status === 'normal'
-              ? 'bg-[#6fdd9f]'
+              ? 'calendar-workload-badge--normal'
               : weeklyWorkload.status === 'busy'
-                ? 'bg-yellow-500'
-                : 'bg-red-500',
+                ? 'calendar-workload-badge--busy'
+                : 'calendar-workload-badge--overload',
           ]"
           :title="`Cette semaine: ${weeklyWorkload.totalHours}h / ${weeklyWorkload.standardHours}h`"
         >
@@ -407,14 +394,14 @@ onMounted(() => {
     <!-- Calendar Grid -->
     <div
       v-else
-      class="flex-1 flex flex-col bg-[#0a1628] rounded-lg overflow-hidden border border-gray-600"
+      class="calendar-grid-shell flex-1 flex flex-col overflow-hidden"
     >
       <!-- Day headers -->
-      <div class="grid grid-cols-7 border-b border-gray-600 bg-[#1a3a52]">
+      <div class="calendar-weekdays grid grid-cols-7">
         <div
           v-for="day in ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']"
           :key="day"
-          class="p-2 text-center text-sm font-medium text-[#b0b0b0]"
+          class="calendar-weekday p-2 text-center text-sm font-medium"
         >
           {{ day }}
         </div>
@@ -425,20 +412,21 @@ onMounted(() => {
         <div
           v-for="(day, index) in daysInMonth"
           :key="index"
-          class="border-b border-r border-gray-600 p-1 min-h-[80px] cursor-pointer hover:bg-[#1a3a52] transition-colors"
+          class="calendar-day-cell border-b border-r p-1 min-h-20 cursor-pointer transition-colors"
           :class="{
-            'bg-[#050d1a]': !day.isCurrentMonth,
-            'bg-[#4115df]/10 border-[#4115df]/30': isToday(day.date),
+            'calendar-day-cell--outside': !day.isCurrentMonth,
+            'calendar-day-cell--today': isToday(day.date),
           }"
           @click="openCreateModal(day.date)"
         >
           <!-- Day number -->
           <div
-            class="text-sm font-medium mb-1"
+            class="calendar-day-number text-sm font-medium mb-1"
             :class="{
-              'text-[#666666]': !day.isCurrentMonth,
-              'text-[#4115df] font-bold': isToday(day.date),
-              'text-[#e0e0e0]': day.isCurrentMonth && !isToday(day.date),
+              'calendar-day-number--outside': !day.isCurrentMonth,
+              'calendar-day-number--today font-bold': isToday(day.date),
+              'calendar-day-number--default':
+                day.isCurrentMonth && !isToday(day.date),
             }"
           >
             {{ day.date.getDate() }}
@@ -449,7 +437,7 @@ onMounted(() => {
             <div
               v-for="event in getEventsForDate(day.date).slice(0, 3)"
               :key="event.id"
-              class="text-xs px-1 py-0.5 rounded truncate text-white cursor-pointer hover:opacity-80"
+              class="calendar-event-chip text-xs px-1 py-0.5 rounded truncate text-white cursor-pointer"
               :class="getEventColor(event)"
               :style="event.color ? { backgroundColor: event.color } : {}"
               @click.stop="openEditModal(event)"
@@ -458,7 +446,7 @@ onMounted(() => {
             </div>
             <div
               v-if="getEventsForDate(day.date).length > 3"
-              class="text-xs text-[#4115df] pl-1 cursor-pointer hover:underline"
+              class="calendar-more-events text-xs pl-1 cursor-pointer hover:underline"
               @click.stop="openDayDetail(day.date)"
             >
               +{{ getEventsForDate(day.date).length - 3 }} autres
@@ -469,40 +457,42 @@ onMounted(() => {
     </div>
 
     <!-- Legend -->
-    <div class="flex items-center gap-4 mt-4 text-sm">
-      <span class="font-medium text-[#e0e0e0]">Types :</span>
+    <div
+      class="calendar-legend section-panel flex items-center gap-4 mt-4 text-sm"
+    >
+      <span class="font-medium text-[#dce8f5]">Types :</span>
       <div
         v-for="type in eventTypes"
         :key="type.value"
         class="flex items-center gap-1"
       >
         <div :class="[type.color, 'w-3 h-3 rounded']"></div>
-        <span class="text-[#b0b0b0]">{{ type.label }}</span>
+        <span class="text-[#9fb5cc]">{{ type.label }}</span>
       </div>
     </div>
 
     <!-- Day Detail Modal -->
     <dialog class="modal" :class="{ 'modal-open': showDayDetail }">
-      <div class="modal-box max-w-lg bg-[#0a1628] border border-gray-600">
-        <h3 class="font-bold text-lg mb-4 capitalize text-[#e0e0e0]">
+      <div class="modal-box max-w-lg calendar-modal-box">
+        <h3 class="font-bold text-lg mb-4 capitalize text-[#e7f0fa]">
           {{ dayDetailDate ? formatDayDetailDate(dayDetailDate) : "" }}
         </h3>
         <div class="space-y-2">
           <div
             v-for="event in dayDetailEvents"
             :key="event.id"
-            class="flex items-center gap-3 p-3 rounded-lg hover:bg-[#1a3a52] cursor-pointer transition-colors"
+            class="calendar-day-detail-item flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors"
             @click="openEditModal(event)"
           >
             <div
-              class="w-3 h-3 rounded-full flex-shrink-0"
+              class="w-3 h-3 rounded-full shrink-0"
               :class="getEventColor(event)"
             ></div>
             <div class="flex-1 min-w-0">
-              <div class="font-medium text-sm truncate text-[#e0e0e0]">
+              <div class="font-medium text-sm truncate text-[#e7f0fa]">
                 {{ event.title }}
               </div>
-              <div class="text-xs text-[#b0b0b0]">
+              <div class="text-xs text-[#9fb5cc]">
                 <template v-if="event.isAllDay">Journée entière</template>
                 <template v-else
                   >{{ formatTime(event.startDate) }} -
@@ -510,20 +500,20 @@ onMounted(() => {
                 >
               </div>
             </div>
-            <div class="text-xs text-[#999999]">
+            <div class="text-xs text-[#8aa1ba]">
               {{ event.user?.displayName }}
             </div>
           </div>
           <div
             v-if="dayDetailEvents.length === 0"
-            class="text-center text-[#b0b0b0] py-4"
+            class="text-center text-[#9fb5cc] py-4"
           >
             Aucun événement
           </div>
         </div>
         <div class="modal-action">
           <button
-            class="px-4 py-2 rounded-lg bg-[#4115df] text-white hover:bg-[#6a3fe8] transition-colors"
+            class="calendar-primary-btn"
             @click="
               showDayDetail = false;
               openCreateModal(dayDetailDate!);
@@ -531,10 +521,7 @@ onMounted(() => {
           >
             + Nouvel événement
           </button>
-          <button
-            class="px-4 py-2 rounded-lg bg-[#1a3a52] text-[#b0b0b0] hover:bg-[#2a4a62] transition-colors"
-            @click="showDayDetail = false"
-          >
+          <button class="calendar-soft-btn" @click="showDayDetail = false">
             Fermer
           </button>
         </div>
@@ -561,15 +548,15 @@ onMounted(() => {
 
     <!-- Workload Detail Modal -->
     <dialog :class="['modal', { 'modal-open': showWorkloadDetail }]">
-      <div class="modal-box max-w-4xl bg-[#0a1628] border border-gray-600">
-        <h3 class="font-bold text-lg mb-4 text-[#e0e0e0]">
+      <div class="modal-box max-w-4xl calendar-modal-box">
+        <h3 class="font-bold text-lg mb-4 text-[#e7f0fa]">
           📊 Charge de travail détaillée
         </h3>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <!-- Daily Workload -->
           <div>
-            <h4 class="font-semibold mb-2 text-[#e0e0e0]">Aujourd'hui</h4>
+            <h4 class="font-semibold mb-2 text-[#e7f0fa]">Aujourd'hui</h4>
             <WorkloadIndicator
               v-if="dailyWorkload"
               :workload="dailyWorkload"
@@ -580,7 +567,7 @@ onMounted(() => {
 
           <!-- Weekly Workload -->
           <div>
-            <h4 class="font-semibold mb-2 text-[#e0e0e0]">Cette semaine</h4>
+            <h4 class="font-semibold mb-2 text-[#e7f0fa]">Cette semaine</h4>
             <WorkloadIndicator
               v-if="weeklyWorkload"
               :workload="weeklyWorkload"
@@ -591,10 +578,7 @@ onMounted(() => {
         </div>
 
         <div class="modal-action">
-          <button
-            class="px-4 py-2 rounded-lg bg-[#1a3a52] text-[#b0b0b0] hover:bg-[#2a4a62] transition-colors"
-            @click="showWorkloadDetail = false"
-          >
+          <button class="calendar-soft-btn" @click="showWorkloadDetail = false">
             Fermer
           </button>
         </div>
@@ -609,5 +593,231 @@ onMounted(() => {
 <style scoped>
 .calendar-module {
   min-height: 500px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(91, 163, 232, 0.14),
+      transparent 34%
+    ),
+    linear-gradient(180deg, rgba(8, 18, 31, 0.98), rgba(5, 10, 20, 0.98));
+  box-shadow:
+    0 22px 44px rgba(0, 0, 0, 0.28),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+
+.section-panel {
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 14px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.045),
+    rgba(255, 255, 255, 0.02)
+  );
+  backdrop-filter: blur(10px);
+}
+
+.calendar-toolbar {
+  padding: 0.75rem 0.85rem;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.calendar-title {
+  color: #e7f0fa;
+}
+
+.calendar-nav-btn,
+.calendar-soft-btn,
+.calendar-filter-select,
+.calendar-primary-btn {
+  border-radius: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.calendar-nav-btn,
+.calendar-soft-btn {
+  padding: 0.5rem 0.75rem;
+  color: #a9c0d8;
+  background: rgba(15, 31, 53, 0.75);
+}
+
+.calendar-nav-btn:hover,
+.calendar-soft-btn:hover {
+  color: #edf6ff;
+  background: rgba(91, 163, 232, 0.12);
+  border-color: rgba(91, 163, 232, 0.38);
+}
+
+.calendar-filter-select {
+  min-height: 2.2rem;
+  padding: 0.45rem 0.7rem;
+  background: rgba(14, 29, 49, 0.85);
+  color: #e7f0fa;
+}
+
+.calendar-filter-select:focus {
+  outline: none;
+  border-color: rgba(91, 163, 232, 0.6);
+  box-shadow: 0 0 0 3px rgba(91, 163, 232, 0.2);
+}
+
+.calendar-primary-btn {
+  padding: 0.5rem 0.9rem;
+  border-color: rgba(91, 163, 232, 0.45);
+  background: linear-gradient(135deg, #377dbd, #59a0e5);
+  color: #fff;
+}
+
+.calendar-primary-btn:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.calendar-workload-strip {
+  padding: 0.42rem 0.6rem;
+}
+
+.calendar-workload-badge {
+  padding: 0.3rem 0.6rem;
+  border-radius: 10px;
+  font-weight: 600;
+  color: #fff;
+  gap: 0.45rem;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    filter 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+}
+
+.calendar-workload-badge:hover {
+  transform: translateY(-1px);
+}
+
+.calendar-workload-badge--normal {
+  background: #2d9d6f;
+}
+
+.calendar-workload-badge--busy {
+  background: #d39b34;
+}
+
+.calendar-workload-badge--overload {
+  background: #c65566;
+}
+
+.calendar-grid-shell {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  background: rgba(9, 19, 34, 0.66);
+}
+
+.calendar-weekdays {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(24, 50, 80, 0.5);
+}
+
+.calendar-weekday {
+  color: #95abc2;
+}
+
+.calendar-day-cell {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(7, 15, 27, 0.35);
+}
+
+.calendar-day-cell:hover {
+  background: rgba(27, 54, 83, 0.55);
+}
+
+.calendar-day-cell--outside {
+  background: rgba(5, 12, 22, 0.75);
+}
+
+.calendar-day-cell--today {
+  background: rgba(91, 163, 232, 0.12);
+  border-color: rgba(91, 163, 232, 0.35);
+}
+
+.calendar-day-number--outside {
+  color: #62768d;
+}
+
+.calendar-day-number--today {
+  color: #9dd1ff;
+}
+
+.calendar-day-number--default {
+  color: #e7f0fa;
+}
+
+.calendar-event-chip {
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+.calendar-event-chip:hover {
+  opacity: 0.88;
+  transform: translateX(1px);
+}
+
+.calendar-more-events {
+  color: #9dd1ff;
+}
+
+.calendar-legend {
+  padding: 0.6rem 0.8rem;
+  flex-wrap: wrap;
+}
+
+.calendar-modal-box {
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(
+    180deg,
+    rgba(9, 19, 34, 0.96),
+    rgba(7, 13, 24, 0.96)
+  );
+  box-shadow: 0 24px 46px rgba(0, 0, 0, 0.32);
+}
+
+.calendar-day-detail-item:hover {
+  background: rgba(91, 163, 232, 0.12);
+}
+
+@media (max-width: 768px) {
+  .calendar-module {
+    padding: 0.75rem;
+    border-radius: 16px;
+  }
+
+  .calendar-toolbar {
+    padding: 0.6rem;
+  }
+
+  .calendar-filters {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .calendar-filter-select,
+  .calendar-primary-btn {
+    flex: 1 1 100%;
+  }
+
+  .calendar-workload-strip {
+    flex-wrap: wrap;
+    gap: 0.45rem;
+  }
 }
 </style>
