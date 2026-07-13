@@ -118,7 +118,7 @@ function formatDate(dateString: string): string {
         </span>
 
         <!-- Date -->
-        <span class="text-xs text-[#7a92ab]">{{
+        <span class="text-xs text-[#7a92ab]" data-testid="task-date">{{
           formatDate(task.createdAt)
         }}</span>
       </div>
