@@ -12,8 +12,8 @@ interface TeamMember {
 
 const team = ref<TeamMember[]>([
   {
-    name: "John Doe",
-    role: "CEO & Co-fondateur",
+    name: "Kyllian Diochon",
+    role: "Chef de projet",
     avatar:
       "M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z",
     linkedin: "https://linkedin.com",
@@ -21,25 +21,25 @@ const team = ref<TeamMember[]>([
     twitter: "https://twitter.com",
   },
   {
-    name: "Jane Smith",
-    role: "CTO & Co-fondatrice",
+    name: "Calista Martinez",
+    role: "Ingénieure DevOps",
     avatar: "M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4",
     linkedin: "https://linkedin.com",
     github: "https://github.com",
   },
   {
-    name: "Alex Brown",
-    role: "Lead Designer",
+    name: "Melwin Dusquenne",
+    role: "Lead Developer",
     avatar:
       "M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01",
     linkedin: "https://linkedin.com",
     twitter: "https://twitter.com",
   },
   {
-    name: "Sarah Wilson",
-    role: "Product Manager",
+    name: "Jérémy Gross",
+    role: "UI/UX Designer",
     avatar:
-      "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z",
+      "M12 3a9 9 0 100 18h1a3 3 0 000-6h-1a1 1 0 110-2h1a3 3 0 003-3 1 1 0 011-1h1a3 3 0 000-6h-5zM7.5 10.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 6a1.5 1.5 0 110-3 1.5 1.5 0 010 3z",
     linkedin: "https://linkedin.com",
   },
 ]);

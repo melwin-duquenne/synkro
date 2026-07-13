@@ -12,6 +12,7 @@ const props = defineProps<{
 interface TaskUser {
   id: number;
   displayName: string;
+  avatarUrl?: string | null;
 }
 
 interface KanbanColumn {
@@ -40,6 +41,7 @@ interface Task {
 const authStore = useAuthStore();
 const tasks = ref<Task[]>([]);
 const columns = ref<KanbanColumn[]>([]);
+const members = ref<TaskUser[]>([]);
 const loading = ref(true);
 const error = ref<string | null>(null);
 
@@ -153,6 +155,22 @@ async function fetchColumns() {
       data["hydra:member"] || data.member || (Array.isArray(data) ? data : []);
   } catch (e) {
     console.error("Impossible de charger les colonnes :", e);
+  }
+}
+
+async function fetchMembers() {
+  try {
+    const response = await fetch("/api/entreprise/members", {
+      headers: authStore.getAuthHeaders(),
+    });
+
+    if (!response.ok) throw new Error("Impossible de charger les membres");
+
+    const data = await response.json();
+    members.value =
+      data["hydra:member"] || data.member || (Array.isArray(data) ? data : []);
+  } catch (e) {
+    console.error("Impossible de charger les membres :", e);
   }
 }
 
@@ -441,29 +459,49 @@ function clearFilters() {
 
 onMounted(async () => {
   await fetchColumns();
+  await fetchMembers();
   await fetchTasks();
 });
 </script>
 
 <template>
-  <div class="tasks-module h-full flex flex-col bg-[#0a1628] p-4">
+  <div class="tasks-module h-full flex flex-col p-4">
     <!-- Header -->
-    <div class="flex items-center justify-between mb-4">
-      <h3 class="font-semibold text-lg text-[#e0e0e0]">Tâches</h3>
+    <div
+      class="section-panel flex items-center justify-between mb-4 p-3 sm:p-4 gap-3 flex-wrap"
+    >
+      <div class="flex items-center gap-3">
+        <div class="tasks-icon-wrap" aria-hidden="true">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-5 w-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+            />
+          </svg>
+        </div>
+        <div>
+          <h3 class="font-semibold text-lg text-[#e7f0fa]">Tâches</h3>
+          <p class="text-xs text-[#8ea4be]">Tableau kanban de la room</p>
+        </div>
+      </div>
       <div class="flex items-center gap-2">
         <button
-          class="px-3 py-2 rounded-lg transition-colors"
-          :class="
-            showArchived
-              ? 'bg-yellow-500 text-white hover:bg-yellow-600'
-              : 'bg-[#1a3a52] text-[#b0b0b0] hover:bg-[#2a4a62] hover:text-[#e0e0e0]'
-          "
+          class="btn-soft"
+          :class="showArchived ? 'btn-warning-alt' : ''"
           @click="showArchived = !showArchived"
         >
           {{ showArchived ? "Voir actives" : "Voir archivées" }}
         </button>
         <button
-          class="px-4 py-2 rounded-lg bg-[#4115df] text-white hover:bg-[#6a3fe8] transition-colors"
+          class="btn-primary-custom"
           @click="columns[0] && openCreateModal(columns[0].id)"
         >
           + Nouvelle tâche
@@ -474,7 +512,7 @@ onMounted(async () => {
     <!-- Column delete error -->
     <div
       v-if="deleteColumnError"
-      class="bg-red-500/20 border border-red-500 text-red-400 px-3 py-2 rounded-lg mb-2 flex items-center justify-between"
+      class="bg-red-500/20 border border-red-500/70 text-red-300 px-3 py-2 rounded-xl mb-2 flex items-center justify-between"
     >
       <span>{{ deleteColumnError }}</span>
       <button
@@ -486,26 +524,38 @@ onMounted(async () => {
     </div>
 
     <!-- Filters bar -->
-    <div class="flex flex-wrap items-center gap-2 mb-4">
-      <input
-        v-model="filterSearch"
-        type="text"
-        class="px-3 py-2 rounded-lg bg-[#1a3a52] border border-gray-600 text-[#e0e0e0] placeholder-[#b0b0b0] focus:outline-none focus:border-[#4115df] focus:ring-1 focus:ring-[#4115df]/30 w-48"
-        placeholder="Rechercher..."
-      />
-      <select
-        v-model="filterAssignedTo"
-        class="px-3 py-2 rounded-lg bg-[#1a3a52] border border-gray-600 text-[#e0e0e0] focus:outline-none focus:border-[#4115df] focus:ring-1 focus:ring-[#4115df]/30"
-      >
+    <div
+      class="section-panel flex flex-wrap items-center gap-2 mb-4 p-2 sm:p-3"
+    >
+      <label class="filter-search-shell">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-4 w-4 text-[#8ea4be]"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M21 21l-4.35-4.35m1.35-5.65a7 7 0 11-14 0 7 7 0 0114 0z"
+          />
+        </svg>
+        <input
+          v-model="filterSearch"
+          type="text"
+          class="filter-input"
+          placeholder="Rechercher..."
+        />
+      </label>
+      <select v-model="filterAssignedTo" class="filter-select">
         <option :value="null">Tous les membres</option>
         <option v-for="user in assignedUsers" :key="user.id" :value="user.id">
           {{ user.displayName }}
         </option>
       </select>
-      <select
-        v-model="filterEstimation"
-        class="px-3 py-2 rounded-lg bg-[#1a3a52] border border-gray-600 text-[#e0e0e0] focus:outline-none focus:border-[#4115df] focus:ring-1 focus:ring-[#4115df]/30"
-      >
+      <select v-model="filterEstimation" class="filter-select">
         <option :value="null">Toutes estimations</option>
         <option :value="1">1 pt</option>
         <option :value="2">2 pts</option>
@@ -519,7 +569,7 @@ onMounted(async () => {
         v-if="
           filterSearch || filterAssignedTo !== null || filterEstimation !== null
         "
-        class="px-3 py-2 rounded-lg bg-[#1a3a52] text-[#b0b0b0] hover:bg-[#2a4a62] hover:text-[#e0e0e0] transition-colors"
+        class="btn-soft"
         @click="clearFilters"
       >
         Effacer filtres
@@ -545,61 +595,50 @@ onMounted(async () => {
     </div>
 
     <!-- Kanban Board -->
-    <div v-else class="flex-1 flex gap-4 overflow-x-auto bg-[#0a1628]">
+    <div v-else class="kanban-board flex-1 flex gap-4 overflow-x-auto">
       <div
         v-for="(column, colIdx) in columns"
         :key="column.id"
-        class="kanban-column flex-1 min-w-[280px] max-w-[350px] flex flex-col"
+        class="kanban-column flex-1 min-w-70 max-w-87.5 flex flex-col"
+        :class="{
+          'kanban-column--drop-target': dragOverColumnIndex === colIdx,
+        }"
         :draggable="!showArchived"
         @dragstart="!showArchived ? onColumnDragStart(column) : undefined"
         @dragover="!showArchived ? onColumnDragOver($event, colIdx) : undefined"
         @drop="!showArchived ? onColumnDrop($event, colIdx) : undefined"
         @dragend="!showArchived ? onColumnDragEnd() : undefined"
-        :style="
-          dragOverColumnIndex === colIdx ? 'background: rgba(0,0,0,0.04);' : ''
-        "
       >
         <!-- Column Header -->
-        <div class="flex items-center gap-2 mb-3 group">
+        <div class="column-header flex items-center gap-2 mb-3 group">
           <template v-if="editingColumnId === column.id">
             <input
               v-model="editColumnName"
               type="text"
-              class="flex-1 px-2 py-1 rounded bg-[#0a1628] border border-gray-600 text-[#e0e0e0] focus:outline-none focus:border-[#4115df]"
+              class="column-edit-input flex-1"
               @keyup.enter="saveColumnEdit(column)"
             />
-            <select
-              v-model="editColumnColor"
-              class="px-2 py-1 rounded bg-[#0a1628] border border-gray-600 text-[#e0e0e0] focus:outline-none focus:border-[#4115df]"
-            >
+            <select v-model="editColumnColor" class="column-edit-input">
               <option v-for="c in colorOptions" :key="c.value" :value="c.value">
                 {{ c.label }}
               </option>
             </select>
-            <button
-              class="px-2 py-1 rounded bg-[#6fdd9f] text-black hover:bg-[#5ac88f] transition-colors"
-              @click="saveColumnEdit(column)"
-            >
+            <button class="mini-btn-ok" @click="saveColumnEdit(column)">
               OK
             </button>
-            <button
-              class="px-2 py-1 rounded bg-[#1a3a52] text-[#b0b0b0] hover:bg-[#2a4a62] transition-colors"
-              @click="editingColumnId = null"
-            >
+            <button class="mini-btn-soft" @click="editingColumnId = null">
               X
             </button>
           </template>
           <template v-else>
             <div :class="[column.color, 'w-3 h-3 rounded-full']"></div>
-            <h4 class="font-medium text-[#e0e0e0]">{{ column.name }}</h4>
-            <span
-              class="px-2 py-1 rounded-lg bg-[#2a4a62] text-[#b0b0b0] text-xs"
-            >
+            <h4 class="font-medium text-[#e7f0fa]">{{ column.name }}</h4>
+            <span class="count-pill">
               {{ tasksByColumn[column.id]?.length || 0 }}
             </span>
             <div class="ml-auto hidden group-hover:flex items-center gap-1">
               <button
-                class="px-2 py-1 rounded bg-[#1a3a52] text-[#b0b0b0] hover:bg-[#2a4a62] hover:text-[#e0e0e0] transition-colors"
+                class="mini-btn-soft"
                 @click="startEditColumn(column)"
                 title="Modifier"
               >
@@ -619,7 +658,7 @@ onMounted(async () => {
                 </svg>
               </button>
               <button
-                class="px-2 py-1 rounded bg-[#1a3a52] text-red-400 hover:bg-red-500 hover:text-white transition-colors"
+                class="mini-btn-danger"
                 @click="deleteColumn(column)"
                 title="Supprimer"
               >
@@ -644,7 +683,7 @@ onMounted(async () => {
 
         <!-- Column Content -->
         <div
-          class="flex-1 bg-[#1a3a52] rounded-lg p-2 space-y-2 overflow-y-auto min-h-[200px]"
+          class="column-body flex-1 rounded-lg p-2 space-y-2 overflow-y-auto min-h-52"
           @dragover="onDragOver"
           @drop="onDrop($event, column.id)"
         >
@@ -652,6 +691,7 @@ onMounted(async () => {
             v-for="task in tasksByColumn[column.id]"
             :key="task.id"
             :task="task"
+            :members="members"
             :draggable="!showArchived"
             @click="openDetailModal(task)"
             @dragstart="onDragStart(task)"
@@ -661,7 +701,7 @@ onMounted(async () => {
           <!-- Empty state -->
           <div
             v-if="!tasksByColumn[column.id]?.length"
-            class="text-center py-8 text-[#b0b0b0]"
+            class="empty-column-state"
           >
             <p class="text-sm">Aucune tâche</p>
           </div>
@@ -669,7 +709,7 @@ onMounted(async () => {
           <!-- Add task button -->
           <button
             v-if="!showArchived"
-            class="w-full px-3 py-2 rounded-lg text-[#b0b0b0] hover:text-[#e0e0e0] hover:bg-[#2a4a62] transition-colors text-left opacity-50 hover:opacity-100"
+            class="add-task-btn w-full px-3 py-2 rounded-lg text-left"
             @click="openCreateModal(column.id)"
           >
             + Ajouter une tâche
@@ -678,44 +718,35 @@ onMounted(async () => {
       </div>
 
       <!-- Add column button -->
-      <div
-        class="min-w-[280px] max-w-[350px] flex flex-col"
-        v-if="!showArchived"
-      >
-        <div v-if="showAddColumn" class="bg-[#1a3a52] rounded-lg p-4 space-y-2">
+      <div class="min-w-70 max-w-87.5 flex flex-col" v-if="!showArchived">
+        <div
+          v-if="showAddColumn"
+          class="section-panel rounded-lg p-4 space-y-2"
+        >
           <input
             v-model="newColumnName"
             type="text"
-            class="w-full px-3 py-2 rounded-lg bg-[#0a1628] border border-gray-600 text-[#e0e0e0] placeholder-[#b0b0b0] focus:outline-none focus:border-[#4115df] focus:ring-1 focus:ring-[#4115df]/30"
+            class="column-edit-input w-full"
             placeholder="Nom de la colonne"
             @keyup.enter="addColumn"
           />
-          <select
-            v-model="newColumnColor"
-            class="w-full px-3 py-2 rounded-lg bg-[#0a1628] border border-gray-600 text-[#e0e0e0] focus:outline-none focus:border-[#4115df] focus:ring-1 focus:ring-[#4115df]/30"
-          >
+          <select v-model="newColumnColor" class="column-edit-input w-full">
             <option v-for="c in colorOptions" :key="c.value" :value="c.value">
               {{ c.label }}
             </option>
           </select>
           <div class="flex gap-2">
-            <button
-              class="flex-1 px-3 py-2 rounded-lg bg-[#4115df] text-white hover:bg-[#6a3fe8] transition-colors"
-              @click="addColumn"
-            >
+            <button class="btn-primary-custom flex-1" @click="addColumn">
               Ajouter
             </button>
-            <button
-              class="px-3 py-2 rounded-lg bg-[#1a3a52] text-[#b0b0b0] hover:bg-[#2a4a62] transition-colors"
-              @click="showAddColumn = false"
-            >
+            <button class="btn-soft px-3 py-2" @click="showAddColumn = false">
               Annuler
             </button>
           </div>
         </div>
         <button
           v-else
-          class="h-12 px-4 py-2 border-2 border-dashed border-gray-600 hover:border-gray-400 rounded-lg text-[#b0b0b0] hover:text-[#e0e0e0] transition-colors w-full"
+          class="add-column-btn h-12 px-4 py-2 border-2 border-dashed rounded-lg w-full"
           @click="showAddColumn = true"
         >
           + Ajouter une colonne
@@ -739,6 +770,7 @@ onMounted(async () => {
       :room-id="props.roomId"
       :task="selectedTask"
       :columns="columns"
+      :members="members"
       @close="
         showDetailModal = false;
         selectedTask = null;
@@ -751,10 +783,270 @@ onMounted(async () => {
 
 <style scoped>
 .kanban-column {
-  transition: background-color 0.2s;
+  transition: transform 0.2s ease;
+}
+
+.kanban-column--drop-target {
+  transform: translateY(-2px);
 }
 
 .tasks-module {
   min-height: 400px;
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(91, 163, 232, 0.15),
+      transparent 33%
+    ),
+    linear-gradient(180deg, rgba(8, 18, 31, 0.98), rgba(5, 10, 20, 0.98));
+  box-shadow:
+    0 22px 44px rgba(0, 0, 0, 0.28),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+
+.section-panel {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.045),
+    rgba(255, 255, 255, 0.02)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 14px;
+  backdrop-filter: blur(10px);
+}
+
+.kanban-board {
+  padding-bottom: 0.25rem;
+}
+
+.kanban-board::-webkit-scrollbar,
+.column-body::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.kanban-board::-webkit-scrollbar-track,
+.column-body::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 999px;
+}
+
+.kanban-board::-webkit-scrollbar-thumb,
+.column-body::-webkit-scrollbar-thumb {
+  background: rgba(91, 163, 232, 0.35);
+  border-radius: 999px;
+}
+
+.kanban-board::-webkit-scrollbar-thumb:hover,
+.column-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(91, 163, 232, 0.5);
+}
+
+.tasks-icon-wrap {
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 0.8rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #8bc2ef;
+  border: 1px solid rgba(91, 163, 232, 0.4);
+  background: rgba(64, 142, 214, 0.2);
+}
+
+.filter-search-shell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 320px;
+  padding: 0.5rem 0.75rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(14, 29, 49, 0.85);
+}
+
+.filter-input {
+  width: 100%;
+  background: transparent;
+  color: #e7f0fa;
+  outline: none;
+  font-size: 0.9rem;
+}
+
+.filter-input::placeholder {
+  color: #8ea4be;
+}
+
+.filter-search-shell:focus-within,
+.filter-select:focus,
+.column-edit-input:focus {
+  border-color: rgba(91, 163, 232, 0.65);
+  box-shadow: 0 0 0 3px rgba(91, 163, 232, 0.2);
+}
+
+.filter-select,
+.column-edit-input {
+  padding: 0.5rem 0.75rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(14, 29, 49, 0.85);
+  color: #e7f0fa;
+  outline: none;
+}
+
+.btn-soft {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(15, 31, 53, 0.78);
+  color: #c8d8ea;
+  padding: 0.55rem 0.95rem;
+  transition: 0.2s ease;
+}
+
+.btn-soft:hover {
+  color: #e7f0fa;
+  border-color: rgba(91, 163, 232, 0.45);
+}
+
+.btn-primary-custom {
+  border-radius: 10px;
+  border: 1px solid rgba(91, 163, 232, 0.45);
+  background: linear-gradient(135deg, #377dbd, #59a0e5);
+  color: #ffffff;
+  padding: 0.55rem 0.95rem;
+  transition:
+    transform 0.2s ease,
+    filter 0.2s ease;
+}
+
+.btn-primary-custom:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.btn-warning-alt {
+  background: linear-gradient(135deg, #c98d2d, #e6aa3d);
+  color: #fff;
+  border-color: rgba(255, 198, 96, 0.45);
+}
+
+.column-header {
+  padding: 0.55rem 0.65rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(18, 38, 61, 0.58);
+}
+
+.column-body {
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: linear-gradient(
+    180deg,
+    rgba(19, 40, 64, 0.5),
+    rgba(15, 31, 53, 0.62)
+  );
+  backdrop-filter: blur(6px);
+}
+
+.empty-column-state {
+  text-align: center;
+  padding: 1.7rem 0.4rem;
+  color: #9db3ca;
+  border: 1px dashed rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  background: rgba(12, 26, 44, 0.33);
+}
+
+.count-pill {
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(12, 26, 44, 0.7);
+  color: #a9c0d8;
+  font-size: 0.7rem;
+}
+
+.mini-btn-soft,
+.mini-btn-danger,
+.mini-btn-ok {
+  padding: 0.3rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  transition: 0.2s ease;
+}
+
+.mini-btn-soft {
+  background: rgba(15, 31, 53, 0.78);
+  color: #c8d8ea;
+}
+
+.mini-btn-soft:hover {
+  color: #e7f0fa;
+  border-color: rgba(91, 163, 232, 0.45);
+}
+
+.mini-btn-danger {
+  background: rgba(87, 24, 33, 0.5);
+  color: #ff8f9a;
+}
+
+.mini-btn-danger:hover {
+  background: rgba(214, 62, 82, 0.9);
+  color: #fff;
+}
+
+.mini-btn-ok {
+  background: rgba(36, 113, 86, 0.75);
+  color: #d9ffe8;
+}
+
+.mini-btn-ok:hover {
+  background: rgba(47, 145, 110, 0.95);
+}
+
+.add-task-btn {
+  color: #a9c0d8;
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  background: rgba(12, 26, 44, 0.4);
+  opacity: 0.72;
+  transition: 0.2s ease;
+}
+
+.add-task-btn:hover {
+  opacity: 1;
+  color: #e7f0fa;
+  border-color: rgba(91, 163, 232, 0.6);
+  background: rgba(22, 46, 73, 0.55);
+}
+
+.add-column-btn {
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #9fb5cc;
+  background: rgba(11, 24, 41, 0.4);
+  transition: 0.2s ease;
+}
+
+.add-column-btn:hover {
+  border-color: rgba(91, 163, 232, 0.6);
+  color: #e7f0fa;
+  background: rgba(22, 46, 73, 0.4);
+}
+
+@media (max-width: 768px) {
+  .tasks-module {
+    padding: 0.7rem;
+    border-radius: 16px;
+  }
+
+  .kanban-column {
+    min-width: 18rem;
+  }
+
+  .section-panel {
+    border-radius: 12px;
+  }
 }
 </style>

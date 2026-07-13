@@ -105,24 +105,19 @@ function handleLeave() {
 </script>
 
 <template>
-  <div class="video-module h-full flex flex-col bg-[#0a1628]">
+  <div class="video-module h-full flex flex-col">
     <!-- Pre-call lobby -->
-    <div
-      v-if="callState === 'idle'"
-      class="flex-1 flex flex-col items-center justify-center gap-8 p-8 bg-linear-to-br from-[#0a1628] to-[#0f1f35]"
-    >
+    <div v-if="callState === 'idle'" class="video-lobby">
       <div class="text-center">
-        <h2 class="text-3xl font-bold mb-3 text-[#e7f0fa]">
-          Rejoindre la visioconference
-        </h2>
-        <p class="text-[#8ea4be]">
+        <h2 class="video-lobby__title">Rejoindre la visioconference</h2>
+        <p class="video-lobby__subtitle">
           Verifiez votre camera et microphone avant de rejoindre
         </p>
       </div>
 
       <!-- Preview -->
       <div
-        class="relative w-80 aspect-video bg-[#1a3a52]/60 rounded-2xl overflow-hidden shadow-2xl border border-white/10"
+        class="video-preview-card relative w-80 aspect-video overflow-hidden"
       >
         <video
           ref="localVideoRef"
@@ -133,24 +128,22 @@ function handleLeave() {
         />
         <div
           v-if="!localMedia.videoEnabled"
-          class="absolute inset-0 flex items-center justify-center bg-[#1a3a52]"
+          class="video-preview-card__empty absolute inset-0 flex items-center justify-center"
         >
-          <div
-            class="flex items-center justify-center w-20 h-20 rounded-full bg-[#408ed6]/30 text-[#408ed6] text-2xl font-bold"
-          >
+          <div class="video-avatar-pill">
             {{ authStore.user?.displayName?.charAt(0) }}
           </div>
         </div>
       </div>
 
       <!-- Controls preview -->
-      <div class="flex gap-4">
+      <div class="video-control-row">
         <button
-          class="w-14 h-14 rounded-full flex items-center justify-center transition-all"
+          class="video-circle-btn"
           :class="
             localMedia.audioEnabled
-              ? 'bg-[#408ed6]/20 text-[#408ed6] hover:bg-[#408ed6]/30'
-              : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
+              ? 'video-circle-btn--on'
+              : 'video-circle-btn--off'
           "
           @click="toggleAudio"
           title="Microphone"
@@ -192,11 +185,11 @@ function handleLeave() {
         </button>
 
         <button
-          class="w-14 h-14 rounded-full flex items-center justify-center transition-all"
+          class="video-circle-btn"
           :class="
             localMedia.videoEnabled
-              ? 'bg-[#408ed6]/20 text-[#408ed6] hover:bg-[#408ed6]/30'
-              : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
+              ? 'video-circle-btn--on'
+              : 'video-circle-btn--off'
           "
           @click="toggleVideo"
           title="Camera"
@@ -238,7 +231,7 @@ function handleLeave() {
         </button>
 
         <button
-          class="w-14 h-14 rounded-full flex items-center justify-center bg-[#408ed6]/20 text-[#408ed6] hover:bg-[#408ed6]/30 transition-all"
+          class="video-circle-btn video-circle-btn--on"
           @click="showSettings = true"
           title="Parametres"
         >
@@ -264,10 +257,7 @@ function handleLeave() {
         </button>
       </div>
 
-      <button
-        class="px-8 py-3 rounded-lg bg-[#408ed6] text-white hover:bg-[#5ba3e8] transition-all font-medium flex items-center gap-2 shadow-lg"
-        @click="joinCall"
-      >
+      <button class="video-primary-btn" @click="joinCall">
         <svg
           class="w-5 h-5"
           fill="none"
@@ -290,8 +280,11 @@ function handleLeave() {
     <!-- In-call view -->
     <template v-else-if="callState === 'connected'">
       <!-- Video grid -->
-      <div class="flex-1 p-4 overflow-auto">
-        <div class="grid gap-4 h-full auto-rows-fr" :class="gridClass">
+      <div class="video-stage">
+        <div
+          class="video-grid grid gap-4 h-full auto-rows-fr"
+          :class="gridClass"
+        >
           <!-- Local video -->
           <VideoTile
             :stream="
@@ -321,17 +314,15 @@ function handleLeave() {
       </div>
 
       <!-- Call controls bar -->
-      <div
-        class="bg-[#0f1f35]/80 backdrop-blur-sm p-4 border-t border-white/10"
-      >
-        <div class="flex items-center justify-center gap-3">
+      <div class="video-controls-bar">
+        <div class="video-controls-bar__row">
           <!-- Microphone -->
           <button
-            class="w-12 h-12 rounded-full flex items-center justify-center transition-all"
+            class="video-circle-btn video-circle-btn--sm"
             :class="
               localMedia.audioEnabled
-                ? 'bg-[#408ed6]/20 text-[#408ed6] hover:bg-[#408ed6]/30'
-                : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
+                ? 'video-circle-btn--on'
+                : 'video-circle-btn--off'
             "
             @click="toggleAudio"
             title="Microphone"
@@ -374,11 +365,11 @@ function handleLeave() {
 
           <!-- Camera -->
           <button
-            class="w-12 h-12 rounded-full flex items-center justify-center transition-all"
+            class="video-circle-btn video-circle-btn--sm"
             :class="
               localMedia.videoEnabled
-                ? 'bg-[#408ed6]/20 text-[#408ed6] hover:bg-[#408ed6]/30'
-                : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
+                ? 'video-circle-btn--on'
+                : 'video-circle-btn--off'
             "
             @click="toggleVideo"
             title="Camera"
@@ -421,11 +412,11 @@ function handleLeave() {
 
           <!-- Screen share -->
           <button
-            class="w-12 h-12 rounded-full flex items-center justify-center transition-all"
+            class="video-circle-btn video-circle-btn--sm"
             :class="
               localMedia.screenSharing
-                ? 'bg-[#6fdd9f] text-black hover:bg-[#5ac88f]'
-                : 'bg-[#408ed6]/20 text-[#408ed6] hover:bg-[#408ed6]/30'
+                ? 'video-circle-btn--screen'
+                : 'video-circle-btn--on'
             "
             @click="
               localMedia.screenSharing ? stopScreenShare() : startScreenShare()
@@ -449,7 +440,7 @@ function handleLeave() {
 
           <!-- Settings -->
           <button
-            class="w-12 h-12 rounded-full flex items-center justify-center bg-[#408ed6]/20 text-[#408ed6] hover:bg-[#408ed6]/30 transition-all"
+            class="video-circle-btn video-circle-btn--sm video-circle-btn--on"
             @click="showSettings = true"
             title="Parametres"
           >
@@ -476,7 +467,7 @@ function handleLeave() {
 
           <!-- Leave call -->
           <button
-            class="w-14 h-14 rounded-full flex items-center justify-center bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+            class="video-leave-btn"
             @click="handleLeave"
             title="Quitter l'appel"
           >
@@ -497,7 +488,7 @@ function handleLeave() {
         </div>
 
         <!-- Participant count -->
-        <div class="text-center mt-3 text-sm text-[#8ea4be]">
+        <div class="video-participant-count">
           {{ participantCount }} participant{{
             participantCount > 1 ? "s" : ""
           }}
@@ -506,10 +497,7 @@ function handleLeave() {
     </template>
 
     <!-- Joining state -->
-    <div
-      v-else-if="callState === 'joining'"
-      class="flex-1 flex items-center justify-center"
-    >
+    <div v-else-if="callState === 'joining'" class="video-join-state">
       <div class="text-center">
         <span class="loading loading-spinner loading-lg"></span>
         <p class="mt-4 text-[#e0e0e0]">Connexion en cours...</p>
@@ -517,10 +505,7 @@ function handleLeave() {
     </div>
 
     <!-- Error state -->
-    <div
-      v-else-if="callState === 'error'"
-      class="flex-1 flex flex-col items-center justify-center gap-4"
-    >
+    <div v-else-if="callState === 'error'" class="video-error-state">
       <div class="text-center text-red-400">
         <svg
           class="w-16 h-16 mx-auto mb-4"
@@ -538,30 +523,19 @@ function handleLeave() {
         <p class="text-lg font-medium">Erreur de connexion</p>
         <p class="text-sm">{{ error || "Une erreur est survenue" }}</p>
       </div>
-      <button
-        class="px-6 py-3 rounded-lg bg-[#4115df] text-white hover:bg-[#6a3fe8] transition-colors"
-        @click="joinCall"
-      >
-        Reessayer
-      </button>
+      <button class="video-retry-btn" @click="joinCall">Reessayer</button>
     </div>
 
     <!-- Settings modal -->
     <dialog class="modal" :class="{ 'modal-open': showSettings }">
-      <div
-        class="modal-box bg-[#0f1f35]/80 backdrop-blur-sm border border-white/10 rounded-2xl shadow-2xl"
-      >
-        <h3 class="font-bold text-lg mb-4 text-[#e7f0fa]">
-          Parametres audio/video
-        </h3>
+      <div class="modal-box video-settings-modal">
+        <h3 class="video-settings-modal__title">Parametres audio/video</h3>
 
-        <div class="mb-4">
-          <label class="block text-[#dbe6f2] text-sm font-medium mb-2">
-            Microphone
-          </label>
+        <div class="video-settings-modal__field">
+          <label class="video-settings-modal__label"> Microphone </label>
           <select
             v-model="selectedAudioInput"
-            class="w-full px-3 py-2 rounded-lg bg-[#0a1628]/50 border border-white/10 text-[#e0e0e0] focus:outline-none focus:ring-2 focus:ring-[#408ed6] focus:border-transparent transition-all"
+            class="video-settings-modal__select"
           >
             <option
               v-for="device in audioInputDevices"
@@ -573,13 +547,11 @@ function handleLeave() {
           </select>
         </div>
 
-        <div class="mb-4">
-          <label class="block text-[#dbe6f2] text-sm font-medium mb-2">
-            Camera
-          </label>
+        <div class="video-settings-modal__field">
+          <label class="video-settings-modal__label"> Camera </label>
           <select
             v-model="selectedVideoInput"
-            class="w-full px-3 py-2 rounded-lg bg-[#0a1628]/50 border border-white/10 text-[#e0e0e0] focus:outline-none focus:ring-2 focus:ring-[#408ed6] focus:border-transparent transition-all"
+            class="video-settings-modal__select"
           >
             <option
               v-for="device in videoInputDevices"
@@ -591,9 +563,9 @@ function handleLeave() {
           </select>
         </div>
 
-        <div class="flex gap-2 justify-end">
+        <div class="video-settings-modal__actions">
           <button
-            class="px-4 py-2 rounded-lg bg-[#1a3a52]/60 border border-white/10 text-[#dbe6f2] hover:bg-[#1a3a52] hover:border-[#408ed6]/50 transition-all"
+            class="video-settings-modal__close"
             @click="showSettings = false"
           >
             Fermer
@@ -612,7 +584,338 @@ function handleLeave() {
 </template>
 
 <style scoped>
+.video-module {
+  overflow: hidden;
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(91, 163, 232, 0.14),
+      transparent 34%
+    ),
+    linear-gradient(180deg, rgba(8, 18, 31, 0.98), rgba(5, 10, 20, 0.98));
+  box-shadow:
+    0 22px 44px rgba(0, 0, 0, 0.28),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+
+.video-lobby {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.75rem;
+  padding: 1.6rem;
+}
+
+.video-lobby__title {
+  margin-bottom: 0.5rem;
+  font-size: clamp(1.6rem, 1.8vw, 2rem);
+  font-weight: 700;
+  color: #eaf3fd;
+}
+
+.video-lobby__subtitle {
+  color: #8ea4be;
+  font-size: 0.95rem;
+}
+
+.video-preview-card {
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(26, 58, 82, 0.52);
+  box-shadow:
+    0 24px 40px rgba(0, 0, 0, 0.3),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.video-preview-card__empty {
+  background: linear-gradient(
+    180deg,
+    rgba(8, 18, 31, 0.72),
+    rgba(8, 18, 31, 0.9)
+  );
+}
+
+.video-avatar-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 5rem;
+  height: 5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(91, 163, 232, 0.34);
+  background: rgba(91, 163, 232, 0.2);
+  color: #b4dcff;
+  font-size: 1.45rem;
+  font-weight: 700;
+}
+
+.video-control-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.video-circle-btn {
+  width: 3.4rem;
+  height: 3.4rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.video-circle-btn:hover {
+  transform: translateY(-1px);
+}
+
+.video-circle-btn--sm {
+  width: 3rem;
+  height: 3rem;
+}
+
+.video-circle-btn--on {
+  background: rgba(91, 163, 232, 0.12);
+  border-color: rgba(91, 163, 232, 0.34);
+  color: #9fd0ff;
+}
+
+.video-circle-btn--on:hover {
+  background: rgba(91, 163, 232, 0.2);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+.video-circle-btn--off {
+  background: rgba(248, 113, 113, 0.12);
+  border-color: rgba(248, 113, 113, 0.26);
+  color: #f9a8a8;
+}
+
+.video-circle-btn--off:hover {
+  background: rgba(248, 113, 113, 0.18);
+}
+
+.video-circle-btn--screen {
+  background: rgba(111, 221, 159, 0.24);
+  border-color: rgba(111, 221, 159, 0.45);
+  color: #d8ffe8;
+}
+
+.video-circle-btn--screen:hover {
+  background: rgba(111, 221, 159, 0.32);
+}
+
+.video-primary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.78rem 1.45rem;
+  border-radius: 12px;
+  border: 1px solid rgba(91, 163, 232, 0.4);
+  background: linear-gradient(135deg, rgba(71, 141, 210, 0.96), #5ba3e8);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 14px 28px rgba(8, 19, 32, 0.35);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    filter 0.2s ease;
+}
+
+.video-primary-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+  box-shadow: 0 18px 32px rgba(8, 19, 32, 0.4);
+}
+
+.video-stage {
+  flex: 1;
+  padding: 0.95rem;
+  overflow: auto;
+}
+
+.video-grid {
+  min-height: 100%;
+}
+
+.video-controls-bar {
+  padding: 0.9rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.055),
+    rgba(255, 255, 255, 0.02)
+  );
+  backdrop-filter: blur(10px);
+}
+
+.video-controls-bar__row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.video-leave-btn {
+  width: 3.3rem;
+  height: 3.3rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(248, 113, 113, 0.32);
+  background: rgba(248, 113, 113, 0.15);
+  color: #fca5a5;
+  transition:
+    transform 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.video-leave-btn:hover {
+  transform: translateY(-1px);
+  background: rgba(248, 113, 113, 0.22);
+}
+
+.video-participant-count {
+  margin-top: 0.55rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: #8ea4be;
+}
+
+.video-join-state,
+.video-error-state {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.video-error-state {
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.video-retry-btn {
+  padding: 0.64rem 1.05rem;
+  border-radius: 10px;
+  border: 1px solid rgba(91, 163, 232, 0.34);
+  background: rgba(91, 163, 232, 0.18);
+  color: #e9f5ff;
+  transition: background-color 0.2s ease;
+}
+
+.video-retry-btn:hover {
+  background: rgba(91, 163, 232, 0.28);
+}
+
+.video-settings-modal {
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(
+    180deg,
+    rgba(9, 19, 34, 0.96),
+    rgba(7, 13, 24, 0.96)
+  );
+  box-shadow: 0 24px 46px rgba(0, 0, 0, 0.32);
+}
+
+.video-settings-modal__title {
+  margin-bottom: 0.95rem;
+  color: #e7f0fa;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.video-settings-modal__field {
+  margin-bottom: 0.85rem;
+}
+
+.video-settings-modal__label {
+  display: block;
+  margin-bottom: 0.45rem;
+  color: #dbe6f2;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.video-settings-modal__select {
+  width: 100%;
+  padding: 0.52rem 0.72rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  color: #e0e0e0;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.video-settings-modal__select:focus {
+  outline: none;
+  border-color: rgba(91, 163, 232, 0.55);
+  box-shadow: 0 0 0 3px rgba(91, 163, 232, 0.2);
+}
+
+.video-settings-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.video-settings-modal__close {
+  padding: 0.48rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: #dbe6f2;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.video-settings-modal__close:hover {
+  border-color: rgba(91, 163, 232, 0.45);
+  background: rgba(91, 163, 232, 0.12);
+}
+
 .mirror {
   transform: scaleX(-1);
+}
+
+@media (max-width: 768px) {
+  .video-lobby {
+    padding: 1rem 0.8rem;
+    gap: 1.1rem;
+  }
+
+  .video-preview-card {
+    width: min(100%, 19rem);
+  }
+
+  .video-circle-btn {
+    width: 3rem;
+    height: 3rem;
+  }
+
+  .video-circle-btn--sm,
+  .video-leave-btn {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+
+  .video-stage {
+    padding: 0.65rem;
+  }
 }
 </style>
