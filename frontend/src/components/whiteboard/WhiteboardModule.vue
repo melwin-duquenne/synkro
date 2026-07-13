@@ -332,8 +332,8 @@ function getCanvasPoint(e: MouseEvent | TouchEvent | PointerEvent): Point {
     clientX = touch.clientX;
     clientY = touch.clientY;
   } else {
-    clientX = e.clientX;
-    clientY = e.clientY;
+    clientX = (e as MouseEvent | PointerEvent).clientX;
+    clientY = (e as MouseEvent | PointerEvent).clientY;
   }
 
   return {
