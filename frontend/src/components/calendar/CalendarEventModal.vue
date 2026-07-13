@@ -265,7 +265,7 @@ onMounted(() => {
               type="checkbox"
               class="checkbox checkbox-primary calendar-checkbox"
             />
-            <span class="label-text">Journée entia8re</span>
+            <span class="label-text">Journée entière</span>
           </label>
         </div>
 

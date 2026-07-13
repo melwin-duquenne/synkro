@@ -58,7 +58,7 @@ const editColumnId = ref<number | null>(null);
 const editAssignedToId = ref<number | null>(null);
 const editEstimation = ref<number | null>(null);
 
-const members = ref<TaskUser[]>([]);
+const localMembers = ref<TaskUser[]>([]);
 const loadingMembers = ref(false);
 
 const estimationOptions = [
@@ -80,7 +80,7 @@ async function fetchMembers() {
     });
     if (response.ok) {
       const data = await response.json();
-      members.value =
+      localMembers.value =
         data["hydra:member"] ||
         data.member ||
         (Array.isArray(data) ? data : []);
@@ -107,7 +107,7 @@ watch(
 watch(
   () => props.open,
   (isOpen) => {
-    if (isOpen && members.value.length === 0) {
+    if (isOpen && localMembers.value.length === 0) {
       fetchMembers();
     }
   },
@@ -433,7 +433,7 @@ function handleClose() {
               >
                 <option :value="null">Non assigné</option>
                 <option
-                  v-for="member in members"
+                  v-for="member in localMembers"
                   :key="member.id"
                   :value="member.id"
                 >
