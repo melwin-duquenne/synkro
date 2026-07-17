@@ -151,7 +151,7 @@ describe('TaskCard — date formatting', () => {
       props: { task: makeTask({ createdAt: '2026-03-26T10:00:00' }) },
     })
     // Should display some date text (locale-dependent, just check it's not empty)
-    const dateEl = wrapper.find('.text-xs.text-base-content\\/50')
+    const dateEl = wrapper.find('[data-testid="task-date"]')
     expect(dateEl.text()).toBeTruthy()
   })
 })

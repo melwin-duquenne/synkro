@@ -51,6 +51,12 @@ services:
 # l'enregistrement des fixtures aux environnements où le dossier et le bundle existent.
 when@dev: &fixtures_services
     services:
+        # ce bloc services: n'hérite pas du _defaults du bloc principal : on
+        # redéclare autowire/autoconfigure sinon les fixtures à constructeur
+        # (ex. injection du password hasher) ne sont pas câblées.
+        _defaults:
+            autowire: true
+            autoconfigure: true
         App\DataFixtures\:
             resource: '../src/DataFixtures/'
             tags: ['doctrine.fixture.orm']

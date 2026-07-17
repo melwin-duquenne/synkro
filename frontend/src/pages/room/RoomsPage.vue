@@ -59,12 +59,12 @@ async function handleSetupEntreprise() {
 </script>
 
 <template>
-  <div class="space-y-6 min-h-screen">
-    <div class="dashboard-card page-header p-6">
+  <div class="rooms-page space-y-6 min-h-screen">
+    <div class="rooms-panel page-header p-6">
       <div class="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1
-            class="text-3xl md:text-4xl font-bold text-[#e0e0e0] tracking-tight"
+            class="text-3xl md:text-4xl font-bold text-[#e7f0fa] tracking-tight"
           >
             Rooms
           </h1>
@@ -74,7 +74,7 @@ async function handleSetupEntreprise() {
           </p>
         </div>
         <button
-          class="btn btn-primary"
+          class="rooms-primary-btn"
           @click="showCreateModal = true"
           :disabled="!hasEntreprise"
         >
@@ -102,10 +102,7 @@ async function handleSetupEntreprise() {
     </div>
 
     <!-- No entreprise warning -->
-    <div
-      v-if="!hasEntreprise"
-      class="dashboard-card bg-[#0a1628] border border-[#4115df]/20 rounded-lg p-6"
-    >
+    <div v-if="!hasEntreprise" class="rooms-panel rounded-lg p-6">
       <div class="text-center py-12">
         <h2 class="text-xl font-semibold mb-2 text-[#e0e0e0]">
           Configuration requise
@@ -124,7 +121,7 @@ async function handleSetupEntreprise() {
             @keyup.enter="handleSetupEntreprise"
           />
           <button
-            class="btn btn-primary w-full"
+            class="rooms-primary-btn w-full"
             @click="handleSetupEntreprise"
             :disabled="setupLoading || !entrepriseName.trim()"
           >
@@ -144,17 +141,14 @@ async function handleSetupEntreprise() {
       <span class="loading loading-spinner loading-lg"></span>
     </div>
 
-    <div
-      v-else-if="validRooms.length === 0"
-      class="dashboard-card rounded-lg p-8"
-    >
+    <div v-else-if="validRooms.length === 0" class="rooms-panel rounded-lg p-8">
       <div class="text-center py-12">
         <h2 class="text-xl font-semibold mb-2 text-[#e0e0e0]">Aucune room</h2>
         <p class="text-[#b0b0b0] mb-6">
           Créez votre première room pour commencer à collaborer
         </p>
         <div class="flex justify-center">
-          <button class="btn btn-primary" @click="showCreateModal = true">
+          <button class="rooms-primary-btn" @click="showCreateModal = true">
             Créer une room
           </button>
         </div>
@@ -165,7 +159,7 @@ async function handleSetupEntreprise() {
       <article
         v-for="room in validRooms"
         :key="room.id"
-        class="dashboard-card room-card rounded-lg p-6"
+        class="rooms-panel room-card rounded-lg p-6"
       >
         <div class="card-body p-0">
           <div class="flex justify-between items-start">
@@ -190,11 +184,7 @@ async function handleSetupEntreprise() {
               </p>
             </div>
             <div class="dropdown dropdown-end">
-              <div
-                tabindex="0"
-                role="button"
-                class="btn btn-ghost btn-sm rounded-lg"
-              >
+              <div tabindex="0" role="button" class="rooms-ghost-btn">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
@@ -211,7 +201,7 @@ async function handleSetupEntreprise() {
               </div>
               <ul
                 tabindex="0"
-                class="dropdown-content z-1 menu p-2 shadow-lg bg-[#0a1628] rounded-lg w-40 border border-gray-600"
+                class="dropdown-content z-1 menu p-2 shadow-lg rooms-dropdown-menu w-40"
               >
                 <li>
                   <a
@@ -226,20 +216,18 @@ async function handleSetupEntreprise() {
 
           <div class="flex items-center gap-2 flex-wrap">
             <span
-              class="px-3 py-1 rounded-full text-xs font-medium"
+              class="room-visibility-chip"
               :class="
                 room.visibility === 'private'
-                  ? 'bg-[#4115df]/20 text-[#4115df]'
-                  : 'bg-[#2d7a3f]/20 text-[#6fdd9f]'
+                  ? 'room-visibility-chip--private'
+                  : 'room-visibility-chip--shared'
               "
             >
               {{
                 room.visibility === "private" ? "🔒 Privée" : "🌐 Entreprise"
               }}
             </span>
-            <span
-              v-if="room.isTemporary"
-              class="px-3 py-1 rounded-full text-xs font-medium bg-[#1a3a52] text-[#8ab4f8]"
+            <span v-if="room.isTemporary" class="room-temporary-chip"
               >⏱️ Temporaire</span
             >
           </div>
@@ -258,7 +246,7 @@ async function handleSetupEntreprise() {
             <span
               v-for="mr in room.moduleRooms"
               :key="mr.id"
-              class="px-2 py-1 rounded-md text-xs bg-[#112338] text-[#9ec1ff] border border-white/10"
+              class="room-module-chip"
             >
               {{ mr.module?.name || mr.module?.code || "Module" }}
             </span>
@@ -273,7 +261,7 @@ async function handleSetupEntreprise() {
                   id: room.id,
                 },
               }"
-              class="btn btn-primary btn-sm"
+              class="rooms-primary-btn rooms-primary-btn--sm"
             >
               Ouvrir
             </router-link>
@@ -288,29 +276,35 @@ async function handleSetupEntreprise() {
 </template>
 
 <style scoped>
-.dashboard-card {
-  border: 1px solid rgba(65, 21, 223, 0.1);
-  background-color: #0a1628;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  transition: all 0.3s ease;
+.rooms-page {
+  padding: 0.2rem;
 }
 
-.dashboard-card:hover {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+.rooms-panel {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(91, 163, 232, 0.14),
+      transparent 34%
+    ),
+    linear-gradient(180deg, rgba(8, 18, 31, 0.98), rgba(5, 10, 20, 0.98));
+  border-radius: 16px;
+  box-shadow:
+    0 22px 44px rgba(0, 0, 0, 0.28),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+  transition:
+    border-color 0.22s ease,
+    transform 0.22s ease;
 }
 
 .page-header {
-  background: linear-gradient(
-    180deg,
-    rgba(10, 22, 40, 1) 0%,
-    rgba(10, 22, 40, 0.86) 100%
-  );
-  border-color: rgba(255, 255, 255, 0.08);
+  position: relative;
+  overflow: hidden;
 }
 
 .stat-chip {
-  background: rgba(17, 35, 56, 0.7);
+  background: rgba(17, 35, 56, 0.58);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 0.75rem;
   padding: 0.7rem 0.85rem;
@@ -332,20 +326,19 @@ async function handleSetupEntreprise() {
 
 .room-card {
   border-color: rgba(255, 255, 255, 0.08);
-  background: linear-gradient(
-    180deg,
-    rgba(10, 22, 40, 1) 0%,
-    rgba(10, 22, 40, 0.93) 100%
-  );
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(91, 163, 232, 0.12),
+      transparent 38%
+    ),
+    linear-gradient(180deg, rgba(10, 22, 40, 1), rgba(10, 22, 40, 0.93));
 }
 
 .room-card:hover {
+  transform: translateY(-2px);
   border-color: rgba(143, 182, 255, 0.28);
-  background: linear-gradient(
-    180deg,
-    rgba(12, 28, 48, 1) 0%,
-    rgba(12, 28, 48, 0.95) 100%
-  );
+  box-shadow: 0 18px 30px rgba(0, 0, 0, 0.3);
 }
 
 .room-title {
@@ -355,5 +348,101 @@ async function handleSetupEntreprise() {
 
 .room-title:hover {
   color: #ffffff;
+}
+
+.rooms-primary-btn {
+  border-radius: 10px;
+  border: 1px solid rgba(91, 163, 232, 0.45);
+  background: linear-gradient(135deg, #377dbd, #59a0e5);
+  color: #ffffff;
+  padding: 0.55rem 0.95rem;
+  font-weight: 600;
+  transition:
+    transform 0.2s ease,
+    filter 0.2s ease;
+}
+
+.rooms-primary-btn:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.rooms-primary-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.rooms-primary-btn--sm {
+  padding: 0.44rem 0.8rem;
+  font-size: 0.82rem;
+}
+
+.rooms-ghost-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.rooms-ghost-btn:hover {
+  border-color: rgba(91, 163, 232, 0.38);
+  background: rgba(91, 163, 232, 0.1);
+}
+
+.rooms-dropdown-menu {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  background: rgba(8, 18, 31, 0.95);
+  backdrop-filter: blur(10px);
+}
+
+.room-visibility-chip,
+.room-temporary-chip {
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+
+.room-visibility-chip--private {
+  color: #c8d9ff;
+  background: rgba(91, 163, 232, 0.16);
+  border-color: rgba(91, 163, 232, 0.34);
+}
+
+.room-visibility-chip--shared {
+  color: #c9f0dd;
+  background: rgba(82, 175, 126, 0.18);
+  border-color: rgba(82, 175, 126, 0.34);
+}
+
+.room-temporary-chip {
+  color: #9ec1ff;
+  background: rgba(26, 58, 82, 0.6);
+  border-color: rgba(143, 182, 255, 0.3);
+}
+
+.room-module-chip {
+  padding: 0.24rem 0.5rem;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  color: #9ec1ff;
+  background: rgba(17, 35, 56, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 768px) {
+  .rooms-page {
+    padding: 0;
+  }
+
+  .rooms-panel {
+    border-radius: 14px;
+  }
 }
 </style>

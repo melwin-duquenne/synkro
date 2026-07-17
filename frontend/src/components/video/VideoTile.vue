@@ -30,9 +30,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div
-    class="video-tile relative bg-[#0a1628] rounded-2xl overflow-hidden aspect-video border border-white/10 shadow-lg"
-  >
+  <div class="video-tile">
     <!-- Video element -->
     <video
       ref="videoRef"
@@ -46,24 +44,20 @@ onMounted(() => {
     <!-- No video placeholder -->
     <div
       v-if="!isVideoEnabled || !stream"
-      class="absolute inset-0 flex items-center justify-center bg-[#1a3a52]/60"
+      class="video-tile__empty absolute inset-0 flex items-center justify-center"
     >
-      <div
-        class="flex items-center justify-center w-20 h-20 rounded-full bg-[#408ed6]/30 text-[#408ed6] text-2xl font-bold"
-      >
+      <div class="video-tile__avatar-pill">
         <span>{{ displayName.charAt(0).toUpperCase() }}</span>
       </div>
     </div>
 
     <!-- Overlay info -->
-    <div
-      class="absolute bottom-0 left-0 right-0 bg-linear-to-t from-[#0a1628]/90 via-[#0a1628]/30 to-transparent p-3"
-    >
+    <div class="video-tile__overlay absolute bottom-0 left-0 right-0 p-3">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
-          <span class="text-[#e7f0fa] text-sm font-medium truncate max-w-37.5">
+          <span class="video-tile__name truncate max-w-37.5">
             {{ displayName }}
-            <span v-if="isLocal" class="text-[#8ea4be] text-xs">(Vous)</span>
+            <span v-if="isLocal" class="video-tile__you">(Vous)</span>
           </span>
         </div>
 
@@ -71,7 +65,7 @@ onMounted(() => {
           <!-- Screen sharing indicator -->
           <div
             v-if="isScreenSharing"
-            class="bg-[#6fdd9f]/20 text-[#6fdd9f] rounded-full p-1.5 shrink-0"
+            class="video-status-badge video-status-badge--screen"
           >
             <svg
               class="w-4 h-4"
@@ -91,7 +85,7 @@ onMounted(() => {
           <!-- Audio muted indicator -->
           <div
             v-if="!isAudioEnabled"
-            class="bg-red-500/20 text-red-400 rounded-full p-1.5 shrink-0"
+            class="video-status-badge video-status-badge--muted"
           >
             <svg
               class="w-4 h-4"
@@ -117,7 +111,7 @@ onMounted(() => {
           <!-- Video off indicator -->
           <div
             v-if="!isVideoEnabled"
-            class="bg-red-500/20 text-red-400 rounded-full p-1.5 shrink-0"
+            class="video-status-badge video-status-badge--muted"
           >
             <svg
               class="w-4 h-4"
@@ -150,7 +144,86 @@ onMounted(() => {
   transform: scaleX(-1);
 }
 
+.video-tile {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(91, 163, 232, 0.13),
+      transparent 38%
+    ),
+    rgba(10, 22, 40, 0.9);
+  box-shadow:
+    0 14px 26px rgba(0, 0, 0, 0.26),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+
 .video-tile video {
   background-color: #1f2937;
+}
+
+.video-tile__empty {
+  background: linear-gradient(
+    180deg,
+    rgba(8, 18, 31, 0.72),
+    rgba(8, 18, 31, 0.9)
+  );
+}
+
+.video-tile__avatar-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 4.6rem;
+  height: 4.6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(91, 163, 232, 0.34);
+  background: rgba(91, 163, 232, 0.2);
+  color: #b4dcff;
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.video-tile__overlay {
+  background: linear-gradient(
+    180deg,
+    rgba(10, 22, 40, 0),
+    rgba(10, 22, 40, 0.78) 44%,
+    rgba(10, 22, 40, 0.94)
+  );
+}
+
+.video-tile__name {
+  color: #e7f0fa;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.video-tile__you {
+  color: #8ea4be;
+  font-size: 0.75rem;
+}
+
+.video-status-badge {
+  border-radius: 999px;
+  padding: 0.35rem;
+  flex-shrink: 0;
+  border: 1px solid transparent;
+}
+
+.video-status-badge--screen {
+  color: #8ff2b7;
+  background: rgba(111, 221, 159, 0.18);
+  border-color: rgba(111, 221, 159, 0.32);
+}
+
+.video-status-badge--muted {
+  color: #f9a8a8;
+  background: rgba(248, 113, 113, 0.18);
+  border-color: rgba(248, 113, 113, 0.32);
 }
 </style>
