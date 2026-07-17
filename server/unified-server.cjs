@@ -1,7 +1,7 @@
 const http = require('http');
 const WebSocket = require('ws');
 const { setupWSConnection } = require('y-websocket/bin/utils');
-const { authorize } = require('./auth.cjs');
+const { authorize, parseConnection } = require('./auth.cjs');
 
 const port = process.env.PORT || 3001;
 const BACKEND_INTERNAL_URL = process.env.BACKEND_INTERNAL_URL || 'http://backend-synkro:8000';
@@ -125,8 +125,12 @@ function unregisterWebRTCPeer(roomId, peerId) {
 }
 
 wss.on('connection', (ws, req) => {
-  // Extract room ID from URL path (e.g., /room-123)
-  const roomId = req.url?.slice(1) || 'default';
+  // Extract room ID from URL PATH only. On réutilise parseConnection (même
+  // logique que l'auth) pour retirer la query string : sans ça, le token JWT
+  // resterait collé au roomId (ex. "room-42-video?token=<JWT>"). Comme chaque
+  // utilisateur a un token différent, ils atterriraient chacun dans une room
+  // distincte → isolés en visio/éditeur/whiteboard alors qu'ils sont ensemble.
+  const roomId = parseConnection(req.url).docName || 'default';
   let webrtcPeerId = null;
 
   console.log(`[${new Date().toISOString()}] New connection to room: ${roomId}`);
