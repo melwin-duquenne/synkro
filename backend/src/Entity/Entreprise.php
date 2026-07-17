@@ -38,9 +38,6 @@ class Entreprise
     #[Groups(['entreprise:read'])]
     private ?\DateTimeInterface $createdAt = null;
 
-    #[ORM\OneToMany(mappedBy: 'entreprise', targetEntity: User::class)]
-    private Collection $users;
-
     #[ORM\OneToMany(mappedBy: 'entreprise', targetEntity: Team::class)]
     private Collection $teams;
 
@@ -78,7 +75,6 @@ class Entreprise
 
     public function __construct()
     {
-        $this->users = new ArrayCollection();
         $this->teams = new ArrayCollection();
         $this->rooms = new ArrayCollection();
         $this->calendarEvents = new ArrayCollection();
@@ -131,25 +127,6 @@ class Entreprise
     public function setCreatedAt(\DateTimeInterface $createdAt): self
     {
         $this->createdAt = $createdAt;
-        return $this;
-    }
-
-    public function getUsers(): Collection
-    {
-        return $this->users;
-    }
-
-    public function addUser(User $user): self
-    {
-        if (!$this->users->contains($user)) {
-            $this->users->add($user);
-        }
-        return $this;
-    }
-
-    public function removeUser(User $user): self
-    {
-        $this->users->removeElement($user);
         return $this;
     }
 
