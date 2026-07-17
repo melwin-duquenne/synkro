@@ -1,7 +1,8 @@
 const http = require('http');
 const WebSocket = require('ws');
 const { setupWSConnection } = require('y-websocket/bin/utils');
-const { authorize } = require('./auth.cjs');
+const { authorize, parseConnection } = require('./auth.cjs');
+const { decodeSignalFrame } = require('./webrtc.cjs');
 
 const port = process.env.PORT || 3001;
 const BACKEND_INTERNAL_URL = process.env.BACKEND_INTERNAL_URL || 'http://backend-synkro:8000';
@@ -125,8 +126,12 @@ function unregisterWebRTCPeer(roomId, peerId) {
 }
 
 wss.on('connection', (ws, req) => {
-  // Extract room ID from URL path (e.g., /room-123)
-  const roomId = req.url?.slice(1) || 'default';
+  // Extract room ID from URL PATH only. On réutilise parseConnection (même
+  // logique que l'auth) pour retirer la query string : sans ça, le token JWT
+  // resterait collé au roomId (ex. "room-42-video?token=<JWT>"). Comme chaque
+  // utilisateur a un token différent, ils atterriraient chacun dans une room
+  // distincte → isolés en visio/éditeur/whiteboard alors qu'ils sont ensemble.
+  const roomId = parseConnection(req.url).docName || 'default';
   let webrtcPeerId = null;
 
   console.log(`[${new Date().toISOString()}] New connection to room: ${roomId}`);
@@ -140,35 +145,32 @@ wss.on('connection', (ws, req) => {
   // Intercept messages for WebRTC signaling
   const originalSend = ws.send.bind(ws);
 
-  // Add message handler for WebRTC signaling
+  // Add message handler for WebRTC signaling.
+  // NB : y-websocket met la socket en binaryType 'arraybuffer', donc `data`
+  // arrive en ArrayBuffer et pas en Buffer. decodeSignalFrame() normalise et ne
+  // renvoie une frame que pour les types WebRTC (2-5) ; les messages Yjs (0/1)
+  // renvoient null et sont laissés au handler y-websocket.
   ws.on('message', (data) => {
     try {
-      // Check if it's a binary message with WebRTC type
-      if (Buffer.isBuffer(data) && data.length > 0) {
-        const messageType = data[0];
+      const frame = decodeSignalFrame(data);
+      if (!frame) return; // pas une frame WebRTC → y-websocket s'en charge
+      const { type: messageType, payload } = frame;
 
-        // WebRTC message types (2-5)
-        if (messageType >= 2 && messageType <= 5) {
-          const payload = data.slice(1);
-
-          // Handle peer registration from control messages
-          if (messageType === WEBRTC_MESSAGE_TYPES.CONTROL) {
-            try {
-              const controlMsg = JSON.parse(payload.toString());
-              if (controlMsg.action === 'join' && controlMsg.peerId) {
-                webrtcPeerId = controlMsg.peerId;
-                registerWebRTCPeer(ws, roomId, controlMsg.peerId, controlMsg.userId, controlMsg.userName);
-              } else if (controlMsg.action === 'leave' && controlMsg.peerId) {
-                unregisterWebRTCPeer(roomId, controlMsg.peerId);
-                webrtcPeerId = null;
-              }
-            } catch (e) {}
+      // Handle peer registration from control messages
+      if (messageType === WEBRTC_MESSAGE_TYPES.CONTROL) {
+        try {
+          const controlMsg = JSON.parse(payload.toString());
+          if (controlMsg.action === 'join' && controlMsg.peerId) {
+            webrtcPeerId = controlMsg.peerId;
+            registerWebRTCPeer(ws, roomId, controlMsg.peerId, controlMsg.userId, controlMsg.userName);
+          } else if (controlMsg.action === 'leave' && controlMsg.peerId) {
+            unregisterWebRTCPeer(roomId, controlMsg.peerId);
+            webrtcPeerId = null;
           }
-
-          handleWebRTCMessage(ws, roomId, messageType, payload);
-          return; // Don't pass to Yjs
-        }
+        } catch (e) {}
       }
+
+      handleWebRTCMessage(ws, roomId, messageType, payload);
     } catch (e) {
       // Not a WebRTC message, let Yjs handle it
     }

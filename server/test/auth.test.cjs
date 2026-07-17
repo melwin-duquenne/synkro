@@ -11,6 +11,19 @@ test('parseConnection extrait docName, token et roomId numérique', () => {
   assert.strictEqual(r.roomId, '42');
 });
 
+test('parseConnection retire la query string du docName (régression: rooms isolées par token)', () => {
+  // Deux utilisateurs, deux tokens JWT différents, MÊME room. Le docName
+  // (= room Yjs + clé peers WebRTC dans unified-server) doit être identique,
+  // sinon chacun se retrouve seul dans sa propre room (visio/éditeur/whiteboard).
+  const alice = parseConnection('/room-42-video?token=JWT_ALICE');
+  const bob = parseConnection('/room-42-video?token=JWT_BOB');
+  assert.strictEqual(alice.docName, 'room-42-video');
+  assert.strictEqual(bob.docName, 'room-42-video');
+  assert.strictEqual(alice.docName, bob.docName);
+  // Garde-fou explicite : l'ancienne logique `url.slice(1)` gardait le token.
+  assert.notStrictEqual('/room-42-video?token=JWT_ALICE'.slice(1), alice.docName);
+});
+
 test('parseConnection renvoie roomId null pour un chemin non-room', () => {
   const r = parseConnection('/health?token=abc');
   assert.strictEqual(r.roomId, null);

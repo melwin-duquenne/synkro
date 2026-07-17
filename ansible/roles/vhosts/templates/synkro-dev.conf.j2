@@ -52,8 +52,34 @@ server {
         proxy_set_header X-Forwarded-Proto https;
     }
 
+    # ─── Routes applicatives : PAS de Basic-auth ─────────────────────────
+    # auth_basic (htpasswd) et le header `Authorization: Bearer <JWT>` du front
+    # s'excluent : ils utilisent le MÊME en-tête HTTP Authorization. Dès que le
+    # SPA envoie son Bearer, nginx ne voit plus de creds Basic valides → 401
+    # avant même d'atteindre Symfony, et le login ne « tient » pas. On désactive
+    # donc la Basic-auth sur les routes app (API, OAuth, WS) ; l'UI (location /)
+    # reste protégée par le htpasswd pour garder le staging privé.
+    location /api/ {
+        auth_basic off;
+        proxy_pass http://127.0.0.1:{{ staging_port_frontend }};
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+
+    location /auth/ {
+        auth_basic off;
+        proxy_pass http://127.0.0.1:{{ staging_port_frontend }};
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+
     # ─── WebSocket Yjs (staging) ─────────────────────────────────────────
     location /ws {
+        auth_basic off;
         access_log /var/log/nginx/synkro-dev-ws.access.log ws_noquery;
         proxy_pass http://127.0.0.1:{{ staging_port_websocket }};
         proxy_http_version 1.1;
