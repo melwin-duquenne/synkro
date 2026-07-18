@@ -61,7 +61,7 @@
 </template>
 
 <script setup lang="ts">
-import { useRouter } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 
 interface Room {
   id: number;
@@ -81,9 +81,13 @@ defineProps<{
 }>();
 
 const router = useRouter();
+const route = useRoute();
 
 const navigateToRoom = (roomId: number) => {
-  router.push(`/room/${roomId}`);
+  router.push({
+    name: "room",
+    params: { entrepriseSlug: route.params.entrepriseSlug, id: roomId },
+  });
 };
 
 const getRoomInitial = (name: string): string => {

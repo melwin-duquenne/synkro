@@ -198,7 +198,7 @@
 </template>
 
 <script setup lang="ts">
-import { useRouter } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 
 interface Event {
   id: number;
@@ -220,6 +220,7 @@ const emit = defineEmits<{
 }>();
 
 const router = useRouter();
+const route = useRoute();
 
 const close = () => {
   emit("close");
@@ -227,7 +228,10 @@ const close = () => {
 
 const navigateToRoom = (roomId?: number) => {
   if (roomId) {
-    router.push(`/room/${roomId}`);
+    router.push({
+      name: "room",
+      params: { entrepriseSlug: route.params.entrepriseSlug, id: roomId },
+    });
     close();
   }
 };
