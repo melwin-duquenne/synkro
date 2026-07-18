@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoomsStore, type EnterpriseUser } from "@/stores/rooms";
 import { useAuthStore } from "@/stores/auth";
-import { useRouter } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 import { canCreateRoom } from "@/utils/permissions";
 
 defineProps<{
@@ -14,6 +14,7 @@ const emit = defineEmits<{
 }>();
 
 const router = useRouter();
+const route = useRoute();
 const roomsStore = useRoomsStore();
 const authStore = useAuthStore();
 
@@ -101,7 +102,10 @@ async function handleSubmit() {
 
   if (room) {
     emit("close");
-    router.push(`/room/${room.id}`);
+    router.push({
+      name: "room",
+      params: { entrepriseSlug: route.params.entrepriseSlug, id: room.id },
+    });
   }
 }
 
