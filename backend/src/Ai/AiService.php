@@ -17,8 +17,12 @@ class AiService
         private AiContextBuilder $contextBuilder,
         private EncryptionService $encryptionService,
         private EntityManagerInterface $entityManager,
+        // Nullable : le processeur d'env `default::` renvoie null (jamais '') quand
+        // SYNKRO_MISTRAL_API_KEY est absente ou vide. Un type `string` non-nullable
+        // ferait planter la construction du service (TypeError) — ce qui bloquait
+        // même le mode BYOK, qui n'utilise pourtant pas cette clé plateforme.
         #[Autowire('%env(default::SYNKRO_MISTRAL_API_KEY)%')]
-        private string $platformApiKey = ''
+        private ?string $platformApiKey = null
     ) {}
 
     public function chat(Entreprise $entreprise, User $user, string $message, string $module): string
@@ -52,7 +56,7 @@ class AiService
 
     private function resolvePlatformKey(Entreprise $entreprise): string
     {
-        if ($this->platformApiKey === '') {
+        if (!$this->platformApiKey) {
             throw new BadRequestHttpException("Le mode plateforme n'est pas configuré sur ce serveur.");
         }
 

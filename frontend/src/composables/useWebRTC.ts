@@ -451,13 +451,30 @@ export function useWebRTC(roomId: number) {
     console.log(`[WebRTC] Control message from ${fromPeerId}: ${action}`)
 
     if (action === 'join') {
-      // New peer joined - create connection to them
-      // Only initiate if our peerId is "greater" (to avoid double connections)
-      if (peerId > fromPeerId) {
-        createPeerConnection(fromPeerId, userId, userName, true)
-      } else {
-        createPeerConnection(fromPeerId, userId, userName, false)
-      }
+      // Un nouveau peer vient d'arriver et a diffusé son 'join' à tous les
+      // présents. On crée notre connexion (initiateur départagé de façon
+      // déterministe par le peerId) ET on répond au nouvel arrivant avec un
+      // 'peer-here' ciblé pour qu'il crée aussi sa moitié de la connexion.
+      // Sans cette réponse, seul le présent au peerId le plus grand émettait
+      // une offre : quand c'était au nouvel arrivant d'initier, personne ne le
+      // lui signalait -> aucune offre -> deadlock dépendant de l'ordre d'arrivée.
+      createPeerConnection(fromPeerId, userId, userName, peerId > fromPeerId)
+      sendSignalingMessage(MSG_TYPES.CONTROL, {
+        action: 'peer-here',
+        targetPeerId: fromPeerId,
+        peerId,
+        userId: authStore.user?.id,
+        userName: authStore.user?.displayName || 'Anonymous',
+      })
+      return
+    }
+
+    if (action === 'peer-here') {
+      // Un peer déjà présent nous signale son existence en réponse à notre
+      // 'join'. On crée notre moitié de connexion (ciblé, donc pas de nouvelle
+      // rediffusion : aucun ping-pong). L'un des deux exactement devient
+      // initiateur via la même comparaison peerId.
+      createPeerConnection(fromPeerId, userId, userName, peerId > fromPeerId)
       return
     }
 
