@@ -5,6 +5,15 @@ framework:
     # Note that the session will be started ONLY if you read or write from it.
     session: true
 
+    # L'app tourne derrière le reverse proxy nginx (réseau Docker interne, le
+    # backend PHP n'est jamais exposé directement). On fait confiance au pair
+    # immédiat et on honore les en-têtes X-Forwarded-* : indispensable pour que
+    # Symfony détecte HTTPS et génère des URLs absolues en https — notamment le
+    # redirect_uri OAuth Google. Sans ça, redirect_uri part en http:// et Google
+    # renvoie « redirect_uri_mismatch ».
+    trusted_proxies: '127.0.0.1,REMOTE_ADDR'
+    trusted_headers: ['x-forwarded-for', 'x-forwarded-host', 'x-forwarded-proto', 'x-forwarded-port']
+
     #esi: true
     #fragments: true
 

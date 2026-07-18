@@ -5,39 +5,16 @@ namespace App\DataFixtures;
 use App\Entity\Module;
 use App\Entity\RoomTemplate;
 use App\Entity\TemplateModule;
+use App\Service\DemoDataSeeder;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
 
 class RoomTemplateFixtures extends Fixture implements DependentFixtureInterface
 {
-    public const TEMPLATES = [
-        [
-            'name' => 'Brainstorm',
-            'description' => 'Idéal pour les sessions de brainstorming avec tableau blanc et chat',
-            'modules' => ['whiteboard', 'chat']
-        ],
-        [
-            'name' => 'Rédaction',
-            'description' => 'Espace d\'écriture collaborative avec éditeur et chat',
-            'modules' => ['editor', 'chat']
-        ],
-        [
-            'name' => 'Réunion',
-            'description' => 'Pour les réunions d\'équipe avec visio, chat et calendrier',
-            'modules' => ['video', 'chat', 'calendar']
-        ],
-        [
-            'name' => 'Projet',
-            'description' => 'Gestion de projet complète avec documents, tâches et fichiers',
-            'modules' => ['editor', 'tasks', 'files', 'chat']
-        ],
-        [
-            'name' => 'Complet',
-            'description' => 'Accès à tous les modules disponibles',
-            'modules' => ['editor', 'whiteboard', 'chat', 'video', 'files', 'tasks', 'calendar']
-        ]
-    ];
+    // Source canonique : App\Service\DemoDataSeeder::TEMPLATES (réutilisée aussi par
+    // le seeder de démo prod-safe, voir app:demo:seed).
+    public const TEMPLATES = DemoDataSeeder::TEMPLATES;
 
     public function load(ObjectManager $manager): void
     {

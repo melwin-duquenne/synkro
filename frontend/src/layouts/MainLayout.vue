@@ -56,7 +56,7 @@ function handleLogout() {
           "
           class="brand"
         >
-          <span class="brand-dot"></span>
+          <img src="/logo_white.png" alt="Logo" class="w-8" />
           <span>Synkro</span>
         </router-link>
 
@@ -67,7 +67,17 @@ function handleLogout() {
             class="nav-link"
             :class="{ 'nav-link-active': isRouteActive('dashboard') }"
           >
-            <span class="nav-icon">◻</span>
+            <svg
+              class="nav-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                d="M4 4h6v6H4V4Zm10 0h6v4h-6V4ZM4 14h6v6H4v-6Zm10 4h6v2h-6v-2Zm0-8h6v6h-6v-6Z"
+                fill="currentColor"
+              />
+            </svg>
             <span>Dashboard</span>
           </router-link>
           <router-link
@@ -75,7 +85,17 @@ function handleLogout() {
             class="nav-link"
             :class="{ 'nav-link-active': isRouteActive('rooms') }"
           >
-            <span class="nav-icon">◻</span>
+            <svg
+              class="nav-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5v-13Zm2 0V11h5V5.5H6Zm7 0V11h5V5.5h-5ZM6 13v5h5v-5H6Zm7 0v5h5v-5h-5Z"
+                fill="currentColor"
+              />
+            </svg>
             <span>Rooms</span>
           </router-link>
           <router-link
@@ -83,7 +103,17 @@ function handleLogout() {
             class="nav-link"
             :class="{ 'nav-link-active': isRouteActive('calendar') }"
           >
-            <span class="nav-icon">◻</span>
+            <svg
+              class="nav-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1.5A2.5 2.5 0 0 1 22 6.5v13A2.5 2.5 0 0 1 19.5 22h-15A2.5 2.5 0 0 1 2 19.5v-13A2.5 2.5 0 0 1 4.5 4H6V3a1 1 0 0 1 1-1Zm12 8H5v9.5c0 .276.224.5.5.5h13a.5.5 0 0 0 .5-.5V10Zm-1.5-4h-13a.5.5 0 0 0-.5.5V8h14V6.5a.5.5 0 0 0-.5-.5Z"
+                fill="currentColor"
+              />
+            </svg>
             <span>Calendrier</span>
           </router-link>
           <router-link
@@ -95,7 +125,17 @@ function handleLogout() {
             class="nav-link"
             :class="{ 'nav-link-active': isRouteActive('admin-ai-settings') }"
           >
-            <span class="nav-icon">◻</span>
+            <svg
+              class="nav-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                d="M11.25 2.75a1 1 0 0 1 1.5 0l1.2 1.44 1.83-.26a1 1 0 0 1 1.14.77l.43 1.78 1.68.76a1 1 0 0 1 .46 1.42l-.87 1.6.87 1.6a1 1 0 0 1-.46 1.42l-1.68.76-.43 1.78a1 1 0 0 1-1.14.77l-1.83-.26-1.2 1.44a1 1 0 0 1-1.5 0l-1.2-1.44-1.83.26a1 1 0 0 1-1.14-.77l-.43-1.78-1.68-.76a1 1 0 0 1-.46-1.42l.87-1.6-.87-1.6a1 1 0 0 1 .46-1.42l1.68-.76.43-1.78a1 1 0 0 1 1.14-.77l1.83.26 1.2-1.44ZM12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"
+                fill="currentColor"
+              />
+            </svg>
             <span>Paramètres IA</span>
           </router-link>
         </nav>

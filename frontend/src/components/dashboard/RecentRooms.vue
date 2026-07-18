@@ -13,7 +13,12 @@
     </div>
 
     <div v-else class="rooms-list">
-      <div v-for="room in recentRooms.slice(0, 5)" :key="room.id" class="room-row">
+      <div
+        v-for="room in recentRooms.slice(0, 5)"
+        :key="room.id"
+        class="room-row"
+      >
+        <div class="room-avatar" aria-hidden="true">{{ getRoomInitial(room.name) }}</div>
         <div class="room-info">
           <div class="room-name">{{ room.name }}</div>
           <div class="room-meta">
@@ -22,10 +27,8 @@
               'vis-private': room.visibility === 'private',
               'vis-team': room.visibility === 'team',
             }">{{ getVisibilityLabel(room.visibility) }}</span>
-            <span class="meta-dot">·</span>
-            <span class="meta-text">{{ room.moduleCount }} modules</span>
-            <span class="meta-dot">·</span>
-            <span class="meta-text">{{ getLayoutIcon(room.layoutType) }} {{ getLayoutLabel(room.layoutType) }}</span>
+            <span class="meta-chip">{{ room.moduleCount }} modules</span>
+            <span class="meta-chip">{{ getLayoutIcon(room.layoutType) }} {{ getLayoutLabel(room.layoutType) }}</span>
           </div>
           <div class="room-footer-meta">
             <span v-if="room.creator?.displayName" class="meta-text">
@@ -81,6 +84,11 @@ const router = useRouter();
 
 const navigateToRoom = (roomId: number) => {
   router.push(`/room/${roomId}`);
+};
+
+const getRoomInitial = (name: string): string => {
+  if (!name) return "#";
+  return name.trim().charAt(0).toUpperCase();
 };
 
 const getVisibilityLabel = (visibility: string): string => {
@@ -164,27 +172,67 @@ const formatDate = (dateString: string): string => {
 .rooms-list { display: flex; flex-direction: column; gap: 0.5rem; }
 .room-row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding: 0.875rem;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.055);
+  padding: 0.8rem;
+  background:
+    radial-gradient(circle at top right, rgba(91, 163, 232, 0.11), transparent 42%),
+    rgba(17, 35, 56, 0.56);
+  border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 10px;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, transform 0.15s, background-color 0.15s;
 }
-.room-row:hover { border-color: rgba(255, 255, 255, 0.1); }
+
+.room-row:hover {
+  border-color: rgba(91, 163, 232, 0.3);
+  transform: translateY(-1px);
+}
+
+.room-avatar {
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #dff1ff;
+  border: 1px solid rgba(91, 163, 232, 0.35);
+  background: rgba(91, 163, 232, 0.2);
+}
+
 .room-info { flex: 1; min-width: 0; }
-.room-name { font-size: 0.875rem; font-weight: 600; color: #c8daea; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 0.375rem; }
+.room-name {
+  font-size: 0.885rem;
+  font-weight: 600;
+  color: #d9e8f6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 0.33rem;
+}
+
 .room-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.375rem; margin-bottom: 0.25rem; }
 .room-footer-meta { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.25rem; }
-.meta-dot { color: #2a3a48; }
-.meta-text { font-size: 0.6875rem; color: #516070; display: inline-flex; align-items: center; gap: 0.25rem; }
+
+.meta-chip {
+  font-size: 0.63rem;
+  color: #9ec1df;
+  border-radius: 999px;
+  padding: 0.16rem 0.46rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(11, 24, 41, 0.55);
+}
+
+.meta-text { font-size: 0.6875rem; color: #7f95ac; display: inline-flex; align-items: center; gap: 0.25rem; }
 .inline-icon { width: 11px; height: 11px; flex-shrink: 0; }
 .vis-pill {
-  font-size: 0.6rem;
+  font-size: 0.58rem;
   font-weight: 700;
-  padding: 0.2rem 0.45rem;
+  padding: 0.2rem 0.48rem;
   border-radius: 999px;
   text-transform: capitalize;
 }
@@ -194,19 +242,23 @@ const formatDate = (dateString: string): string => {
 .enter-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
-  padding: 0.375rem 0.75rem;
-  background: rgba(64, 142, 214, 0.1);
-  border: 1px solid rgba(64, 142, 214, 0.25);
-  border-radius: 7px;
-  color: #5ba3e8;
+  gap: 0.28rem;
+  padding: 0.37rem 0.72rem;
+  background: rgba(91, 163, 232, 0.14);
+  border: 1px solid rgba(91, 163, 232, 0.3);
+  border-radius: 8px;
+  color: #bfe0ff;
   font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
   flex-shrink: 0;
   transition: background 0.15s, border-color 0.15s;
 }
-.enter-btn:hover { background: rgba(64, 142, 214, 0.18); border-color: rgba(64, 142, 214, 0.4); }
+
+.enter-btn:hover {
+  background: rgba(91, 163, 232, 0.24);
+  border-color: rgba(91, 163, 232, 0.45);
+}
 .see-all { margin-top: 0.875rem; text-align: center; }
 .see-all-link { font-size: 0.75rem; color: #5ba3e8; text-decoration: none; }
 .see-all-link:hover { color: #7ec4f0; }

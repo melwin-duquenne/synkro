@@ -111,14 +111,14 @@ describe('CalendarEventModal — edit mode', () => {
 
   it('shows delete button in edit mode', () => {
     const wrapper = mountModal({ event: makeEvent() })
-    const deleteBtn = wrapper.find('.btn-error')
+    const deleteBtn = wrapper.find('.calendar-danger-btn')
     expect(deleteBtn.exists()).toBe(true)
     expect(deleteBtn.text()).toContain('Supprimer')
   })
 
   it('does not show delete button in create mode', () => {
     const wrapper = mountModal({ event: null })
-    expect(wrapper.find('.btn-error').exists()).toBe(false)
+    expect(wrapper.find('.calendar-danger-btn').exists()).toBe(false)
   })
 
   it('shows "Enregistrer" on submit button in edit mode', () => {
@@ -163,7 +163,7 @@ describe('CalendarEventModal — delete', () => {
     mockFetch.mockResolvedValue({ ok: true, json: async () => ({}) })
 
     const wrapper = mountModal({ event: mockEvent })
-    const deleteBtn = wrapper.find('.btn-error')
+    const deleteBtn = wrapper.find('.calendar-danger-btn')
     await deleteBtn.trigger('click')
 
     await vi.waitFor(() => wrapper.emitted('deleted'), { timeout: 1000 })
